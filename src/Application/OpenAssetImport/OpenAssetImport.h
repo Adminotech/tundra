@@ -55,6 +55,8 @@ signals:
     void ConversionDone(bool success);
 
 private:
+    void Reset();
+    
     /// Sets texture unit to material.
     void SetTexture(QString &texFile);
     /// Returns if all textures are loaded.
