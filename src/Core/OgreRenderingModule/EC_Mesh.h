@@ -171,6 +171,8 @@ public:
     DEFINE_QPROPERTY_ATTRIBUTE(bool, castShadows);
 
 public slots:
+    void DebugSkeleton(float frametime); // DEBUG REMOVE
+    
     /// Automatically finds the placeable from the parent entity and sets it.
     void AutoSetPlaceable();
 

@@ -27,6 +27,8 @@
 
 #include "MemoryLeakCheck.h"
 
+#include "FrameAPI.h" //debug
+
 using namespace OgreRenderer;
 
 EC_Mesh::EC_Mesh(Scene* scene) :
@@ -63,6 +65,40 @@ EC_Mesh::EC_Mesh(Scene* scene) :
         connect(this, SIGNAL(AttributeChanged(IAttribute*, AttributeChange::Type)), SLOT(OnAttributeUpdated(IAttribute*)));
         connect(meshAsset.get(), SIGNAL(Loaded(AssetPtr)), this, SLOT(OnMeshAssetLoaded(AssetPtr)), Qt::UniqueConnection);
         connect(skeletonAsset.get(), SIGNAL(Loaded(AssetPtr)), this, SLOT(OnSkeletonAssetLoaded(AssetPtr)), Qt::UniqueConnection);
+    }
+    
+    connect(framework->Frame(), SIGNAL(Updated(float)), SLOT(DebugSkeleton(float)));
+}
+
+void EC_Mesh::DebugSkeleton(float frametime)
+{
+    Ogre::Entity *oEnt = GetEntity();
+    if (oEnt && oEnt->hasSkeleton())
+    {
+        OgreWorldPtr world = world_.lock();
+        if (!world)
+            return;
+            
+        Ogre::Vector3 parentPos = Ogre::Vector3::ZERO;
+        if (oEnt->getParentNode())
+            parentPos = oEnt->getParentNode()->_getDerivedPosition();
+        
+        Ogre::SkeletonInstance *skeleton = oEnt->getSkeleton();
+        bool red = true;
+        for(ushort i=0; i<skeleton->getNumBones(); ++i)
+        {
+            Ogre::Bone *bone = skeleton->getBone(i);
+            Ogre::Vector3 pos = parentPos + bone->_getDerivedPosition();
+            for(ushort ci=0; ci<bone->numChildren(); ++ci)
+            {
+                Ogre::Vector3 childPos = parentPos + bone->getChild(ci)->_getDerivedPosition();
+                if (red)
+                    world->DebugDrawLine(pos, childPos, 1, 0, 0, false);
+                else
+                    world->DebugDrawLine(pos, childPos, 0, 1, 0, false);
+            }
+            red = !red;
+        }
     }
 }
 
