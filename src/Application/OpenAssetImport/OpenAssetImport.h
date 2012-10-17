@@ -26,6 +26,7 @@ Licensed under the MIT license:
 
 struct boneNode
 {
+    boneNode() : node(0), parent(0) {}
     aiNode* node;
     aiNode* parent;
     bool isNeeded;
@@ -70,7 +71,7 @@ private:
     Ogre::MaterialPtr CreateMaterialByScript(int index, const aiMaterial* mat);
     void GrabNodeNamesFromNode(const aiScene* mScene,  const aiNode* pNode);
     void GrabBoneNamesFromNode(const aiScene* mScene,  const aiNode* pNode);
-    void ComputeNodesDerivedTransform(const aiScene* mScene,  const aiNode *pNode, const aiMatrix4x4 accTransform);
+    void ComputeNodesDerivedTransform(const aiScene* mScene, const aiNode *pNode, const aiMatrix4x4 accTransform);
     void CreateBonesFromNode(const aiScene* mScene,  const aiNode* pNode);
     void CreateBoneHiearchy(const aiScene* mScene,  const aiNode *pNode);
     void LoadDataFromNode(const aiScene* mScene,  const aiNode *pNode, const QString &meshFileDiskSource, const QString &meshFileName,Ogre::MeshPtr mesh);

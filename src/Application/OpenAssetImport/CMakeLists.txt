@@ -11,12 +11,12 @@ set (SOURCE_FILES ${CPP_FILES} ${H_FILES})
 
 QT4_WRAP_CPP(MOC_SRCS ${MOC_FILES})
 
-use_core_modules (Framework Asset OgreRenderingModule)
+use_core_modules (Framework Asset Math OgreRenderingModule)
 use_package_assimp()
 
 build_library (${TARGET_NAME} STATIC ${SOURCE_FILES} ${MOC_SRCS})
 
-link_modules (Framework Asset)
+link_modules (Framework Math Asset)
 link_ogre()
 link_package_assimp()
 link_package(QT4)

@@ -5,11 +5,14 @@ Copyright (c) 2011 Jacob 'jacmoe' Moen
 Licensed under the MIT license:
 */
 
-#include "OgreMaterialAsset.h"
+#include "Math/MathFunc.h"
 #include "LoggingFunctions.h"
+
 #include "OpenAssetImport.h"
 #include "assimp/DefaultLogger.hpp"
 #include "assimp/Importer.hpp"
+
+#include "OgreMaterialAsset.h"
 #include "OgreDataStream.h"
 #include "OgreImage.h"
 #include "OgreTexture.h"
@@ -25,8 +28,10 @@ Licensed under the MIT license:
 #include "OgreDefaultHardwareBufferManager.h"
 #include "OgreMeshManager.h"
 #include "OgreSceneManager.h"
+
 #include <OgreStringConverter.h>
 #include <OgreSkeletonManager.h>
+
 #include "OgreMeshSerializer.h"
 #include "OgreSkeletonSerializer.h"
 #include "OgreAnimation.h"
@@ -35,12 +40,14 @@ Licensed under the MIT license:
 #include "OgreVector3.h"
 #include "OgreRoot.h"
 #include "OgreRenderSystem.h"
+
 #include <QString>
 #include <QStringList>
 #include <QObject>
+
 #include <boost/tuple/tuple.hpp>
 
-//#define SKELETON_ENABLED
+#define SKELETON_ENABLED
 
 OpenAssetImport::OpenAssetImport(AssetAPI *assetApi):
 assetAPI(assetApi), meshCreated(false), texCount(0)
@@ -219,14 +226,11 @@ bool OpenAssetImport::PendingTextures()
         return false;
 }
 
-aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Ogre::Real val, float & ticks, aiMatrix4x4 & mat)
+aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Ogre::Real val, float duration, float &ticks, aiMatrix4x4 & mat)
 {
-
-    // walking animation is found from element 0
-    const aiAnimation* mAnim = scene->mAnimations[0];
     double currentTime = val;
-    currentTime = fmod( (float)val * 1.f, (float)mAnim->mDuration);
-    ticks = fmod( (float)val * 1.f, (float)mAnim->mDuration);
+    currentTime = fmod((float)val * 1.f, duration);
+    ticks = fmod((float)val * 1.f, duration);
 
     // calculate the transformations for each animation channel
 
@@ -234,8 +238,8 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
     const aiNodeAnim* channel = pchannel;
 
     // ******** Position *****
-    aiVector3D presentPosition( 0, 0, 0);
-    if(channel->mNumPositionKeys > 0)
+    aiVector3D presentPosition(0, 0, 0);
+    if (channel->mNumPositionKeys > 0)
     {
         // Look for present frame number. Search from last position if time is after the last time, else from beginning
         // Should be much quicker than always looking from start for the average use case.
@@ -253,10 +257,10 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
         const aiVectorKey& nextKey = channel->mPositionKeys[nextFrame];
         double diffTime = nextKey.mTime - key.mTime;
         if(diffTime < 0.0)
-            diffTime += mAnim->mDuration;
+            diffTime += duration;
         if(diffTime > 0)
         {
-            float factor = float( (currentTime - key.mTime) / diffTime);
+            float factor = float((currentTime - key.mTime) / diffTime);
             presentPosition = key.mValue + (nextKey.mValue - key.mValue) * factor;
         }
         else
@@ -266,7 +270,7 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
     }
 
     // ******** Rotation *********
-    aiQuaternion presentRotation( 1, 0, 0, 0);
+    aiQuaternion presentRotation(1, 0, 0, 0);
     if(channel->mNumRotationKeys > 0)
     {
         unsigned int frame = 0;
@@ -283,11 +287,11 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
         const aiQuatKey& nextKey = channel->mRotationKeys[nextFrame];
         double diffTime = nextKey.mTime - key.mTime;
         if(diffTime < 0.0)
-            diffTime += mAnim->mDuration;
+            diffTime += duration;
         if(diffTime > 0)
         {
-            float factor = float( (currentTime - key.mTime) / diffTime);
-            aiQuaternion::Interpolate( presentRotation, key.mValue, nextKey.mValue, factor);
+            float factor = float((currentTime - key.mTime) / diffTime);
+            aiQuaternion::Interpolate(presentRotation, key.mValue, nextKey.mValue, factor);
         } 
         else
         {
@@ -296,8 +300,8 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
     }
 
     // ******** Scaling **********
-    aiVector3D presentScaling( 1, 1, 1);
-    if(channel->mNumScalingKeys > 0)
+    aiVector3D presentScaling(1, 1, 1);
+    if (channel->mNumScalingKeys > 0)
     {
         unsigned int frame = 0;
         while(frame < channel->mNumScalingKeys - 1)
@@ -306,7 +310,6 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
                 break;
             frame++;
         }
-
         presentScaling = channel->mScalingKeys[frame].mValue;
     }
 
@@ -317,7 +320,12 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
     mat.a2 *= presentScaling.y; mat.b2 *= presentScaling.y; mat.c2 *= presentScaling.y;
     mat.a3 *= presentScaling.z; mat.b3 *= presentScaling.z; mat.c3 *= presentScaling.z;
     mat.a4 = presentPosition.x; mat.b4 = presentPosition.y; mat.c4 = presentPosition.z;
-
+    
+    /*aiMatrix4x4 t2, t3;
+    mat = aiMatrix4x4::Translation(presentPosition, t2)
+        * aiMatrix4x4(presentRotation.GetMatrix())
+        * aiMatrix4x4::Scaling(presentScaling, t3);
+    */
     return mat;
 }
 
@@ -336,29 +344,26 @@ void GetBasePose(const aiScene * sc, const aiNode * nd)
         // fill boneMatrices with current bone locations
         for( size_t a = 0; a < mesh->mNumBones; ++a)
         {
-            aiBone* bone = mesh->mBones[a];
-
             // find the corresponding node by again looking recursively through the node hierarchy for the same name
-            aiNode* node = sc->mRootNode->FindNode(bone->mName);
+            aiBone* bone = mesh->mBones[a];            
+            aiNode* node = bone ? sc->mRootNode->FindNode(bone->mName) : 0;
 
             // start with the mesh-to-bone matrix
             boneMatrices[a] = bone->mOffsetMatrix;
 
             // and now append all node transformations down the parent chain until we're back at mesh coordinates again
             const aiNode* tempNode = node;
-
             while(tempNode)
             {
                 // check your matrix multiplication order here!!!
                 boneMatrices[a] = tempNode->mTransformation * boneMatrices[a];
-
                 tempNode = tempNode->mParent;
             }
         }
 
         // all using the results from the previous code snippet
-        std::vector<aiVector3D> resultPos( mesh->mNumVertices);
-        std::vector<aiVector3D> resultNorm( mesh->mNumVertices);
+        std::vector<aiVector3D> resultPos(mesh->mNumVertices);
+        std::vector<aiVector3D> resultNorm(mesh->mNumVertices);
 
         // loop through all vertex weights of all bones
         for(size_t a = 0; a < mesh->mNumBones; ++a)
@@ -367,41 +372,35 @@ void GetBasePose(const aiScene * sc, const aiNode * nd)
             const aiMatrix4x4& posTrafo = boneMatrices[a];
 
             // 3x3 matrix, contains the bone matrix without the translation, only with rotation and possibly scaling
-            aiMatrix3x3 normTrafo = aiMatrix3x3( posTrafo);
+            aiMatrix3x3 normTrafo = aiMatrix3x3(posTrafo);
             for(size_t b = 0; b < bone->mNumWeights; ++b)
             {
                 const aiVertexWeight& weight = bone->mWeights[b];
-
                 size_t vertexId = weight.mVertexId;
                 const aiVector3D& srcPos = mesh->mVertices[vertexId];
                 const aiVector3D& srcNorm = mesh->mNormals[vertexId];
 
                 resultPos[vertexId] += (posTrafo * srcPos) * weight.mWeight;
-                resultNorm[vertexId] += (normTrafo * srcNorm)* weight.mWeight;
+                resultNorm[vertexId] += (normTrafo * srcNorm) * weight.mWeight;
             }
         }
 
         for (t = 0; t < mesh->mNumFaces; ++t)
         {
             const struct aiFace* face = &mesh->mFaces[t];
-
             for(i = 0; i < face->mNumIndices; i++)		// go through all vertices in face
             {
                 int vertexIndex = face->mIndices[i];	// get group index for current index
 
-
                 mesh->mNormals[vertexIndex] = resultNorm[vertexIndex];
                 mesh->mVertices[vertexIndex] = resultPos[vertexIndex];
             }
-
         }
     }
 
     // draw all children
     for (n = 0; n < nd->mNumChildren; n++)
-    {
         GetBasePose(sc, nd->mChildren[n]);
-    }
 }
 
 void OpenAssetImport::Convert(const u8 *data_, size_t numBytes, const QString &fileName, const QString &diskSource, Ogre::MeshPtr mesh)
@@ -472,21 +471,26 @@ void OpenAssetImport::Convert(const u8 *data_, size_t numBytes, const QString &f
             return;
         }
     }
+    
+    LogInfo("Imported animations: " + QString::number(scene->mNumAnimations));
 
     if (scene->HasAnimations())
         GetBasePose(scene, scene->mRootNode);
-
+        
     GrabNodeNamesFromNode(scene, scene->mRootNode);
 
 #ifdef SKELETON_ENABLED
     GrabBoneNamesFromNode(scene, scene->mRootNode);
 #endif
 
+    
     aiMatrix4x4 transform;
     transform.FromEulerAnglesXYZ(degreeToRadian(90), 0, degreeToRadian(180));
+    //transform.FromEulerAnglesXYZ(0, 0, 0);
     scene->mRootNode->mTransformation = transform;
-
-    ComputeNodesDerivedTransform(scene, scene->mRootNode, transform);
+    
+    
+    ComputeNodesDerivedTransform(scene, scene->mRootNode, scene->mRootNode->mTransformation);
 
 #ifdef SKELETON_ENABLED
     if(mBonesByName.size())
@@ -526,8 +530,7 @@ void OpenAssetImport::Convert(const u8 *data_, size_t numBytes, const QString &f
         }
 
         Ogre::SkeletonSerializer binSer;
-
-        //binSer.exportSkeleton(mSkeleton.getPointer(), "model.skeleton");
+        binSer.exportSkeleton(mSkeleton.getPointer(), "model.skeleton");
     }
 
     Ogre::MeshSerializer meshSer;
@@ -584,7 +587,7 @@ void OpenAssetImport::Convert(const u8 *data_, size_t numBytes, const QString &f
 
 }
 
-void OpenAssetImport::ParseAnimation (const aiScene* mScene, int index, aiAnimation* anim)
+void OpenAssetImport::ParseAnimation(const aiScene* mScene, int index, aiAnimation* anim)
 {
     // DefBonePose a matrix that represents the local bone transform (can build from Ogre bone components)
     // PoseToKey a matrix representing the keyframe translation
@@ -610,14 +613,13 @@ void OpenAssetImport::ParseAnimation (const aiScene* mScene, int index, aiAnimat
         animName = "Animation" + Ogre::StringConverter::toString(index);
     }
 
-    Ogre::LogManager::getSingleton().logMessage("Animation name = '" + animName + "'");
-    Ogre::LogManager::getSingleton().logMessage("duration = " + Ogre::StringConverter::toString(Ogre::Real(anim->mDuration)));
-    Ogre::LogManager::getSingleton().logMessage("tick/sec = " + Ogre::StringConverter::toString(Ogre::Real(anim->mTicksPerSecond)));
-    Ogre::LogManager::getSingleton().logMessage("channels = " + Ogre::StringConverter::toString(anim->mNumChannels));
+    LogInfo("Animation name = '" + animName + "'");
+    LogInfo("duration = " + Ogre::StringConverter::toString(Ogre::Real(anim->mDuration)));
+    LogInfo("tick/sec = " + Ogre::StringConverter::toString(Ogre::Real(anim->mTicksPerSecond)));
+    LogInfo("channels = " + Ogre::StringConverter::toString(anim->mNumChannels));
 
-    Ogre::Animation* animation;
     mTicksPerSecond = 1;
-    animation = mSkeleton->createAnimation(Ogre::String(animName), Ogre::Real(anim->mDuration/mTicksPerSecond));
+    Ogre::Animation* animation = mSkeleton->createAnimation(Ogre::String(animName), Ogre::Real(anim->mDuration/mTicksPerSecond));
 
     for(int i = 0; i < (int)anim->mNumChannels; i++)
     {
@@ -625,43 +627,49 @@ void OpenAssetImport::ParseAnimation (const aiScene* mScene, int index, aiAnimat
         aiNodeAnim* node_anim = anim->mChannels[i];
         Ogre::String boneName = Ogre::String(node_anim->mNodeName.data);
 
-        if(mSkeleton->hasBone(boneName))
+        if (mSkeleton->hasBone(boneName))
         {
+            LogInfo(boneName);
             Ogre::Bone* bone = mSkeleton->getBone(boneName);
 
             Ogre::Matrix4 defBonePoseInv;
             defBonePoseInv.makeInverseTransform(bone->getPosition(), bone->getScale(), bone->getOrientation());
+             
             Ogre::NodeAnimationTrack* track = animation->createNodeTrack(i, bone);
-
             for(int g = 0; g < 300; g++)
             {
-                aiVector3D pos;
-                aiQuaternion rot;
-                aiMatrix4x4 mat;
                 float time;
-                UpdateAnimationFunc(scene, node_anim, g, time, mat);
-                mat.DecomposeNoScaling(rot, pos);
+                
+                aiMatrix4x4 mat;
+                aiVector3D pos;
+                aiVector3D scale;
+                aiQuaternion rot;               
+                
+                mat = UpdateAnimationFunc(scene, node_anim, g, anim->mDuration, time, mat);
+                //mat.DecomposeNoScaling(rot, pos);
+                mat.Decompose(scale, rot, pos);
+                
                 keyframe = track->createNodeKeyFrame(Ogre::Real(time));
 
-                Ogre::Vector3 trans(pos.x, pos.y, pos.z);
-                Ogre::Quaternion rotat(rot.w, rot.x, rot.y, rot.z);
-
-                Ogre::Vector3 scale(1,1,1); // ignore scale for now
+                Ogre::Vector3 ogrePos(pos.x, pos.y, pos.z); //(pos.x, pos.z, -pos.y);
+                Ogre::Vector3 ogreScale(scale.x, scale.y, scale.z); // ignore scale for now
+                Ogre::Quaternion ogreRot(rot.w, rot.x, rot.y, rot.z);
+                
                 Ogre::Matrix4 fullTransform;
-                fullTransform.makeTransform(trans, scale, rotat);
+                fullTransform.makeTransform(ogrePos, ogreScale, ogreRot);
 
                 Ogre::Matrix4 poseTokey = defBonePoseInv * fullTransform;
-                poseTokey.decomposition(trans, scale, rotat);
+                poseTokey.decomposition(ogrePos, ogreScale, ogreRot);
 
-                keyframe->setTranslate(trans);
-                keyframe->setRotation(rotat);
-                keyframe->setScale(scale);
-
+                //if (g == 1 || g == 299)
+                //    LogInfo("  t=" + Ogre::StringConverter::toString(time) + " pos " + Ogre::StringConverter::toString(ogrePos) + " scale " + Ogre::StringConverter::toString(ogreScale) + " rot " + Ogre::StringConverter::toString(ogreRot));
+                
+                keyframe->setTranslate(ogrePos);
+                keyframe->setRotation(ogreRot);
+                keyframe->setScale(ogreScale);
             }
         }
-    } // if bone exists
-
-    // loop through channels
+    }
 
     mSkeleton->optimiseAllAnimations();
 }
@@ -703,10 +711,9 @@ void OpenAssetImport::GrabNodeNamesFromNode(const aiScene* mScene, const aiNode*
 
 void OpenAssetImport::ComputeNodesDerivedTransform(const aiScene* mScene,  const aiNode *pNode, const aiMatrix4x4 accTransform)
 {
-    if(mNodeDerivedTransformByName.find(pNode->mName.data) == mNodeDerivedTransformByName.end())
-    {
+    if (mNodeDerivedTransformByName.find(pNode->mName.data) == mNodeDerivedTransformByName.end())
         mNodeDerivedTransformByName[pNode->mName.data] = accTransform;
-    }
+
     for (int childIdx=0; childIdx<pNode->mNumChildren; ++childIdx)
     {
         const aiNode *pChildNode = pNode->mChildren[ childIdx ];
@@ -716,27 +723,44 @@ void OpenAssetImport::ComputeNodesDerivedTransform(const aiScene* mScene,  const
 
 void OpenAssetImport::CreateBonesFromNode(const aiScene* mScene,  const aiNode *pNode)
 {
-    if(IsNodeNeeded(pNode->mName.data))
+    if (IsNodeNeeded(pNode->mName.data))
     {
-        Ogre::Bone* bone = mSkeleton->createBone(Ogre::String(pNode->mName.data), msBoneCount);
-
-        aiQuaternion rot;
-        aiVector3D pos;
-
+        aiQuaternion rot; aiVector3D pos; aiVector3D scale;       
         aiMatrix4x4 aiM = pNode->mTransformation;
+        
+        /* 
+        // Test to take the calculated mNodeDerivedTransformByName matrixes into account. Taken from latest ogreassimp codebase.
+        aiM = mNodeDerivedTransformByName.find(pNode->mName.data)->second;
+        const aiNode* parentNode = 0;
+        BoneMapType::iterator it = boneMap.find(pNode->mName.data);
+        if(it != boneMap.end())
+            parentNode = it->second.parent;
+        if(parentNode)
+        {
+            aiMatrix4x4 aiMParent = mNodeDerivedTransformByName.find(parentNode->mName.data)->second;
+            aiM = aiMParent.Inverse() * aiM;
+        }
+        */
+        
+        aiM.Decompose(scale, rot, pos);
+        
+        Ogre::Vector3 ogreScale(scale.x, scale.y, scale.z);
+        Ogre::Vector3 ogrePos(pos.x, pos.y, pos.z); //(pos.x, pos.z, -pos.y);
+        Ogre::Quaternion ogreRot(rot.w, rot.x, rot.y, rot.z);
 
-        aiM.DecomposeNoScaling(rot, pos);
-
+        Ogre::Bone* bone = mSkeleton->createBone(Ogre::String(pNode->mName.data), msBoneCount);
         if (!aiM.IsIdentity())
         {
-            bone->setPosition(pos.x, pos.y, pos.z);
-            bone->setOrientation(rot.w, rot.x, rot.y, rot.z);
+            LogInfo("Bone: " + bone->getName() + " " + Ogre::StringConverter::toString(ogrePos));
+            bone->setPosition(ogrePos);
+            bone->setOrientation(ogreRot);
+            bone->setScale(ogreScale);
         }
 
         Ogre::LogManager::getSingleton().logMessage(Ogre::StringConverter::toString(msBoneCount) + ") Creating bone '" + Ogre::String(pNode->mName.data) + "'");
-
         msBoneCount++;
     }
+    
     // Traverse all child nodes of the current node instance
     for (int childIdx=0; childIdx<pNode->mNumChildren; ++childIdx)
     {
@@ -747,26 +771,19 @@ void OpenAssetImport::CreateBonesFromNode(const aiScene* mScene,  const aiNode *
 
 void OpenAssetImport::CreateBoneHiearchy(const aiScene* mScene,  const aiNode *pNode)
 {
-    if(IsNodeNeeded(pNode->mName.data))
+    if (IsNodeNeeded(pNode->mName.data))
     {
         Ogre::Bone* parent = 0;
         Ogre::Bone* child = 0;
         if(pNode->mParent)
-        {
             if(mSkeleton->hasBone(pNode->mParent->mName.data))
-            {
                 parent = mSkeleton->getBone(pNode->mParent->mName.data);
-            }
-        }
         if(mSkeleton->hasBone(pNode->mName.data))
-        {
             child = mSkeleton->getBone(pNode->mName.data);
-        }
         if(parent && child)
-        {
             parent->addChild(child);
-        }
     }
+    
     // Traverse all child nodes of the current node instance
     for (int childIdx=0; childIdx<pNode->mNumChildren; childIdx++)
     {

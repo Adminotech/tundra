@@ -15,7 +15,7 @@
 #include "IRenderer.h"
 
 #ifdef ASSIMP_ENABLED
-#include "OpenAssetImport.h"
+class OpenAssetImport;
 #endif
 
 /// Represents an Ogre .mesh loaded to the GPU.
