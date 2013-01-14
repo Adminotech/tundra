@@ -11,6 +11,11 @@ macro(configure_vlc)
         NAMES vlc
         COMPONENTS libvlc libvlccore
         PREFIXES ${VLC_ROOT})
+
+    if ("${VLC_LIBRARIES}" STREQUAL "")
+        message (STATUS "VLC libraries not found: setting to 'libvlc libvlccore'")
+        set (VLC_LIBRARIES vlc vlccore)
+    endif ()
     sagase_configure_report (VLC)
 endmacro()
 
