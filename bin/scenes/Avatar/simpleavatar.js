@@ -34,6 +34,7 @@ function SimpleAvatar(entity, comp)
     this.yaw = 0;
     this.pitch = 0;
     this.rotate = 0;
+    this.pitch_max = 0;
 
     // Needed bools for logic
     this.isServer = server.IsRunning();
@@ -695,7 +696,11 @@ SimpleAvatar.prototype.ClientUpdateAvatarCamera = function() {
 
     var cameratransform = cameraplaceable.transform;
     cameratransform.rot = new float3(this.pitch, 0, 0);
-    cameratransform.pos = new float3(0, this.avatarCameraHeight, avatarCameraDistance);
+    //cameratransform.pos = new float3(0, this.avatarCameraHeight, avatarCameraDistance);
+    cameratransform.pos = cameratransform.Orientation().Mul(new float3(0, this.avatarCameraHeight, avatarCameraDistance));
+
+    var distance = Math.sqrt((this.avatarCameraHeight * this.avatarCameraHeight) + (avatarCameraDistance * avatarCameraDistance));
+    this.pitch_max = Math.acos(avatarCameraDistance / distance) * (180/Math.PI);
 
     // Track the head bone in 1st person
     if ((firstPerson) && (me.mesh != null))
@@ -774,6 +779,11 @@ SimpleAvatar.prototype.ClientHandleMouseLookX = function(param) {
 SimpleAvatar.prototype.ClientHandleMouseMove = function(mouseevent) {
     var attrs = this.me.dynamiccomponent;
     var firstPerson = attrs.GetAttribute("cameraDistance") < 0;
+    var avatarCameraDistance = attrs.GetAttribute("cameraDistance");
+    var avatarCameraDistanceMin = 2.0;
+    var avatarCameraDistanceDec = 0.2;
+    var avatarCameraDistanceInc = 0.3;
+    var avatarCameraDistanceOrig = 7;
 
     if ((firstPerson) && (input.IsMouseCursorVisible()))
     {
@@ -815,6 +825,21 @@ SimpleAvatar.prototype.ClientHandleMouseMove = function(mouseevent) {
         // Look up/down
         var attrs = this.me.dynamiccomponent;
         this.pitch -= this.mouseRotateSensitivity * parseInt(mouseevent.relativeY);
+
+        if(this.pitch >= this.pitch_max)
+        {
+            this.pitch = this.pitch_max;
+            if(avatarCameraDistance >= avatarCameraDistanceMin)
+            {
+                avatarCameraDistance -= avatarCameraDistanceDec;
+                attrs.SetAttribute("cameraDistance", avatarCameraDistance);
+            }
+        }
+        else if(this.pitch > 0 && avatarCameraDistance < avatarCameraDistanceOrig)
+        {
+            avatarCameraDistance += avatarCameraDistanceInc;
+            attrs.SetAttribute("cameraDistance", avatarCameraDistance);
+        }
 
         // Dont let the 1st person flip vertically, 180 deg view angle
         if (this.pitch < -90)
