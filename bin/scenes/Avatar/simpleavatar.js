@@ -3,6 +3,8 @@
 
 var isAndroid = (application.platform == "android");
 
+var _physicsName        = "AvatarPhysics"
+
 if (!server.IsRunning() && !framework.IsHeadless() && !isAndroid)
 {
     engine.ImportExtension("qt.core");
@@ -15,6 +17,7 @@ function SimpleAvatar(entity, comp)
 {
     // Store the entity reference
     this.me = entity;
+    this.rigidbody = this.me.rigidbody;
 
     this.rotateSpeed = 100.0;
     this.mouseRotateSensitivity = 0.2;
@@ -43,6 +46,9 @@ function SimpleAvatar(entity, comp)
     this.falling = false;
     this.crosshair = null;
     this.isMouseLookLockedOnX = true;
+
+    var rigidComponent = me.GetOrCreateComponent("EC_RigidBody", _physicsName);
+    rigidComponent.mass = this.avatarMass;
 
     // Animation detection
     this.standAnimName = "Stand";
@@ -440,6 +446,9 @@ SimpleAvatar.prototype.ClientUpdate = function(frametime) {
                 inputmapper.enabled = active;
             }
         }
+
+        this.HandleImpact();
+
         this.ClientUpdateRotation(frametime);
         this.ClientUpdateAvatarCamera(frametime);
     }
@@ -937,5 +946,25 @@ SimpleAvatar.prototype.CommonUpdateAnimation = function(frametime) {
         var walkspeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z) * this.walkAnimSpeed;
         animcontroller.SetAnimationSpeed(this.walkAnimName, walkspeed);
     }
+}
+
+SimpleAvatar.prototype.HandleImpact = function()
+{
+    var maxVelocity = -48;
+    var velocity = this.rigidbody.linearVelocity;
+    velocity.x = 0;
+    velocity.y = -45;
+    velocity.z = 0;
+
+    if (this.rigidbody.linearVelocity.y < maxVelocity)
+    {
+        this.rigidbody.kinematic = true;
+        if (this.rigidbody.kinematic == true)
+            {
+                this.rigidbody.kinematic = false;
+                this.rigidbody.linearVelocity = velocity;
+            }
+    }
+
 }
 
