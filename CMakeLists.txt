@@ -2,21 +2,21 @@
 project(tundra)
 
 # CMake version requirement, >= 2.5.5 to ensure that ProtoBuf is found ok.
-cmake_minimum_required(VERSION 2.5.5)
+cmake_minimum_required(VERSION 2.6.0)
 
 # Policy CMP0005 - Preprocessor definition values are now escaped automatically.
-# TODO We can move to the new policy when the required CMake version is >= 2.6.
 if (COMMAND cmake_policy)
-    cmake_policy(SET CMP0005 OLD)
+    cmake_policy(SET CMP0005 NEW)
 endif()
+
 # If the following are undefined, the default values in TundraVersionInfo.h are used.
+add_definitions(-DTUNDRA_ORGANIZATION_NAME="Meshmoon")
+add_definitions(-DTUNDRA_APPLICATION_NAME="Rocket")
+add_definitions(-DTUNDRA_VERSION_STRING="2.5.1.2")
 add_definitions(-DTUNDRA_VERSION_MAJOR=2)
 add_definitions(-DTUNDRA_VERSION_MINOR=5)
 add_definitions(-DTUNDRA_VERSION_MAJOR_PATCH=1)
 add_definitions(-DTUNDRA_VERSION_MINOR_PATCH=2)
-add_definitions(-DTUNDRA_ORGANIZATION_NAME="\\"Meshmoon\\"")
-add_definitions(-DTUNDRA_APPLICATION_NAME="\\"Rocket\\"")
-add_definitions(-DTUNDRA_VERSION_STRING="\\"2.5.1.2\\"")
 
 # TUNDRA_NO_BOOST defines whether we want to replace usage of Boost with the C++ (TR1) standard equivalents.
 # Setting TUNDRA_NO_BOOST to TRUE, i.e. disabling usage of Boost in the Tundra codebase, requires compiler
@@ -36,6 +36,7 @@ option(TUNDRA_CPP11_ENABLED "Enables C++11 features on Tundra" FALSE)
 
 if (APPLE)
     set(CMAKE_XCODE_ATTRIBUTE_GCC_VERSION "com.apple.compilers.llvm.clang.1_0")
+    set(CMAKE_XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "10.6")
 endif()
 
 if (APPLE AND TUNDRA_CPP11_ENABLED) # todo: Test if this works on Linux too
