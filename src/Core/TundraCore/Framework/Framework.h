@@ -5,6 +5,7 @@
 #include "TundraCoreApi.h"
 #include "FrameworkFwd.h"
 #include "CoreTypes.h"
+#include "CoreStringUtils.h"
 
 #include <QObject>
 #include <QStringList>
@@ -13,24 +14,7 @@
 #include <jni.h>
 #endif
 
-typedef struct
-{
-    bool operator()(const std::pair<int, QString> &op1, const std::pair<int, QString> &op2) const
-    {
-        return op1.first < op2.first;
-    }
-} OptionMapLessThan;
-
-typedef struct
-{
-    bool operator()(const QString& op1, const QString& op2) const
-    {
-        return op1.toLower() < op2.toLower();
-    }
-} OptionMapCaseInsensitive;
-
-typedef std::multimap<QString, std::pair<int, QString>, OptionMapCaseInsensitive> OptionsMap;
-typedef std::pair<OptionsMap::const_iterator, OptionsMap::const_iterator> OptionsMapIteratorPair;
+#include <map>
 
 /// The system root access object.
 class TUNDRACORE_API Framework : public QObject
@@ -224,8 +208,20 @@ private:
     PluginAPI *plugin;
     IRenderer *renderer;
 
+    /// Sorts OptionMap by options' insertion order.
+    struct OptionMapLessThan
+    {
+        bool operator()(const std::pair<int, QString> &op1, const std::pair<int, QString> &op2) const
+        {
+            return op1.first < op2.first;
+        }
+    };
+
+    typedef std::multimap<QString, std::pair<int, QString>, QStringLessThanNoCase> OptionMap;
+    typedef std::pair<OptionMap::const_iterator, OptionMap::const_iterator> OptionMapIteratorPair;
+
     /// Stores all command line parameters and expanded options specified in the Config XML files, except for the config file(s) themselves.
-    OptionsMap startupMap;
+    OptionMap startupOptions;
 
     /// Stores config XML filenames
     QStringList configFiles;

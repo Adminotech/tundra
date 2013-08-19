@@ -606,7 +606,7 @@ void Framework::LoadStartupOptionsFromXML(QString configurationFile)
                 continue; // The command line parameter was specified to be included only in the given build (debug/release), but we are not running that build.
 
             /// If we have another config XML specified with --config inside this config XML, load those settings also
-            if (!e.attribute("name").compare("--config", Qt::CaseInsensitive))
+            if (e.attribute("name").compare("--config", Qt::CaseInsensitive) == 0)
             {
                 if (!e.attribute("value").isEmpty())
                 {
@@ -626,28 +626,28 @@ void Framework::LoadStartupOptionsFromXML(QString configurationFile)
 
 void Framework::AddCommandLineParameter(const QString &command, const QString &parameter)
 {
-    startupMap.insert(std::make_pair(command, std::make_pair(startupMap.size() + 1, parameter)));
+    startupOptions.insert(std::make_pair(command, std::make_pair(startupOptions.size() + 1, parameter)));
 }
 
 bool Framework::HasCommandLineParameter(const QString &value) const
 {
-    if (!value.compare("--config", Qt::CaseInsensitive))
+    if (value.compare("--config", Qt::CaseInsensitive) == 0)
         return !configFiles.isEmpty();
 
-    return startupMap.find(value) != startupMap.end();
+    return startupOptions.find(value) != startupOptions.end();
 }
 
 QStringList Framework::CommandLineParameters(const QString &key) const
 {
-    if (!key.compare("--config", Qt::CaseInsensitive))
+    if (key.compare("--config", Qt::CaseInsensitive) == 0)
         return ConfigFiles();
     
     typedef std::set<std::pair<int, QString>, OptionMapLessThan> SortedOptionSet;
     SortedOptionSet sortedSet;
     QStringList ret;
-    OptionsMapIteratorPair iter = startupMap.equal_range(key);
+    OptionMapIteratorPair iter = startupOptions.equal_range(key);
 
-    for (OptionsMap::const_iterator i = iter.first; i != iter.second; ++i)
+    for (OptionMap::const_iterator i = iter.first; i != iter.second; ++i)
         sortedSet.insert(i->second);
 
     for (SortedOptionSet::const_iterator i = sortedSet.begin(); i != sortedSet.end(); ++i)
@@ -668,7 +668,7 @@ void Framework::ProcessStartupOptions()
             QString option = argv[i];
             QString param = argv[i+1];
 
-            if (!option.compare("--config", Qt::CaseInsensitive))
+            if (option.compare("--config", Qt::CaseInsensitive) == 0)
             {
                 configFilesSpecified = true;
 
@@ -743,7 +743,7 @@ void Framework::ProcessStartupOptions()
 
             if (quoteFound)
             {
-                if (option.compare("--config", Qt::CaseInsensitive))
+                if (option.compare("--config", Qt::CaseInsensitive) != 0)
                     AddCommandLineParameter(option, quotedParam);
                 else
                 {
@@ -772,7 +772,7 @@ void Framework::PrintStartupOptions()
 
     typedef std::map<int, std::pair<QString, QString> > SortedOptionsMap;
     SortedOptionsMap sortedMap;
-    for (OptionsMap::const_iterator i = startupMap.begin(); i != startupMap.end(); ++i)
+    for (OptionMap::const_iterator i = startupOptions.begin(); i != startupOptions.end(); ++i)
         sortedMap.insert(std::make_pair(i->second.first, std::make_pair(i->first, i->second.second)));
 
     for (SortedOptionsMap::const_iterator i = sortedMap.begin(); i != sortedMap.end(); ++i)
