@@ -834,20 +834,22 @@ SimpleAvatar.prototype.ClientHandleMouseMove = function(mouseevent) {
         // Look up/down
         var attrs = this.me.dynamiccomponent;
         this.pitch -= this.mouseRotateSensitivity * parseInt(mouseevent.relativeY);
-
-        if(this.pitch >= this.pitch_max)
+        if(!firstPerson)
         {
-            this.pitch = this.pitch_max;
-            if(avatarCameraDistance >= avatarCameraDistanceMin)
+            if(this.pitch >= this.pitch_max)
             {
-                avatarCameraDistance -= avatarCameraDistanceDec;
+                this.pitch = this.pitch_max;
+                if(avatarCameraDistance >= avatarCameraDistanceMin)
+                {
+                    avatarCameraDistance -= avatarCameraDistanceDec;
+                    attrs.SetAttribute("cameraDistance", avatarCameraDistance);
+                }
+            }
+            else if(this.pitch > 0 && avatarCameraDistance < avatarCameraDistanceOrig)
+            {
+                avatarCameraDistance += avatarCameraDistanceInc;
                 attrs.SetAttribute("cameraDistance", avatarCameraDistance);
             }
-        }
-        else if(this.pitch > 0 && avatarCameraDistance < avatarCameraDistanceOrig)
-        {
-            avatarCameraDistance += avatarCameraDistanceInc;
-            attrs.SetAttribute("cameraDistance", avatarCameraDistance);
         }
 
         // Dont let the 1st person flip vertically, 180 deg view angle
