@@ -84,6 +84,8 @@ namespace OgreRenderer
 
         /// Initializes renderer. Called by OgreRenderingModule
         void Initialize();
+        
+        bool ChangeRenderSystem(const QString &name);
 
         /// returns the composition handler responsible of the post-processing effects
         OgreCompositionHandler *CompositionHandler() const { return compositionHandler; }
@@ -156,6 +158,9 @@ namespace OgreRenderer
 #endif
 
     public slots:
+        void ChangeToOpenGL();
+        void ChangeToDX();
+        
         /// Renders the screen. Advances Ogre's time internally by the frameTime specified
         virtual void Render(float frameTime);
 
@@ -219,6 +224,8 @@ namespace OgreRenderer
             @return Successfully loaded plugin names. */
         QStringList LoadPlugins(const std::string& pluginFilename);
 
+        void UnloadResources();
+        
         /// Sets up Ogre resources based on resources.cfg
         void SetupResources();
         

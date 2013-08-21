@@ -11,6 +11,7 @@ class Framework;
 
 namespace Ogre
 {
+    class Root;
     class RenderWindow;
     class Overlay;
     class OverlayElement;
@@ -25,8 +26,10 @@ class OGRE_MODULE_API RenderWindow : public QObject
 
 public:
     RenderWindow();
-
+    
     void CreateRenderWindow(QWidget *targetWindow, const QString &name, int width, int height, int left, int top, bool fullscreen, Framework *fw);
+
+    void DestroyRenderWindow(Ogre::Root *ogreRoot);
 
     /// Returns the Ogre main RenderWindow used to display the 3D scene in.
     Ogre::RenderWindow *OgreRenderWindow() const;
@@ -34,7 +37,7 @@ public:
     /// Returns the 2D Ogre overlay that contains a composition of all 2D widgets.
     Ogre::Overlay *OgreOverlay() const;
 
-//    void RenderFrame();
+    //void RenderFrame();
 
     std::string OverlayTextureName() const;
 

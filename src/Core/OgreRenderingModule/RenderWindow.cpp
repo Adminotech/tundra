@@ -17,6 +17,7 @@
 #include <QX11Info>
 #endif
 
+#include <OgreRoot.h>
 #include <OgreOverlayManager.h>
 #include <OgrePanelOverlayElement.h>
 
@@ -45,11 +46,29 @@ namespace
     const char rttMaterialName[] = "MainWindow Material";
 }
 
-RenderWindow::RenderWindow()
-:renderWindow(0),
-overlay(0),
-overlayContainer(0)
+RenderWindow::RenderWindow() :
+    renderWindow(0),
+    overlay(0),
+    overlayContainer(0)
 {
+}
+
+void RenderWindow::DestroyRenderWindow(Ogre::Root *ogreRoot)
+{
+    if (overlay)
+        Ogre::OverlayManager::getSingleton().destroy(overlay);
+    if (overlayContainer)
+        Ogre::OverlayManager::getSingleton().destroyOverlayElement(overlayContainer);
+    
+    Ogre::MaterialManager::getSingleton().remove(rttMaterialName);
+    Ogre::TextureManager::getSingleton().remove(rttTextureName);   
+    
+    if (renderWindow && ogreRoot)
+        ogreRoot->destroyRenderTarget(renderWindow);
+
+    overlay = 0;
+    overlayContainer = 0;
+    renderWindow = 0;
 }
 
 void RenderWindow::CreateRenderWindow(QWidget *targetWindow, const QString &name, int width, int height, int left, int top, bool fullscreen, Framework *fw)
@@ -206,14 +225,25 @@ void RenderWindow::CreateRenderTargetOverlay(int width, int height)
     width = max(1, width);
     height = max(1, height);
 
-    Ogre::TexturePtr renderTarget = Ogre::TextureManager::getSingleton().createManual(
-        rttTextureName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-        Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_A8R8G8B8, Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);
+    Ogre::TexturePtr renderTarget = Ogre::TextureManager::getSingleton().getByName(rttTextureName);
+    
+    if (!renderTarget.get()) 
+        renderTarget = Ogre::TextureManager::getSingleton().createManual(
+            rttTextureName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_A8R8G8B8, Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);
 
-    Ogre::MaterialPtr rttMaterial = Ogre::MaterialManager::getSingleton().create(
-        rttMaterialName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+    Ogre::MaterialPtr rttMaterial = Ogre::MaterialManager::getSingleton().getByName(rttMaterialName);
+    Ogre::TextureUnitState *rttTuState = 0;
 
-    Ogre::TextureUnitState *rttTuState = rttMaterial->getTechnique(0)->getPass(0)->createTextureUnitState();
+    if (!rttMaterial.get())
+    {
+        rttMaterial = Ogre::MaterialManager::getSingleton().create(
+            rttMaterialName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+            
+        rttTuState = rttMaterial->getTechnique(0)->getPass(0)->createTextureUnitState();
+    }
+    else
+        rttTuState = rttMaterial->getTechnique(0)->getPass(0)->getTextureUnitState(0);
 
     rttTuState->setTextureName(rttTextureName);
     rttTuState->setTextureFiltering(Ogre::TFO_NONE);
@@ -230,17 +260,23 @@ void RenderWindow::CreateRenderTargetOverlay(int width, int height)
     rttMaterial->getTechnique(0)->getPass(0)->setLightingEnabled(false);
     rttMaterial->getTechnique(0)->getPass(0)->setCullingMode(Ogre::CULL_NONE);
 
-    overlayContainer = Ogre::OverlayManager::getSingleton().createOverlayElement("Panel", "MainWindow Overlay Panel");
-    overlayContainer->setMaterialName(rttMaterialName);
-    overlayContainer->setMetricsMode(Ogre::GMM_PIXELS);
-    overlayContainer->setPosition(0, 0);
-    overlayContainer->setDimensions((Ogre::Real)width, (Ogre::Real)height);
-    overlayContainer->setPosition(0,0);
+    if (!overlayContainer)
+    {
+        overlayContainer = Ogre::OverlayManager::getSingleton().createOverlayElement("Panel", "MainWindow Overlay Panel");
+        overlayContainer->setMaterialName(rttMaterialName);
+        overlayContainer->setMetricsMode(Ogre::GMM_PIXELS);
+        overlayContainer->setPosition(0, 0);
+        overlayContainer->setDimensions((Ogre::Real)width, (Ogre::Real)height);
+        overlayContainer->setPosition(0,0);
+    }
 
-    overlay = Ogre::OverlayManager::getSingleton().create("MainWindow Overlay");
-    overlay->add2D(static_cast<Ogre::OverlayContainer *>(overlayContainer));
-    overlay->setZOrder(500);
-    overlay->show();
+    if (!overlay)
+    {
+        overlay = Ogre::OverlayManager::getSingleton().create("MainWindow Overlay");
+        overlay->add2D(static_cast<Ogre::OverlayContainer *>(overlayContainer));
+        overlay->setZOrder(500);
+        overlay->show();
+    }
 
 //    ResizeOverlay(width, height);
 }

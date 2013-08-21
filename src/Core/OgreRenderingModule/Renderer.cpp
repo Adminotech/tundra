@@ -31,6 +31,8 @@
 #include "LoggingFunctions.h"
 #include "ConfigAPI.h"
 #include "QScriptEngineHelpers.h"
+#include "AssetAPI.h"
+#include "AssetCache.h"
 
 #include <Ogre.h>
 #include <OgreDefaultHardwareBufferManager.h>
@@ -84,6 +86,8 @@ static const int MINIMUM_TEXTURE_BUDGET = 1;
 #include <QCloseEvent>
 #include <QSize>
 #include <QDir>
+
+#include "ConsoleAPI.h"
 
 #ifdef PROFILING
 #include "InputAPI.h"
@@ -275,6 +279,9 @@ namespace OgreRenderer
 
         timerFrequency = GetCurrentClockFreq();
         PrepareConfig();
+        
+        framework->Console()->RegisterCommand("swapopengl", "", this, SLOT(ChangeToOpenGL()));
+        framework->Console()->RegisterCommand("swapdx", "", this, SLOT(ChangeToDX()));
     }
 
     Renderer::~Renderer()
@@ -336,6 +343,149 @@ namespace OgreRenderer
         if (!framework->Config()->HasValue(configData, "rendering plugin"))
             framework->Config()->Set(configData, "rendering plugin", "OpenGL Rendering Subsystem");
 #endif
+    }
+    
+    void Renderer::ChangeToOpenGL()
+    {
+        ChangeRenderSystem("OpenGL Rendering Subsystem");
+    }
+    
+    void Renderer::ChangeToDX()
+    {
+        ChangeRenderSystem("Direct3D9 Rendering Subsystem");
+    }
+    
+    bool Renderer::ChangeRenderSystem(const QString &name)
+    {
+        if (!renderWindow)
+            return false;
+            
+        if (ogreWorlds.size() > 0)
+        {
+            LogError("Cannot change render system while inworld.");
+            return false;
+        }
+
+        Ogre::RenderSystem* newSystem = ogreRoot->getRenderSystemByName(name.toStdString());
+        if (!newSystem)
+        {
+            LogError("Could not find render system with name: " + name);
+            return false;
+        }
+        Ogre::RenderSystem *currentSystem = ogreRoot->getRenderSystem();
+        if (currentSystem == newSystem || currentSystem->getName() == newSystem->getName())
+        {
+            LogWarning("Already using render system: " + name);
+            return false;
+        }
+        LogInfo(QString("Changing render system from %1 to %2").arg(currentSystem->getName().c_str()).arg(newSystem->getName().c_str()));
+
+        // Delete the default camera & scene
+        if (defaultScene)
+        {
+            defaultScene->destroyCamera(dummyDefaultCamera);
+            dummyDefaultCamera = 0;
+
+            ogreRoot->destroySceneManager(defaultScene);
+            defaultScene = 0;
+        }
+        
+        qDebug() << endl << "UnloadResources()" << endl;
+        
+        UnloadResources();
+        
+        qDebug() << endl << "renderWindow->Close()" << endl;
+
+        // Destroys our render target window.
+        //ogreRoot->destroyRenderTarget(renderWindow->OgreRenderWindow());
+        renderWindow->DestroyRenderWindow(ogreRoot.get());
+
+        qDebug() << endl << "ogreRoot->setRenderSystem(newSystem)" << endl;
+        
+        // Allow PSSM mode shadows only on DirectX
+        // On OpenGL (arbvp & arbfp) it runs out of vertex shader outputs
+        shadowQuality = (Renderer::ShadowQualitySetting)framework->Config()->Get(ConfigAPI::FILE_FRAMEWORK, ConfigAPI::SECTION_RENDERING, "shadow quality").toInt();
+        if ((shadowQuality == Shadows_High) && (newSystem->getName() != "Direct3D9 Rendering Subsystem"))
+            shadowQuality = Shadows_Low;
+        
+        // Will call shutdown on the active system.
+        ogreRoot->setRenderSystem(newSystem);
+        
+        qDebug() << endl << "ogreRoot->initialise(false)" << endl;
+        
+        // Initialise but don't create rendering window yet
+        ogreRoot->initialise(false);
+
+        try
+        {
+            int width = framework->Ui()->GraphicsView()->viewport()->size().width();
+            int height = framework->Ui()->GraphicsView()->viewport()->size().height();
+            int window_left = 0;
+            int window_top = 0;
+
+            bool fullscreen = framework->HasCommandLineParameter("--fullscreen");
+#ifdef Q_WS_MAC
+            // Fullscreen causes crash on Mac OS X. See https://github.com/realXtend/naali/issues/522
+            if (fullscreen)
+            {
+                LogWarning("Fullscreen is not currently supported on Mac OS X. The application will run in windowed-mode");
+                fullscreen = false;
+            }
+#endif
+            // On some systems, the Ogre rendering output is overdrawn by the Windows desktop compositing manager, but the actual cause of this
+            // is uncertain.
+            // As a workaround, it is possible to have Ogre output directly on the main window HWND of the ui chain. On other systems, this gives
+            // graphical issues, so it cannot be used as a permanent mechanism. Therefore this workaround is enabled only as a command-line switch.
+            if (framework->HasCommandLineParameter("--ogrecapturetopwindow"))
+            {
+                // In this mode the toolbar will not be rendered anyway, but if we don't hide it you have to click all UI ~20-25 pixels 
+                // below the actual position to hit it. It's an error in our ui overlay to InputAPI mapping and gets fixed by hiding the toolbar.
+                if (fullscreen && framework->Ui()->MainWindow()->menuBar())
+                    framework->Ui()->MainWindow()->menuBar()->hide();
+                renderWindow->CreateRenderWindow(framework->Ui()->MainWindow(), windowTitle.c_str(), width, height, window_left, window_top, fullscreen, framework);
+            }
+            else if (framework->HasCommandLineParameter("--nouicompositing"))
+                renderWindow->CreateRenderWindow(0, windowTitle.c_str(), width, height, window_left, window_top, fullscreen, framework);
+            else // Normally, we want to render Ogre onto the UiGraphicsview viewport window.
+            {
+                // Even if the user has requested fullscreen mode, init Ogre in windowed mode, since the main graphics view is not a top-level window, and Ogre cannot
+                // initialize into fullscreen with a non-top-level window handle. As D3D9 is initialized in windowed mode, this has the effect that vsync cannot be enabled.
+                // To set up vsync, specify the
+                if (framework->CommandLineParameters("--vsync").length() > 0 && ParseBool(framework->CommandLineParameters("--vsync").first()))
+                    LogWarning("--vsync was specified, but Ogre is initialized in windowed mode to a non-top-level window. VSync will probably *not* be active. To enable vsync in full screen mode, "
+                        "specify the flags --vsync, --fullscreen and --ogrecapturetopwindow together.");
+                renderWindow->CreateRenderWindow(framework->Ui()->GraphicsView()->viewport(), windowTitle.c_str(), width, height, window_left, window_top, false, framework);
+            }
+
+            connect(framework->Ui()->GraphicsView(), SIGNAL(WindowResized(int, int)), renderWindow, SLOT(Resize(int, int)), Qt::UniqueConnection);
+            renderWindow->Resize(framework->Ui()->GraphicsView()->width(), framework->Ui()->GraphicsView()->height());
+
+            if (fullscreen)
+                framework->Ui()->MainWindow()->showFullScreen();
+            else
+                framework->Ui()->MainWindow()->show();
+    
+            qDebug() << endl << "SetupResources()" << endl;
+            SetupResources();
+
+            /// Create the default scene manager, which is used for nothing but rendering emptiness in case we have no framework scenes
+            defaultScene = ogreRoot->createSceneManager(Ogre::ST_GENERIC, "DefaultEmptyScene");
+            defaultScene->addRenderQueueListener(overlaySystem);
+
+            dummyDefaultCamera = defaultScene->createCamera("DefaultCamera");
+
+            mainViewport = renderWindow->OgreRenderWindow()->addViewport(dummyDefaultCamera);
+            compositionHandler->SetViewport(mainViewport);
+            
+            DoFullUIRedraw();
+        }
+        catch(Ogre::Exception &/*e*/)
+        {
+            LogError("Could not create ogre rendering window!");
+            return false;
+        }
+        
+        return true;
     }
 
     void Renderer::Initialize()
@@ -632,6 +782,59 @@ namespace OgreRenderer
 #endif
         return loadedPlugins;
     }
+    
+    void Renderer::UnloadResources()
+    {
+        Ogre::ConfigFile cf;
+        cf.load("resources.cfg");
+
+        Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
+        Ogre::String sec_name, type_name, arch_name;
+
+        while(seci.hasMoreElements())
+        {
+            sec_name = seci.peekNextKey();
+            Ogre::ConfigFile::SettingsMultiMap* settings = seci.getNext();
+            Ogre::ConfigFile::SettingsMultiMap::iterator i;
+            for(i = settings->begin(); i != settings->end(); ++i)
+            {
+                type_name = i->first;
+                arch_name = i->second;
+                if (QDir::isRelativePath(arch_name.c_str()))
+                    arch_name = QDir::cleanPath(Application::InstallationDirectory() + arch_name.c_str()).toStdString(); ///<\todo Unicode support
+
+                Ogre::ResourceGroupManager::getSingleton().removeResourceLocation(arch_name, sec_name);
+            }
+        }
+
+        std::string shadowPath = Application::InstallationDirectory().toStdString(); ///<\todo Unicode support
+        switch(shadowQuality)
+        {
+        case Shadows_Off:
+            shadowPath.append("media/materials/scripts/shadows_off");
+            break;
+        case Shadows_High:
+            shadowPath.append("media/materials/scripts/shadows_high");
+            break;
+        default:
+            shadowPath.append("media/materials/scripts/shadows_low");
+            break;
+        }
+        Ogre::ResourceGroupManager::getSingleton().removeResourceLocation(shadowPath, "General");
+        
+        if (framework->Asset()->Cache())
+        {
+            std::string cacheResourceDir = framework->Asset()->Cache()->CacheDirectory().toStdString();
+            Ogre::ResourceGroupManager::getSingleton().removeResourceLocation(cacheResourceDir, OgreRenderingModule::CACHE_RESOURCE_GROUP);
+        }
+
+        //Ogre::ResourceGroupManager::getSingleton().shutdownAll();
+        
+        Ogre::StringVector groups = Ogre::ResourceGroupManager::getSingleton().getResourceGroups();
+        for (Ogre::StringVector::const_iterator iter = groups.begin(); iter != groups.end(); ++iter)
+            if ((*iter) != "Autodetect" && (*iter) != "Bootstrap")
+                Ogre::ResourceGroupManager::getSingleton().clearResourceGroup((*iter));
+    }
 
     void Renderer::SetupResources()
     {
@@ -653,7 +856,8 @@ namespace OgreRenderer
                 if (QDir::isRelativePath(arch_name.c_str()))
                     arch_name = QDir::cleanPath(Application::InstallationDirectory() + arch_name.c_str()).toStdString(); ///<\todo Unicode support
 
-                Ogre::ResourceGroupManager::getSingleton().addResourceLocation(arch_name, type_name, sec_name);
+                //if (!Ogre::ResourceGroupManager::getSingleton().resourceLocationExists(arch_name, sec_name))
+                    Ogre::ResourceGroupManager::getSingleton().addResourceLocation(arch_name, type_name, sec_name);
             }
         }
 
@@ -678,7 +882,21 @@ namespace OgreRenderer
         Ogre::ResourceGroupManager::getSingleton().addResourceLocation(Application::InstallationDirectory().toStdString() + "media/RTShaderLib", "FileSystem", "General");
         Ogre::ResourceGroupManager::getSingleton().addResourceLocation(Application::InstallationDirectory().toStdString() + "media/RTShaderLib/materials", "FileSystem", "General");
 #endif
-        Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+        try {
+            Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+        } catch(Ogre::Exception &e)
+        {
+            LogError(QString("Renderer::SetupResources: ") + e.what());
+        }
+        
+        // Add cache path after initializing groups, we don't want these to be automatically loaded to Ogre.
+        // Instead its used in threaded loading for OgreMeshAsset etc.
+        if (framework->Asset()->Cache())
+        {
+            std::string cacheResourceDir = framework->Asset()->Cache()->CacheDirectory().toStdString();
+            if (!Ogre::ResourceGroupManager::getSingleton().resourceLocationExists(cacheResourceDir, OgreRenderingModule::CACHE_RESOURCE_GROUP))
+                Ogre::ResourceGroupManager::getSingleton().addResourceLocation(cacheResourceDir, "FileSystem", OgreRenderingModule::CACHE_RESOURCE_GROUP);
+        }
     }
 
     void Renderer::CreateInstancingShaders()
