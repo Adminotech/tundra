@@ -170,7 +170,7 @@ void LocalAssetProvider::Update(f64 /*frametime*/)
     /// request would fail on missing file, and the entity would erroneously get an "asset not found" result.
     CompletePendingFileUploads();
     CompletePendingFileDownloads();
-    CheckForPendingFileSystemChanges();
+    //CheckForPendingFileSystemChanges();
 }
 
 void LocalAssetProvider::DeleteAssetFromStorage(QString assetRef)
@@ -516,23 +516,27 @@ void LocalAssetProvider::CompletePendingFileUploads()
 void LocalAssetProvider::CheckForPendingFileSystemChanges()
 {
     PROFILE(LocalAssetProvider_CheckForPendingFileSystemChanges);
+    LocalAssetStoragePtr storage;
+    assert(storage->changeWatcher);
     QStringList files = changedFiles.toList();
+
     while(!files.isEmpty())
     {
         QString file = files.front();
         files.pop_front();
 
-//        // If some watched file is changed, so is watched directory. Remove the directory from 
-//        // changedDirectories so we can ignore it later on when checking directory changes.
-//        
-//        QString dir = QFileInfo(file).dir().path();
-//        if (qFind(changedDirectories, dir) != changedDirectories.end())
-//        {
-//            LogInfo("REMOVING " + dir + "FROM changedDirectories");
-//            changedDirectories.removeOne(dir);
-//        }
-//        
-        LocalAssetStoragePtr storage = FindStorageForPath(file);
+        // If some watched file is changed, so is watched directory. Remove the directory from 
+        // changedDirectories so we can ignore it later on when checking directory changes.
+
+        QString dir = QFileInfo(file).dir().path();
+        if (qFind(changedDirectories, dir) != changedDirectories.end())
+        {
+            //LogInfo("REMOVING " + dir + " FROM changedDirectories");
+            changedDirectories.remove(dir);
+        }
+
+        //LocalAssetStoragePtr storage = FindStorageForPath(file);
+        storage = FindStorageForPath(file);
         if (storage)
         {
             if (!storage->AutoDiscoverable())
@@ -540,7 +544,6 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                 LogWarning("Received file change notification for storage of which auto-discovery is false.");
                 continue;
             }
-
             assert(storage->changeWatcher);
             QString assetRef = file;
             int lastSlash = assetRef.lastIndexOf('/');
@@ -586,18 +589,18 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
 
             assert(storage->changeWatcher);
             const QStringList watchedDirs = storage->changeWatcher->directories();
+
             if (qFind(watchedDirs, path) != watchedDirs.end())
             {
-                //LogError("CheckForPendingFileSystemChanges: " + path + " was on the watch list.");
                 // Remove path from watch list in case the directory was removed.
                 // We'll add it back anyways in case of this change was addition of new directory.
                 // Remove the path only if it's not the root directory of the storage
-                //if (!QString(path + "/").compare(QDir::fromNativeSeparators(storage->directory), Qt::CaseInsensitive) != 0)
-                //{
-                    //LogInfo("LocalAssetProvider: Directory " + path + " was on the watch list, removing it by default always.");
-                   // storage->changeWatcher->removePath(path);
-                //}
-/*
+                if (!QString(path + "/").compare(QDir::fromNativeSeparators(storage->directory), Qt::CaseInsensitive) != 0)
+                {
+                    LogInfo("LocalAssetProvider: Directory " + path + " was on the watch list, removing it by default always.");
+                    storage->changeWatcher->removePath(path);
+                }
+
                 if (!QDir(path).exists()) // 1: Was directory deleted?
                 {
                     LogDebug("Directory " + path + " removed.");
@@ -612,7 +615,7 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                         storage->changeWatcher->addPath(path);
                 }
                 else // 2: Was new directory added, an existing one renamed, or something else?
-*/
+
                 {
                     // Was new file added?
                     QStringList oldFiles, currentFiles;
@@ -636,11 +639,12 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                                 storage->EmitAssetChanged(file, IAssetStorage::AssetCreate);
                                 break;
                             }
+                        }
                     }
                     //else if(if (currentFiles.size() > oldFiles.size())
                     //{
                     //}
-/*
+
                     // Check out the path's subdir count. Find all old watched dirs and replace them with the new dirs.
                     QStringList curSubdirs = DirectorySearch(path, true, QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
                     QStringList oldSubdirs;
@@ -648,13 +652,14 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                         if (dir.contains(path, Qt::CaseInsensitive) && dir.compare(path, Qt::CaseInsensitive) != 0)
                             oldSubdirs << dir;
 
-                    LogWarning("CURRENT DIRS " + curSubdirs.join("\n"));
-                    LogWarning("OLD DIRS " + oldSubdirs.join("\n"));
+                    //LogWarning("CURRENT DIRS " + curSubdirs.join("\n"));
+                    //LogWarning("OLD DIRS " + oldSubdirs.join("\n"));
                     LogInfo("NumOldSubdirs for " + path + ": " + QString::number(oldSubdirs.size()) + ", NumCurDirs: " + QString::number(curSubdirs.size()));
+
                     if (!oldSubdirs.isEmpty() && !curSubdirs.isEmpty() && oldSubdirs.size() == curSubdirs.size())
                     {
                         // Folder rename occurred. Remove all subdirs and add them back.
-                        LogError("SOME FOLDER WAS RENAMED");
+                        //LogError("SOME FOLDER WAS RENAMED");
                         LogInfo("Removing\n" + oldSubdirs.join("\n"));
 
                         storage->changeWatcher->removePaths(oldSubdirs);
@@ -670,7 +675,7 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                     }
                     else if (oldSubdirs.size() != curSubdirs.size())
                     {
-                        LogError("NEW DIRECTORY");
+                        //LogError("NEW DIRECTORY");
                         LogInfo("New directory added to " + path);
                         //LogInfo("Directory structure changed: number of old subdirs for " + path + " " + QString::number(oldSubdirs.size()) +
                         //    ", number of current dirs " + QString::number(curSubdirs.size()));
@@ -678,7 +683,8 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                         if (!oldSubdirs.isEmpty())
                         {
                             LogInfo("Removing oldSubdirs:\n" + oldSubdirs.join("\n"));
-                            storage->changeWatcher->removePaths(oldSubdirs);
+                            foreach(const QString &d, oldSubdirs)
+                                storage->changeWatcher->removePath(d);
                         }
                         if (!curSubdirs.isEmpty())
                         {
@@ -699,14 +705,14 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                                     QStringList pathsToAdd = DirectorySearch(newDir, true, QDir::Files |QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
                                     if (!pathsToAdd.isEmpty())
                                     {
-                                        LogInfo("Adding paths to watch list: " + pathsToAdd.join("\n"));
-                                        LogInfo("******before " + QString::number(storage->changeWatcher->files().count()));
-                                        storage->changeWatcher->addPaths(pathsToAdd);
-                                        LogInfo("******after " + QString::number(storage->changeWatcher->files().count()));
+                                        //LogInfo("Adding paths to watch list: " + pathsToAdd.join("\n"));
+                                        //LogInfo("******before " + QString::number(storage->changeWatcher->files().count()));
+                                        foreach(const QString &p, pathsToAdd) // for some odd reason addPaths() fails, so have to call addPath() for individual paths instead.
+                                                storage->changeWatcher->addPath(p);
+                                        //LogInfo("******after " + QString::number(storage->changeWatcher->files().count()));
                                     }
                                 }
                             }
-
                         // Add parent dir back to watch list.
                         if (!watchedDirs.contains(path), Qt::CaseInsensitive)
                             storage->changeWatcher->addPath(path);
@@ -716,7 +722,7 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                         // We end up here after:
                         // -removing subdir of a watched dir we get change notification for the watcher dir,
                         // -Addition of new file to watched dir
-                        LogError("DIDN'T KNOW WHAT TO DO WITH CHANGED DIR");
+                        //LogError("DIDN'T KNOW WHAT TO DO WITH CHANGED DIR");
                         if (!watchedDirs.contains(path), Qt::CaseInsensitive)
                             storage->changeWatcher->addPath(path);
 
@@ -725,9 +731,10 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
                         {
                             LogInfo("Adding paths to watch list: " + pathsToAdd.join("\n"));
                             foreach(const QString &p, pathsToAdd) // for some odd reason addPaths() fails, so have to call addPath() for individual paths instead.
+                            {
                                 storage->changeWatcher->addPath(p);
+                            }
                         }
-*/
                     }
                 }
 
@@ -740,7 +747,6 @@ void LocalAssetProvider::CheckForPendingFileSystemChanges()
             LogError("LocalAssetProvider::CheckForPendingFileSystemChanges: Could not find storage for directory " + path);
         }
     }
-
     changedFiles.clear();
     changedDirectories.clear();
 }
@@ -749,10 +755,12 @@ void LocalAssetProvider::OnFileChanged(const QString &path)
 {
     LogDebug("LocalAssetProvider: File " + path + " changed.");
     changedFiles << path;
+    CheckForPendingFileSystemChanges();
 }
 
 void LocalAssetProvider::OnDirectoryChanged(const QString &path)
 {
     LogDebug("LocalAssetProvider: Directory " + path + " changed.");
     changedDirectories << path;
+    CheckForPendingFileSystemChanges();
 }
