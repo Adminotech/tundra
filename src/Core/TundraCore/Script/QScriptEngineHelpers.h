@@ -24,16 +24,19 @@ QScriptValue qScriptValueFromQObject(QScriptEngine *engine, Tp const &qobject)
 template <typename Tp>
 void qScriptValueToQObject(const QScriptValue &value, Tp &qobject)
 {
-    /// @todo qobject_cast should be totally safe here, esp. for something like Entity* and have better performance.
-    qobject = dynamic_cast<Tp>(value.toQObject());
+    qobject = qobject_cast<Tp>(value.toQObject());
     if (!qobject)
     {
-        // qobject_cast has been observed to fail for some metatypes, such as Entity*, so prefer dynamic_cast.
-        // However, to see that there are no regressions from that, check that if dynamic_cast fails, so does qobject_cast
-        Tp ptr = qobject_cast<Tp>(value.toQObject());
+        // qobject_cast has been observed to fail for some metatypes, such as Entity*, back in the days,
+        // but this should not be case anymore so using qobject_cast. To see that there are no regressions
+        // from this, check that if qobject_cast fails, so does dynamic_cast.
+        Tp ptr = dynamic_cast<Tp>(value.toQObject());
         assert(!ptr);
         if (ptr)
-            ::LogError("qScriptValueToQObject: dynamic_cast was null, but qobject_cast was not!");
+        {
+            ::LogError("qScriptValueToQObject: qobject_cast was null, but dynamic_cast was not for class!"
+                + QString(ptr->metaObject()->className()));
+        }
     }
 }
 
@@ -51,8 +54,7 @@ int qScriptRegisterQObjectMetaType(QScriptEngine *engine, const QScriptValue &pr
 template<typename T>
 QScriptValue qScriptValueFromBoostSharedPtr(QScriptEngine *engine, const shared_ptr<T> &ptr)
 {
-    QScriptValue v = engine->newQObject(ptr.get());
-    return v;
+    return engine->newQObject(ptr.get());
 }
 
 /// Recovers the shared_ptr<T> of the given QScriptValue of an QObject that's stored in a shared_ptr.
@@ -66,10 +68,10 @@ void qScriptValueToBoostSharedPtr(const QScriptValue &value, shared_ptr<T> &ptr)
         return;
     }
 
-    /// @todo qobject_cast should be safe and have better performance here.
-    T *obj = dynamic_cast<T*>(value.toQObject());
+    T *obj = qobject_cast<T*>(value.toQObject());
     if (!obj)
     {
+        ::LogError(QString(value.toQObject()->metaObject()->className()));
         ptr.reset();
         return;
     }

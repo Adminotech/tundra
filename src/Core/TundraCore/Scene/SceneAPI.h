@@ -36,8 +36,7 @@ public:
     template<typename T>
     shared_ptr<T> CreateComponent(Scene* parentScene, const QString &newComponentName = "") const
     {
-        /// @todo static_pointer_cast should be ok here
-        return dynamic_pointer_cast<T>(CreateComponentById(parentScene, T::TypeIdStatic(), newComponentName));
+        return static_pointer_cast<T>(CreateComponentById(parentScene, T::TypeIdStatic(), newComponentName));
     }
 
     /// Returns a list of all attribute type names that can be used in the CreateAttribute function to create an attribute.
