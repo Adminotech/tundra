@@ -103,8 +103,8 @@ else
     fi
 
     cmake . -DCMAKE_INSTALL_PREFIX=$prefix -DCMAKE_BUILD_TYPE=RELWITHDEBINFO -DQJSON_BUILD_TESTS=no
-    make -j $nprocs
-    make install
+    make -s -j $nprocs
+    make -s install
     touch $tags/$what-done
 fi
 
@@ -119,8 +119,8 @@ else
     tar zxf $tarballs/$what.tgz
     cd $what
     cmake -DCMAKE_INSTALL_PREFIX=$prefix -DBUILD_DEMOS=OFF -DBUILD_{NVIDIA,AMD,MINICL}_OPENCL_DEMOS=OFF -DBUILD_CPU_DEMOS=OFF -DINSTALL_EXTRA_LIBS=ON -DCMAKE_CXX_FLAGS_RELEASE="-O2 -g -fPIC" . -DCMAKE_DEBUG_POSTFIX= -DCMAKE_MINSIZEREL_POSTFIX= -DCMAKE_RELWITHDEBINFO_POSTFIX=
-    make -j $nprocs
-    make install
+    make -s -j $nprocs
+    make -s install
     touch $tags/$what-done
 fi
 
@@ -138,8 +138,8 @@ else
     tar xzf $zip
     cd $pkgbase
     ./configure --prefix=$prefix
-    make VERBOSE=1 -j$NPROCS
-    make install
+    make -s -j$NPROCS
+    make -s install
     touch $tags/$what-done
 fi
 
@@ -177,14 +177,14 @@ Last-Update: 2011-03-20
 EOF
     cd generator
     qmake
-    make -j $nprocs
+    make -s -j $nprocs
     ./generator --include-paths=`qmake -query QT_INSTALL_HEADERS`
     cd ..
 
     cd qtbindings
     sed -i 's/qtscript_phonon //' qtbindings.pro
     qmake
-    make -j $nprocs
+    make -s -j $nprocs
     cd ..
     cd ..
     touch $tags/$what-done
@@ -202,8 +202,8 @@ else
     cd $what
     git checkout e22bb03f807b345a9058352e5453b6491a235677
     cmake -DCMAKE_INSTALL_PREFIX=$prefix .
-    make -j $nprocs
-    make install
+    make -s -j $nprocs
+    make -s install
     touch $tags/$what-done
 fi
 
@@ -219,7 +219,7 @@ else
     sed -e "s/USE_TINYXML TRUE/USE_TINYXML FALSE/" -e "s/kNet STATIC/kNet SHARED/" < CMakeLists.txt > x
     mv x CMakeLists.txt
     cmake . -DCMAKE_BUILD_TYPE=Debug
-    make -j $nprocs
+    make -s -j $nprocs
     cp lib/libkNet.so $prefix/lib/
     rsync -r include/* $prefix/include/
     touch $tags/$what-done
@@ -258,8 +258,8 @@ else
     mkdir -p $what-build
     cd $what-build  
     cmake .. -DCMAKE_INSTALL_PREFIX=$prefix -DOGRE_BUILD_PLUGIN_BSP:BOOL=OFF -DOGRE_BUILD_PLUGIN_PCZ:BOOL=OFF -DOGRE_BUILD_SAMPLES:BOOL=OFF
-    make -j $nprocs VERBOSE=1
-    make install
+    make -s -j $nprocs VERBOSE=1
+    make -s install
     touch $tags/$what-done
 fi
 
@@ -295,8 +295,8 @@ else
     cd $build/$depdir/hydrax
     sed -i 's!^OGRE_CFLAGS.*!OGRE_CFLAGS = $(shell pkg-config OGRE --cflags)!' makefile
     sed -i 's!^OGRE_LDFLAGS.*!OGRE_LDFLAGS = $(shell pkg-config OGRE --libs)!' makefile
-    make -j $nprocs PREFIX=$prefix
-    make PREFIX=$prefix install
+    make -s -j $nprocs PREFIX=$prefix
+    make -s PREFIX=$prefix install
     touch $tags/hydrax-done
 fi
 # SkyX build
@@ -316,7 +316,7 @@ else
    echo "Using OGRE_HOME = $OGRE_HOME"
    SKYX_SOURCE_DIR=`pwd`
    env OGRE_HOME=$my_ogre_home/lib/OGRE cmake -DCMAKE_INSTALL_PREFIX=$prefix .
-   make -j $nprocs install
+   make -s -j $nprocs install
    touch $tags/skyx-done
 fi
 
@@ -335,10 +335,10 @@ else
     # work around PythonQt vs Qt 4.8 incompatibility
     cd src
     rm -f moc_PythonQtStdDecorators.cpp
-    make moc_PythonQtStdDecorators.cpp
+    make -s moc_PythonQtStdDecorators.cpp
     sed -i -e 's/void PythonQtStdDecorators::qt_static_metacall/#undef emit\nvoid PythonQtStdDecorators::qt_static_metacall/'  moc_PythonQtStdDecorators.cpp
     cd ..
-    make -j $nprocs
+    make -s -j $nprocs
     fi
     rm -f $prefix/lib/libPythonQt*
     cp -a lib/libPythonQt* $prefix/lib/
@@ -364,7 +364,7 @@ else
     cd $build/qt-solutions/qtpropertybrowser
     echo yes | ./configure -library
     qmake
-    make -j$nprocs
+    make -s -j$nprocs
     cp lib/lib* $prefix/lib/
     # luckily only extensionless headers under src match Qt*:
     cp src/qt*.h src/Qt* $prefix/include/
@@ -385,7 +385,7 @@ else
     sed 's/LIBS += $$QXMPP_LIBS/LIBS += $$QXMPP_LIBS -lspeex/g' tests/tests.pro > tests/temp && mv tests/temp tests/tests.pro
     rm src/temp
     qmake
-    make -j $nprocs
+    make -s -j $nprocs
     mkdir -p $prefix/include/$what
     cp src/*.h $prefix/include/$what
     cp lib/libqxmpp.a $prefix/lib/

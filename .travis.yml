@@ -1,7 +1,7 @@
 language: cpp
 
 compiler:
-  - clang
+  - gcc
 
 before_install:
   - export TUNDRA_DIR=$PWD
@@ -9,8 +9,8 @@ before_install:
   - wget http://www.cmake.org/files/v2.8/cmake-2.8.12.2.tar.gz
   - tar -zxvf cmake-2.8.12.2.tar.gz
   - cd cmake-2.8.12.2
-  - ./configure && make && sudo make install
-  - export CMAKE=/usr/local/bin/cmake
+  - ./configure --prefix=/usr --no-qt-gui
+  - sudo make -s install
 
 install:
   - cd $TUNDRA_DIR/tools/Linux
@@ -20,7 +20,7 @@ install:
 
 before_script:
   - cd $TUNDRA_DIR
-  - $CMAKE -DCMAKE_MODULE_PATH=$NAALI_DEP_PATH/lib/SKYX/cmake .
+  - cmake -DCMAKE_MODULE_PATH=$NAALI_DEP_PATH/lib/SKYX/cmake .
 
 script:
   - make
