@@ -14,6 +14,20 @@ class QSplashScreen;
 
 class Framework;
 
+// Used to catch an early QEvent::FileOpen event, such as the one that is fired when the application
+// bundle is double-clicked. Applicable only on Mac OS X
+class FileOpenEventFilter : public QObject
+{
+    Q_OBJECT
+public:
+    FileOpenEventFilter();
+    ~FileOpenEventFilter();
+protected:
+    bool eventFilter(QObject *obj, QEvent *e);
+signals:
+    void FileOpened(const QString &url);
+};
+
 /// Represents the subclassed instance of the Qt's QApplication singleton.
 class TUNDRACORE_API Application : public QApplication
 {
@@ -177,6 +191,9 @@ public slots:
     /// Returns if the applications version is greater or equals the given version.
     bool VersionGreaterOrEquals(uint major, uint minor, uint majorPatch, uint minorPatch);
 
+private slots:
+    void OnFileOpened(const QString &url);
+
 signals:
     /// This signal is emitted when the application changes active state.
     /** @note False equals to no window in this application being active, or operating system suspending the application.
@@ -208,6 +225,10 @@ private:
     static const char *version;
     double targetFpsLimit;
     double targetFpsLimitWhenInactive;
+
+#ifdef __APPLE__
+    FileOpenEventFilter *fileOpenFilter;
+#endif
 
     uint versionNumbers[4];
 };

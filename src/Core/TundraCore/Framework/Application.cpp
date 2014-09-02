@@ -35,6 +35,7 @@
 
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
+#include <QFileOpenEvent>
 #endif
 
 #if defined(_MSC_VER) && defined(_DMEMDUMP)
@@ -70,6 +71,27 @@ const char *Application::organizationName = TUNDRA_ORGANIZATION_NAME;
 const char *Application::applicationName = TUNDRA_APPLICATION_NAME;
 const char *Application::version = TUNDRA_VERSION_STRING TUNDRA_VERSION_POSTFIX;
 
+FileOpenEventFilter::FileOpenEventFilter()
+{
+}
+
+FileOpenEventFilter::~FileOpenEventFilter()
+{
+}
+
+bool FileOpenEventFilter::eventFilter(QObject *obj, QEvent *e)
+{
+#ifdef __APPLE__
+    if (e->type() == QEvent::FileOpen)
+    {
+        QFileOpenEvent *fileEvent = static_cast<QFileOpenEvent*>(e);
+        emit FileOpened(fileEvent->url().toString());
+        return false;
+    }
+#endif
+    return QObject::eventFilter(obj, e);
+}
+
 Application::Application(int &argc, char **argv) :
     QApplication(argc, argv),
     framework(0),
@@ -80,8 +102,15 @@ Application::Application(int &argc, char **argv) :
 #endif
     targetFpsLimit(60.0),
     splashScreen(0)
+#ifdef __APPLE__
+,
+    fileOpenFilter(new FileOpenEventFilter())
 {
-
+    connect(fileOpenFilter, SIGNAL(FileOpened(const QString&)), this, SLOT(OnFileOpened(const QString&)));
+    installEventFilter(fileOpenFilter);
+#else
+{
+#endif
     targetFpsLimitWhenInactive = targetFpsLimit / 2.f;
     // Reflect our versioning information to Qt internals, if something tries to obtain it straight from there.
     QApplication::setOrganizationName(organizationName);
@@ -247,6 +276,22 @@ void Application::SetSplashMessage(const QString &message)
 bool Application::VersionGreaterOrEquals(uint major, uint minor, uint majorPatch, uint minorPatch)
 {
     return (MajorVersion() >= major && MinorVersion() >= minor && MajorPatchVersion() >= majorPatch && MinorPatchVersion() >= minorPatch);
+}
+
+void Application::OnFileOpened(const QString &url)
+{
+#ifdef __APPLE__
+    if (url.startsWith("file://"))
+    {
+        QString fileName(url);
+        fileName.remove(0,7);
+        framework->AddCommandLineParameter("--file", fileName);
+    }
+    else
+        framework->AddCommandLineParameter("--login", url);
+#else
+    UNUSED_PARAM(url)
+#endif
 }
 
 QStringList Application::FindQmFiles(const QDir& dir)

@@ -240,6 +240,10 @@ private:
     int argc; ///< Command line argument count as supplied by the operating system.
     char **argv; ///< Command line arguments as supplied by the operating system.
 
+#ifdef __APPLE__
+    friend class Application;
+#endif
+
 #ifdef ANDROID
     static JavaVM* javaVM;
     static JNIEnv* jniEnv;
