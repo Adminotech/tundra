@@ -890,7 +890,7 @@ void SceneStructureWindow::Refresh()
 
 void SceneStructureWindow::AddEntity(Entity* entity)
 {
-    AddPendingEntity(entity->shared_from_this());
+    AddPendingEntity(entity);
 }
 
 SceneStructureWindow::ParentChildPair SceneStructureWindow::AddEntity(Entity* entity, bool addToTreeRoot, bool setParent, bool refreshView)
@@ -949,7 +949,7 @@ void SceneStructureWindow::AckEntity(Entity* entity, entity_id_t oldId)
     if (existing)
         EntityItemAcked(existing, entity, oldId);
     else
-        AddPendingEntity(entity->shared_from_this());
+        AddPendingEntity(entity);
 }
 
 void SceneStructureWindow::UpdateEntityTemporaryState(Entity *entity)

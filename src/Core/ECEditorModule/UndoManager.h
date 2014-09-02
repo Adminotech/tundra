@@ -11,11 +11,11 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QUndoStack>
 
 class EntityIdChangeTracker;
 
 class QMenu;
-class QUndoStack;
 class QUndoCommand;
 class QUndoView;
 class QAction;
