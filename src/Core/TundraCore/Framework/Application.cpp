@@ -190,6 +190,9 @@ Application::~Application()
     SAFE_DELETE(nativeTranslator);
     SAFE_DELETE(appTranslator);
 #endif
+#ifdef __APPLE__
+    SAFE_DELETE(fileOpenFilter)
+#endif
 }
 
 void Application::Initialize(Framework *fw)
