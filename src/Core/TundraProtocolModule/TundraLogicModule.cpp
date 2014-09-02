@@ -330,9 +330,9 @@ void TundraLogicModule::StartupSceneTransfedSucceeded(AssetPtr asset)
         LoadScene(sceneDiskSource, false, false);
 }
 
-void TundraLogicModule::StartupSceneTransferFailed(IAssetTransfer *transfer, QString reason)
+void TundraLogicModule::StartupSceneTransferFailed(IAssetTransfer *transfer, QString /*reason*/)
 {
-    LogError("Failed to load startup scene from " + transfer->SourceUrl() + " reason: " + reason);
+    LogError("Failed to load startup scene from " + transfer->SourceUrl() + "."); // AssetAPI::AssetTransferFailed has printed the reason already
 }
 
 bool TundraLogicModule::SaveScene(QString filename, bool asBinary, bool saveTemporaryEntities, bool saveLocalEntities)
