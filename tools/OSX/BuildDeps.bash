@@ -725,9 +725,17 @@ else
         make
         make install
         cd $build/$what
-    fi    
+    fi
 
     export OGRE_HOME=$build/$what
+
+    if ! test -d $OGRE_HOME/RenderSystems/Headless; then
+        echoInfo "Cloning RenderSystem_Headless rendering system, this may take a while..."
+        cd $OGRE_HOME/RenderSystems
+        git clone https://github.com/jonnenauha/ogre-headless-renderer Headless
+        echo "add_subdirectory(Headless)" >> CMakeLists.txt
+    fi
+
     echoInfo "Building $what:"
     if test -f CMakeCache.txt; then
         rm CMakeCache.txt
