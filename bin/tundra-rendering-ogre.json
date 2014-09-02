@@ -93,7 +93,16 @@
             [
                 "Plugin_CgProgramManager",
                 "RenderSystem_GL"
-            ]
+            ],
+
+            "Headless" :
+            {
+                "Renderer" : "Headless Rendering Subsystem",
+                "Plugins"  :
+                [
+                    "RenderSystem_Headless"
+                ]
+            }
         }
     }
 }
