@@ -77,6 +77,12 @@ public slots:
     void CreateXmlEditor(ComponentPtr component); ///< @overload
     void CreateXmlEditor(const QList<ComponentPtr> &components); ///< @overload
 
+    /// Writes/updates config from source.
+    void WriteECEditorConfig(ECEditorWindow *source);
+
+    /// Reads config to dest.
+    void ReadECEditorConfig(ECEditorWindow *dest);
+
 signals:
     /// Signal is emitted when active ECEditorWindow's selection has changed.
     /** @param compType Selected item's component type name.
@@ -101,7 +107,6 @@ private:
 
 private slots:
     /// Handles KeyPressed() signal from input context.
-    /** @param e Key event. */
     void HandleKeyPressed(KeyEvent *e);
 
     /// Embeds the ECEditorModule types to the given script engine.
@@ -109,12 +114,6 @@ private slots:
 
     /// Client disconnected handler.
     void ClientDisconnected();
-
-    /// Writes/updates config from source.
-    void WriteECEditorConfig(ECEditorWindow *source);
-
-    /// Reads config to dest.
-    void ReadECEditorConfig(ECEditorWindow *dest);
 };
 
 Q_DECLARE_METATYPE(ECEditorWindow *)

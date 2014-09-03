@@ -707,7 +707,8 @@ void SceneTreeWidget::Edit()
     }
 
     // Check for active editor
-    editor = framework->Module<ECEditorModule>()->ActiveEditor();
+    ECEditorModule *ecEditorModule = framework->Module<ECEditorModule>();
+    editor = ecEditorModule->ActiveEditor();
     if (editor && !ecEditors.contains(editor))
     {
         editor->setAttribute(Qt::WA_DeleteOnClose);
@@ -716,8 +717,10 @@ void SceneTreeWidget::Edit()
     else // If there isn't any active editors in ECEditorModule, create a new one.
     {
         editor = new ECEditorWindow(framework, framework->Ui()->MainWindow());
+        connect(editor, SIGNAL(AboutToClose(ECEditorWindow*)), ecEditorModule, SLOT(WriteECEditorConfig(ECEditorWindow*)));
         editor->setAttribute(Qt::WA_DeleteOnClose);
         editor->setWindowFlags(Qt::Tool);
+        ecEditorModule->ReadECEditorConfig(editor);
         ecEditors.push_back(editor);
     }
     // To ensure that destroyed editors will get erased from the ecEditors list.

@@ -91,7 +91,7 @@ void ECEditorModule::Uninitialize()
 
 void ECEditorModule::ClientDisconnected()
 {
-    /** The underlying scene and entity is now gone. Close open editors.
+    /* The underlying scene and entity is now gone. Close open editors.
         Note that there might still be other editors opened from outside of
         the shift+e (default) logic. */
     if (commonEditor && ((activeEditor && commonEditor != activeEditor) || !activeEditor))
@@ -111,9 +111,9 @@ void ECEditorModule::WriteECEditorConfig(ECEditorWindow *source)
 
 void ECEditorModule::ReadECEditorConfig(ECEditorWindow *dest)
 {
-    if (!dest || !framework_)
+    if (!dest)
         return;
-        
+
     QSize size = framework_->Config()->Read(cEditorSizeConfig).toSize();
     if (size.isValid() && !size.isEmpty() && !size.isNull())
         dest->resize(size);

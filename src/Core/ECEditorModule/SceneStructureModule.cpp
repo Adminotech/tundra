@@ -344,9 +344,9 @@ void SceneStructureModule::CleanReference(QString &fileRef)
 
 void SceneStructureModule::ClientDisconnected()
 {
-    /** The scene window clears itself when the underlying scene is destroyed.
+    /* The scene window clears itself when the underlying scene is destroyed.
         This make the widget totally useless, so we should close it. It wont
-        function even if you connect to another scene as the scene is not reseted! */
+        function even if you connect to another scene as the scene is not reset! */
     if (sceneWindow)
         sceneWindow->close();
 }
