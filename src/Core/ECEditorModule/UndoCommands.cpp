@@ -15,9 +15,11 @@
 #include "FrameAPI.h"
 #include "UiMainWindow.h"
 #include "Entity.h"
-#include "EC_DynamicComponent.h"
 #include "Transform.h"
+
+#include "EC_DynamicComponent.h"
 #include "EC_Placeable.h"
+#include "EC_Name.h"
 
 #include "Time/Clock.h"
 
@@ -375,7 +377,10 @@ void AddEntityCommand::redo()
     EntityPtr entity = scene->CreateEntity(entityId_, QStringList(), changeType, sync_);
 
     if (!entityName_.isEmpty())
-        entity->SetName(entityName_);
+    {
+        shared_ptr<EC_Name> nameComp = entity->GetOrCreateComponent<EC_Name>("", changeType, sync_);
+        nameComp->name.Set(entityName_, AttributeChange::Default);
+    }
 
     entity->SetTemporary(temp_);
 
