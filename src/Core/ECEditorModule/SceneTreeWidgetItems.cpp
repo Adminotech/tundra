@@ -21,11 +21,22 @@
 
 #include "MemoryLeakCheck.h"
 
+namespace
+{
+    const QString localText = QApplication::translate("SceneTreeItem", "Local");
+    const QString temporaryText = QApplication::translate("SceneTreeItem", "Temporary");
+    const QString localOnlyText = QApplication::translate("ComponentItem", "UpdateMode:LocalOnly");
+    const QString disconnectedText = QApplication::translate("ComponentItem", "UpdateMode:Disconnected");
+}
+
 // EntityGroupItem
 
 EntityGroupItem::EntityGroupItem(const QString &groupName) :
     name(groupName)
 {
+    setTextColor(0, Qt::black);
+    setTextColor(1, QColor(68,68,68));
+
     UpdateText();
 }
 
@@ -39,7 +50,8 @@ EntityGroupItem::~EntityGroupItem()
 
 void EntityGroupItem::UpdateText()
 {
-    setText(0, QString("Group: %1 (%2 item(s))").arg(name).arg(entityItems.size()));
+    setText(0, "Group: " + name);
+    setText(1, QString("%1 %2").arg(entityItems.size()).arg(entityItems.size() > 1 ? "Entities" : "Entity"));
 }
 
 void EntityGroupItem::AddEntityItems(QList<EntityItem*> eItems, bool checkParenting, bool addAsChild, bool updateText)
@@ -141,42 +153,44 @@ void EntityItem::Acked(const EntityPtr &entity)
 
 void EntityItem::SetText(::Entity *entity)
 {
+    if (!entity)
+    {
+        setText(0, "Error: Invalid Entity");
+        return;
+    }
     if (ptr.lock().get() != entity)
         LogWarning("EntityItem::SetText: the entity given is different than the entity this item represents.");
 
-    QString name = QString("%1 %2").arg(entity->Id()).arg(entity->Name().isEmpty() ? "(no name)" : entity->Name());
-   
+    QString entName = entity->Name();
+    QString name = QString("%1 %2").arg(entity->Id()).arg(entName.isEmpty() ? "(no name)" : entName);
+
     const bool local = entity->IsLocal();
     const bool temp = entity->IsTemporary();
 
-    if (!local && !temp)
-        setTextColor(0, QColor(Qt::black));
-
-    QString info;
+    QString desc = "";
+    QColor color = Qt::black;
     if (local)
     {
-        if (!temp)
-            setTextColor(0, QColor(Qt::blue));
-        info.append("Local");
+        color = Qt::blue;
+        desc.append(localText);
     }
     if (temp)
     {
-        setTextColor(0, QColor(Qt::red));
-        if (!info.isEmpty())
-            info.append(" ");
-        info.append("Temporary");
+        color = Qt::red;
+        if (!desc.isEmpty())
+            desc.append(" ");
+        desc.append(temporaryText);
     }
 
-    QString current = text(0);
-    if (!info.isEmpty())
-    {
-        info.prepend(" [");
-        info.append("]");
-        if (current != name + info)
-            setText(0, name + info);
-    }
-    else if (current != name)
+    if (text(0).compare(name, Qt::CaseSensitive) != 0)
         setText(0, name);
+    if (text(1).compare(desc, Qt::CaseSensitive) != 0)
+        setText(1, desc);
+
+    if (textColor(0) != color)
+        setTextColor(0, color);
+    if (!desc.isEmpty() && textColor(1) != color)
+        setTextColor(1, color);
 }
 
 EntityGroupItem *EntityItem::Parent() const
@@ -216,13 +230,6 @@ bool EntityItem::operator <(const QTreeWidgetItem &rhs) const
         if (other)
             return id < other->Id();
     }
-    /// @todo It would see its faster to fetch names from the entities than the string splitting below.s
-    /*else if (criteria == 1)
-    {
-        const EntityItem *other = dynamic_cast<const EntityItem*>(&rhs);
-        if (other && Entity() && other->Entity())
-            return Entity()->Name().localeAwareCompare(other->Entity()->Name()) < 0;
-    }*/
 
     switch(criteria)
     {
@@ -263,53 +270,53 @@ void ComponentItem::SetText(IComponent *comp)
     QString compType = IComponent::EnsureTypeNameWithoutPrefix(comp->TypeName());
     QString name = QString("%1 %2").arg(compType).arg(comp->Name());
 
-    setTextColor(0, QColor(Qt::black));
+    const bool parentLocal = comp->ParentEntity() && comp->ParentEntity()->IsLocal();
+    const bool parentTemp = comp->ParentEntity() && comp->ParentEntity()->IsTemporary();
+    const bool local = comp->IsLocal();
+    const bool temp = comp->IsTemporary();
 
-    QString localText = QApplication::translate("ComponentItem", "Local");
-    QString temporaryText = QApplication::translate("ComponentItem", "Temporary");
-    QString localOnlyText = QApplication::translate("ComponentItem", "UpdateMode:LocalOnly");
-    QString disconnectedText = QApplication::translate("ComponentItem", "UpdateMode:Disconnected");
-
-    const bool sync = comp->IsReplicated();
-    const bool temporary = comp->IsTemporary();
-
-    QString info;
-    if (!sync)
+    QString desc = "";
+    QColor color = Qt::black;
+    if (local)
     {
-        setTextColor(0, QColor(Qt::blue));
-        info.append(localText);
+        color = Qt::blue;
+        if (parentLocal != local)
+            desc.append(localText);
     }
-
-    if (temporary)
+    if (temp)
     {
-        setTextColor(0, QColor(Qt::red));
-        if (!info.isEmpty())
-            info.append(" ");
-        info.append(temporaryText);
+        color = Qt::red;
+        if (parentTemp != temp)
+        {
+            if (!desc.isEmpty())
+                desc.append(" ");
+            desc.append(temporaryText); 
+        }            
     }
-
     if (comp->UpdateMode() == AttributeChange::LocalOnly)
     {
-        if (!info.isEmpty())
-            info.append(" ");
-        info.append(localOnlyText);
+        if (!desc.isEmpty())
+            desc.append(" ");
+        desc.append(localOnlyText);
     }
-
-    if (comp->UpdateMode() == AttributeChange::Disconnected)
+    else if (comp->UpdateMode() == AttributeChange::Disconnected)
     {
-        if (!info.isEmpty())
-            info.append(" ");
-        info.append(disconnectedText);
+        if (!desc.isEmpty())
+            desc.append(" ");
+        desc.append(disconnectedText);
     }
+    if (color == Qt::red && desc == localText)
+        color = Qt::blue;
 
-    if (!info.isEmpty())
-    {
-        info.prepend(" (");
-        info.append(")");
-        setText(0, name + info);
-    }
-    else
+    if (text(0).compare(name, Qt::CaseSensitive) != 0)
         setText(0, name);
+    if (text(1).compare(desc, Qt::CaseSensitive) != 0)
+        setText(1, desc);
+
+    if (textColor(0) != color)
+        setTextColor(0, color);
+    if (!desc.isEmpty() && textColor(1) != color)
+        setTextColor(1, color);
 }
 
 ComponentPtr ComponentItem::Component() const

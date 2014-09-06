@@ -93,16 +93,19 @@ SceneTreeWidget::SceneTreeWidget(Framework *fw, QWidget *parent) :
 {
     setEditTriggers(/*QAbstractItemView::EditKeyPressed*/QAbstractItemView::NoEditTriggers/*EditKeyPressed*/);
     setDragDropMode(QAbstractItemView::DropOnly/*DragDrop*/);
-//    setDragEnabled(true);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setSelectionBehavior(QAbstractItemView::SelectItems);
     setAnimated(true);
     setAllColumnsShowFocus(true);
-    //setDefaultDropAction(Qt::MoveAction);
     setDropIndicatorShown(true);
-    setHeaderLabel(tr("Scene entities"));
+
+    // Headers
     setColumnCount(2);
-    header()->setSectionHidden(1, true);
+    setHeaderLabels(QStringList() << tr("Entities") << "");
+    header()->setMinimumSectionSize(80);
+    header()->setStretchLastSection(false);
+    header()->setResizeMode(0, QHeaderView::Stretch);
+    header()->setResizeMode(1, QHeaderView::ResizeToContents);
 
     connect(this, SIGNAL(doubleClicked(const QModelIndex &)), SLOT(Edit()));
 
