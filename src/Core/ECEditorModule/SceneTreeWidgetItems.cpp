@@ -418,6 +418,14 @@ bool SceneTreeWidgetSelection::HasAssetsOnly() const
     return groups.isEmpty() && entities.isEmpty() && components.isEmpty() && !assets.isEmpty();
 }
 
+int SceneTreeWidgetSelection::NumGroupChildren() const
+{
+    int num = 0;
+    foreach(EntityGroupItem *group, groups)
+        num += group->entityItems.size();
+    return num;
+}
+
 QList<entity_id_t> SceneTreeWidgetSelection::EntityIds() const
 {
     QSet<entity_id_t> ids;

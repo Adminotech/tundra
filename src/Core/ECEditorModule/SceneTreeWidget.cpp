@@ -347,7 +347,7 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
 
     // "Edit", "Edit in new", "New component...", "Delete", "Copy", "Actions..." and "Functions..."
     // "Convert to local", "Convert to replicated", and "Temporary" actions are available only if we have selection.
-    QAction *editAction = 0, *editInNewAction = 0, *newComponentAction = 0, *deleteAction = 0,
+    QAction *editAction = 0, *editInNewAction = 0, *newComponentAction = 0, *deleteAction = 0, *deleteGroupsAction = 0,
         *renameAction = 0, *copyAction = 0, *saveAsAction = 0, *actionsAction = 0, *functionsAction = 0,
         *toLocalAction = 0, *toReplicatedAction = 0, *temporaryAction = 0, *groupEntitiesAction = 0, *ungroupEntitiesAction = 0;
 
@@ -355,9 +355,10 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
     const bool hasSelection = !sel.IsEmpty();
     if (hasSelection)
     {
+        // Entity/Scene
         editAction = new QAction(tr("Edit"), menu);
         editInNewAction = new QAction(tr("Edit in new window"), menu);
-        newComponentAction = new QAction(tr("New component..."), menu);
+        newComponentAction = new QAction(tr("New Component..."), menu);
         deleteAction = new QAction(tr("Delete"), menu);
         copyAction = new QAction(tr("Copy"), menu);
         toLocalAction = new QAction(tr("Convert to local"), menu);
@@ -368,9 +369,24 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         saveAsAction = new QAction(tr("Save as..."), menu);
         actionsAction = new QAction(tr("Actions..."), menu);
         functionsAction = new QAction(tr("Functions..."), menu);
-        groupEntitiesAction = new QAction(tr("Group selected entities..."), menu);
-        ungroupEntitiesAction = new QAction(tr("Ungroup"), menu);
+        groupEntitiesAction = new QAction(tr("Group selected Entities..."), menu);
 
+        // Groups
+        if (sel.HasGroups())
+        {
+            if (sel.groups.size() < 2)
+                ungroupEntitiesAction = new QAction(tr("Ungroup"), menu);
+            if (sel.HasGroupsOnly())
+            {
+                int numGroupEntities = sel.NumGroupChildren();
+                QString entLabel = (numGroupEntities > 0 ? (numGroupEntities > 1 ?
+                    QString("(%1 %2)").arg(numGroupEntities).arg(tr("Entities")) : "(1 " + tr("Entity") + ")") : "");
+                deleteGroupsAction = new QAction(QString("%1 %2").arg(sel.groups.size() > 1 ?
+                    QString(tr("Delete") + " %1 %2").arg(sel.groups.size()).arg(tr("Groups")) : tr("Delete Group")).arg(entLabel), menu);
+            }
+        }
+
+        // Entity/Scene
         connect(editAction, SIGNAL(triggered()), SLOT(Edit()));
         connect(editInNewAction, SIGNAL(triggered()), SLOT(EditInNew()));
         connect(newComponentAction, SIGNAL(triggered()), SLOT(NewComponent()));
@@ -382,7 +398,12 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         connect(toLocalAction, SIGNAL(triggered()), SLOT(ConvertEntityToLocal()));
         connect(toReplicatedAction, SIGNAL(triggered()), SLOT(ConvertEntityToReplicated()));
         connect(groupEntitiesAction, SIGNAL(triggered()), SLOT(GroupEntities()));
-        connect(ungroupEntitiesAction, SIGNAL(triggered()), SLOT(UngroupEntities()));
+
+        // Groups
+        if (ungroupEntitiesAction)
+            connect(ungroupEntitiesAction, SIGNAL(triggered()), SLOT(UngroupEntities()));
+        if (deleteGroupsAction)
+            connect(deleteGroupsAction, SIGNAL(triggered()), SLOT(Delete()));
     }
 
     // "Rename" action is possible only if have one entity selected.
@@ -412,9 +433,13 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
             menu->addAction(toReplicatedAction);
             menu->addAction(temporaryAction);
         }
-
-        if (sel.HasGroupsOnly() && sel.groups.size() < 2)
-            menu->addAction(ungroupEntitiesAction);
+        else
+        {
+            if (ungroupEntitiesAction)
+                menu->addAction(ungroupEntitiesAction);
+            if (deleteGroupsAction)
+                menu->addAction(deleteGroupsAction);
+        }
 
         // Altering temporary, local and replicated properties is only possible if we have only entities selected
         // and if all the entites have currently the same state.
@@ -430,41 +455,45 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
             {
                 // Group mismatch?
                 for(int i = 1; i < sel.entities.size(); ++i)
-                    if (sel.entities[i]->Entity())
-                        if (!sel.entities[i]->Entity()->Group().isEmpty())
-                        {
-                            emptyGroup = false;
-                            break;
-                        }
+                {
+                    if (sel.entities[i]->Entity() && !sel.entities[i]->Entity()->Group().isEmpty())
+                    {
+                        emptyGroup = false;
+                        break;
+                    }
+                }
 
                 // Local mismatch?
                 for(int i = 1; i < sel.entities.size(); ++i)
-                    if (sel.entities[i]->Entity())
-                        if (firstStateLocal != sel.entities[i]->Entity()->IsLocal())
-                        {
-                            toLocalAction->setDisabled(true);
-                            localMismatch = true;
-                            break;
-                        }
+                {
+                    if (sel.entities[i]->Entity() && firstStateLocal != sel.entities[i]->Entity()->IsLocal())
+                    {
+                        toLocalAction->setDisabled(true);
+                        localMismatch = true;
+                        break;
+                    }
+                }
 
                 // Replicated mismatch?
                 for(int i = 1; i < sel.entities.size(); ++i)
-                    if (sel.entities[i]->Entity())
-                        if (firstStateReplicated != sel.entities[i]->Entity()->IsReplicated())
-                        {
-                            toReplicatedAction->setDisabled(true);
-                            replicatedMismatch = true;
-                            break;
-                        }
+                {
+                    if (sel.entities[i]->Entity() && firstStateReplicated != sel.entities[i]->Entity()->IsReplicated())
+                    {
+                        toReplicatedAction->setDisabled(true);
+                        replicatedMismatch = true;
+                        break;
+                    }
+                }
 
                 // Temporary mismatch?
                 for(int i = 1; i < sel.entities.size(); ++i)
-                    if (sel.entities[i]->Entity())
-                        if (firstStateTemporary != sel.entities[i]->Entity()->IsTemporary())
-                        {
-                            temporaryAction->setDisabled(true);
-                            break;
-                        }
+                {
+                    if (sel.entities[i]->Entity() && firstStateTemporary != sel.entities[i]->Entity()->IsTemporary())
+                    {
+                        temporaryAction->setDisabled(true);
+                        break;
+                    }
+                }
             }
 
             toLocalAction->setEnabled(localMismatch && replicatedMismatch ? false : !firstStateLocal);
@@ -948,10 +977,11 @@ void SceneTreeWidget::Delete()
 
     QList<EntityWeakPtr> entities;
     QList<ComponentWeakPtr> components;
-
     SceneTreeWidgetSelection sel = SelectedItems();
+
     // If we have components selected, remove them first.
     if (sel.HasComponents())
+    {
         foreach(ComponentItem *cItem, sel.components)
         {
             EntityPtr entity = cItem->Parent()->Entity();
@@ -959,11 +989,22 @@ void SceneTreeWidget::Delete()
             if (entity && component)
                 components << component;
         }
+    }
 
     // Remove entities.
     if (sel.HasEntities())
+    {
         foreach(EntityItem *eItem, SelectedItems().entities)
             entities << eItem->Entity();
+    }
+    else if (sel.HasGroupsOnly())
+    {
+        foreach(EntityGroupItem *group, sel.groups)
+        {
+            foreach(EntityItem *item, group->entityItems)
+                entities << item->Entity();
+        }
+    }
 
     if (undoManager_)
     {

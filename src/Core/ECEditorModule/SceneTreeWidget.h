@@ -171,7 +171,7 @@ private slots:
     /** @param result Result of dialog closure. OK is 1, Cancel is 0. */
     void ComponentDialogFinished(int result);
 
-    /// Deletes an existing entity or component.
+    /// Deletes selected entities, groups and/or components.
     void Delete();
 
     // Delete command starting execution.
