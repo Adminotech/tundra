@@ -6,6 +6,7 @@
 
 #include "StableHeaders.h"
 #include "UndoManager.h"
+#include "UndoCommands.h"
 #include "EntityIdChangeTracker.h"
 
 #include <QUndoCommand>
@@ -182,4 +183,15 @@ void UndoManager::Push(QUndoCommand *command)
 
     actions_.push_back(action);
     undoStack_->push(command);
+}
+
+bool UndoManager::CommandsExecuting() const
+{
+    QList<const TundraUndoCommand*> baseCommands = Commands<TundraUndoCommand>();
+    foreach(const TundraUndoCommand *cmd, baseCommands)
+    {
+        if (cmd->IsExecuting())
+            return true;
+    }
+    return false;
 }

@@ -63,6 +63,7 @@ public:
 
     enum SortCriteria
     {
+        SortByType,
         SortById,
         SortByName
     };
@@ -248,7 +249,7 @@ private slots:
 
     /// Sort items in the tree widget. The outstanding sort order is used.
     /** @param column Column that is used as the sorting criteria. */
-    void Sort(int column);
+    void SortCriterialChanged(int column);
 
     /// Searches for items containing @c text (case-insensitive) and toggles their visibility.
     /** If match is found the item is set visible and expanded, otherwise it's hidden.

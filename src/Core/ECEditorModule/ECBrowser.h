@@ -88,20 +88,7 @@ signals:
 
 protected:
     /// QWidget override.
-    void dragEnterEvent(QDragEnterEvent *event);
-
-    /// QWidget override.
-    void dropEvent(QDropEvent *event);
-
-    /// QWidget override.
-    void dragMoveEvent(QDragMoveEvent *event);
-
-    /// QWidget override.
     void focusInEvent(QFocusEvent *event);
-
-    /// QWidget override.
-    /** dropEvent will call this after feching the information that is need from the QDropEvent data. */
-    bool dropMimeData(QTreeWidgetItem *item, int index, const QMimeData *data, Qt::DropAction action);
 
 private slots:
     /// User have right clicked the browser and QMenu need to be open to display copy, paste, delete ations etc.

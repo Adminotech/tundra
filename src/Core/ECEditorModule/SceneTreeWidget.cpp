@@ -85,24 +85,29 @@ void Menu::keyReleaseEvent(QKeyEvent *e)
 SceneTreeWidget::SceneTreeWidget(Framework *fw, QWidget *parent) :
     QTreeWidget(parent),
     framework(fw),
+    toolTip(new SceneTreeWidgetToolTip()),
+    undoManager_(0),
     showComponents(false),
-    historyMaxItemCount(100),
-    numberOfInvokeItemsVisible(5),
     fetchReferences(false),
-    undoManager_(0)
+    historyMaxItemCount(100),
+    numberOfInvokeItemsVisible(5)
 {
     setEditTriggers(/*QAbstractItemView::EditKeyPressed*/QAbstractItemView::NoEditTriggers/*EditKeyPressed*/);
-    setDragDropMode(QAbstractItemView::DropOnly/*DragDrop*/);
+    setDragDropMode(QAbstractItemView::DragDrop);
+    setDefaultDropAction(Qt::IgnoreAction);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setSelectionBehavior(QAbstractItemView::SelectItems);
     setAnimated(true);
     setAllColumnsShowFocus(true);
-    setDropIndicatorShown(true);
+    setDropIndicatorShown(false);
+    setExpandsOnDoubleClick(false);
+    setAutoScroll(true);
+    setAutoExpandDelay(-1);
 
     // Headers
     setColumnCount(2);
     setHeaderLabels(QStringList() << tr("Entities") << "");
-    header()->setMinimumSectionSize(80);
+    header()->setMinimumSectionSize(110);
     header()->setStretchLastSection(false);
     header()->setResizeMode(0, QHeaderView::Stretch);
     header()->setResizeMode(1, QHeaderView::ResizeToContents);
@@ -141,6 +146,7 @@ SceneTreeWidget::~SceneTreeWidget()
 
     SaveInvokeHistory();
 
+    SAFE_DELETE(toolTip);
     SAFE_DELETE(undoManager_);
 }
 
@@ -176,30 +182,143 @@ void SceneTreeWidget::contextMenuEvent(QContextMenuEvent *e)
 
 void SceneTreeWidget::dragEnterEvent(QDragEnterEvent *e)
 {
+    // Use base class to enable auto expansion/scroll. Ignore any accepts it does internally.
+    QTreeWidget::dragEnterEvent(e);
+    e->ignore();
+
+    // Clear tooltip and schedule a paint event
+    toolTip->Clear();
+    viewport()->update();
+
+    // txml etc.
     if (e->mimeData()->hasUrls())
     {
         foreach (QUrl url, e->mimeData()->urls())
+        {
             if (SceneStructureModule::IsSupportedFileType(url.path()))
+            {
                 e->accept();
+                return;
+            }
+        }
     }
-    else
-        QWidget::dragEnterEvent(e);
+    // Internal tree move. Parenting or grouping.
+    else if (e->source() == this)
+    {
+        SceneTreeWidgetSelection sel = SelectedItems();
+        if (sel.HasEntitiesOnly())
+            e->accept();
+    }
 }
 
 void SceneTreeWidget::dragMoveEvent(QDragMoveEvent *e)
 {
+    // Use base class to enable auto expansion/scroll. Ignore any accepts it does internally.
+    QTreeWidget::dragMoveEvent(e);
+    e->ignore();
+
+    // Clear tooltip and schedule a paint event
+    toolTip->Clear();
+    viewport()->update();
+
+    // txml etc.
     if (e->mimeData()->hasUrls())
     {
         foreach(QUrl url, e->mimeData()->urls())
             if (SceneStructureModule::IsSupportedFileType(url.path()))
                 e->accept();
     }
+    // Internal tree move. Parenting or grouping.
     else
-        QWidget::dragMoveEvent(e);
+    {
+        SceneTreeWidgetSelection sel = SelectedItems();
+        if (sel.HasEntitiesOnly())
+        {
+            QTreeWidgetItem *underMouse = itemAt(e->pos());
+            
+            // Unparent when dropping to the tree root.
+            if (!underMouse)
+            {
+                bool allParented = true;
+                int parented = 0;
+                foreach(EntityItem *selEntItem, sel.entities)
+                {
+                    if (selEntItem->Entity() && selEntItem->Entity()->HasParent())
+                        parented++;
+                }
+                if (parented == 0)
+                    return;
+                e->accept();
+
+                toolTip->Set((parented > 1 ? QString("Unparent %1 Entities").arg(parented) : "Unparent Entity"));
+            }
+            else
+            {
+                // If entity item, the target cannot be in the dragged set.
+                EntityItem *entItem = dynamic_cast<EntityItem*>(underMouse);
+                if (entItem && entItem->Entity())
+                {
+                    if (!sel.entities.contains(entItem))
+                    {
+                        // If drop target is local, all in the dragged set must be local as well.
+                        // If drop target is temporary, we should warn about dropping non-temporaries into it.
+                        EntityPtr parent = entItem->Entity();
+                        if (parent->IsLocal() || parent->IsTemporary())
+                        {
+                            foreach(EntityItem *childCandidate, sel.entities)
+                            {
+                                if (!childCandidate->Entity())
+                                    return;
+                                if (parent->IsLocal() && childCandidate->Entity()->IsReplicated())
+                                {
+                                    toolTip->SetError("Cannot parent replicated children to local parent");
+                                    return;
+                                }
+                                else if (parent->IsTemporary() && !childCandidate->Entity()->IsTemporary())
+                                    toolTip->SetWarning("Non-temporary children being parented to a temporary parent");
+                            }
+                        } 
+                        
+                        // Tooltip
+                        QString parentName = entItem->Entity()->Name();
+                        if (parentName.isEmpty())
+                            parentName = "#" + QString::number(entItem->Entity()->Id());
+                        if (sel.entities.size() > 1)
+                            toolTip->Set(QString("Parent %1 %2 to %3").arg(sel.entities.size()).arg(sel.entities.size() > 1 ? "Entities" : "Entity").arg(parentName));
+                        else
+                            toolTip->Set(QString("Parent to %1").arg(parentName));
+
+                        e->accept();
+                    }
+                    else
+                        toolTip->SetError("Proposed parent is in the selection");
+                    return;
+                }
+                // If group item, ignore if all targets are already in the group.
+                /*EntityGroupItem *groupItem = dynamic_cast<EntityGroupItem*>(underMouse);
+                if (groupItem && !groupItem->ContainsAllItems(sel.entities))
+                {
+                    e->accept();
+                    return;
+                }*/
+                return;
+            }
+
+        }
+    }
 }
 
 void SceneTreeWidget::dropEvent(QDropEvent *e)
 {
+    // Don't call the base class impl. This will auto internal move items, we want to handle it here.
+    // Clear potential state and auto scroll that initiated in QTreeWidget::dragMoveEvent.
+    stopAutoScroll();
+    setState(QAbstractItemView::NoState);
+
+    toolTip->Clear();
+    viewport()->update();
+
+    // txml etc.
     const QMimeData *data = e->mimeData();
     if (data->hasUrls())
     {
@@ -222,8 +341,60 @@ void SceneTreeWidget::dropEvent(QDropEvent *e)
 
         e->acceptProposedAction();
     }
+    // Internal tree move. Parenting or grouping.
     else
-        QTreeWidget::dropEvent(e);
+    {
+        e->ignore();
+
+        SceneTreeWidgetSelection sel = SelectedItems();
+        if (sel.HasEntitiesOnly())
+        {
+            QTreeWidgetItem *underMouse = itemAt(e->pos());
+
+            if (!underMouse)
+            {
+                foreach(EntityItem *selEntItem, sel.entities)
+                {
+                    if (selEntItem->Entity() && selEntItem->Entity()->HasParent())
+                        selEntItem->Entity()->SetParent(EntityPtr());
+                }
+                e->acceptProposedAction();
+            }
+            else
+            {
+                // If entity item, the target cannot be in the dragged set.
+                EntityItem *entItem = dynamic_cast<EntityItem*>(underMouse);
+                if (entItem && entItem->Entity())
+                {
+                    if (!sel.entities.contains(entItem))
+                    {
+                        e->acceptProposedAction();
+                        EntityPtr parent = entItem->Entity();
+                        foreach(EntityItem *childCandidate, sel.entities)
+                        {
+                            if (!childCandidate->Entity())
+                                continue;
+                            // If child is replicated and the parent is not, dont allow it.
+                            // It will log a error later on (SyncManager).
+                            if (parent->IsLocal() && childCandidate->Entity()->IsReplicated())
+                                continue;
+                            childCandidate->Entity()->SetParent(parent);
+                        }
+                        // Expand the parent item
+                        entItem->setExpanded(true);
+                    }
+                    return;
+                }
+                // If group item, ignore if all targets are already in the group.
+                /*EntityGroupItem *groupItem = dynamic_cast<EntityGroupItem*>(underMouse);
+                if (groupItem && !groupItem->ContainsAllItems(sel.entities))
+                {
+                    e->acceptProposedAction();
+                    return;
+                }*/
+            }
+        }
+    }
 }
 
 void SceneTreeWidget::paintEvent(QPaintEvent *e)
@@ -256,6 +427,32 @@ void SceneTreeWidget::paintEvent(QPaintEvent *e)
             p.drawText(this->viewport()->rect(), QString("Removing %1 Entities").arg(numRemoving), formatting);
             p.end();
         }
+    }
+    if (!toolTip->IsEmpty())
+    {
+        int height = (toolTip->warning.isEmpty() ? 35 : 60);
+
+        QPainter p(this->viewport());
+        QRect fullRect = this->viewport()->rect();
+        QRect rect(0, fullRect.height() - height, fullRect.width(), height);
+        p.fillRect(rect, toolTip->backgroud);
+
+        p.setFont(toolTip->font);
+        p.setPen(toolTip->foreground);
+
+        if (toolTip->warning.isEmpty())
+            p.drawText(rect, toolTip->message, toolTip->formatting);
+        else
+        {
+            rect.setHeight(height/2);
+            p.drawText(rect, toolTip->message, toolTip->formatting);
+            rect.translate(0, height/2);
+            p.setPen(toolTip->foregroundWarning);
+            p.drawText(rect, toolTip->warning, toolTip->formatting);
+        }
+        p.end();
+
+        toolTip->Clear();
     }
 }
 
@@ -375,18 +572,28 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         groupEntitiesAction = new QAction(tr("Group selected Entities..."), menu);
 
         // Groups
-        if (sel.HasGroups())
+        if (sel.HasGroupsOnly())
         {
-            if (sel.groups.size() < 2)
-                ungroupEntitiesAction = new QAction(tr("Ungroup"), menu);
-            if (sel.HasGroupsOnly())
+            ungroupEntitiesAction = new QAction(tr("Ungroup") + (sel.groups.size() > 1 ? 
+            QString(" (%1 %2)").arg(sel.groups.size()).arg(tr("Groups")) : ""), menu);
+
+            int numGroupEntities = sel.NumGroupChildren();
+            QString entLabel = (numGroupEntities > 0 ? (numGroupEntities > 1 ?
+                QString("(%1 %2)").arg(numGroupEntities).arg(tr("Entities")) : "(1 " + tr("Entity") + ")") : "");
+            deleteGroupsAction = new QAction(QString("%1 %2").arg(sel.groups.size() > 1 ?
+                QString(tr("Delete") + " %1 %2").arg(sel.groups.size()).arg(tr("Groups")) : tr("Delete Group")).arg(entLabel), menu);
+        }
+        if (sel.HasEntities() && !ungroupEntitiesAction)
+        {
+            bool hasGroupped = false;
+            foreach(EntityItem *entItem, sel.entities)
             {
-                int numGroupEntities = sel.NumGroupChildren();
-                QString entLabel = (numGroupEntities > 0 ? (numGroupEntities > 1 ?
-                    QString("(%1 %2)").arg(numGroupEntities).arg(tr("Entities")) : "(1 " + tr("Entity") + ")") : "");
-                deleteGroupsAction = new QAction(QString("%1 %2").arg(sel.groups.size() > 1 ?
-                    QString(tr("Delete") + " %1 %2").arg(sel.groups.size()).arg(tr("Groups")) : tr("Delete Group")).arg(entLabel), menu);
+                hasGroupped = (entItem->Entity() && !entItem->Entity()->Group().isEmpty());
+                if (hasGroupped)
+                    break;
             }
+            if (hasGroupped)
+                ungroupEntitiesAction = new QAction(tr("Ungroup selected Entities"), menu);
         }
 
         // Entity/Scene
@@ -432,6 +639,8 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
             menu->addAction(deleteAction);
             menu->addAction(copyAction);
             menu->addAction(groupEntitiesAction);
+            if (ungroupEntitiesAction)
+                menu->addAction(ungroupEntitiesAction);
             menu->addAction(toLocalAction);
             menu->addAction(toReplicatedAction);
             menu->addAction(temporaryAction);
@@ -1012,28 +1221,23 @@ void SceneTreeWidget::Delete()
     if (undoManager_)
     {
         RemoveCommand *command = new RemoveCommand(scene.lock(), undoManager_->Tracker(), entities, components);
-        connect(command, SIGNAL(Starting()), this, SLOT(OnDeleteStarting()));
-        connect(command, SIGNAL(Stopped()), this, SLOT(OnDeleteStopped()));
+        connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+        connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
         undoManager_->Push(command);
     }
 }
 
-void SceneTreeWidget::OnDeleteStarting()
+void SceneTreeWidget::OnCommandStarting()
 {
     setSortingEnabled(false);
 }
 
-void SceneTreeWidget::OnDeleteStopped()
+void SceneTreeWidget::OnCommmandFinished()
 {
-    // There can be multiple executing delete operation, wait for all of them to complete.
-    QList<const RemoveCommand*> removeCommands = undoManager_->Commands<RemoveCommand>();
-    foreach(const RemoveCommand *cmd, removeCommands)
-    {
-        if (cmd && cmd->IsExecuting())
-            return;
-    }
-
-    setSortingEnabled(true);
+    // There can be various command executing, wait for all of
+    // the to finish before turning sorting back on.
+    if (!undoManager_->CommandsExecuting())
+        setSortingEnabled(true);
 }
 
 void SceneTreeWidget::Copy()
@@ -1892,29 +2096,74 @@ void SceneTreeWidget::GroupEntities()
         }
 
         if (!entities.isEmpty())
-            undoManager_->Push(new GroupEntitiesCommand(entities, undoManager_->Tracker(), "", groupName));
+        {
+            GroupEntitiesCommand *command = new GroupEntitiesCommand(entities, undoManager_->Tracker(), "", groupName);
+            connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+            connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
+            undoManager_->Push(command);
+        }
     }
 }
 
 void SceneTreeWidget::UngroupEntities()
 {
     ScenePtr scn = scene.lock();
-    if (scn)
+    if (!scn)
+        return;
+        
+    SceneTreeWidgetSelection sel = SelectedItems();
+        
+    // If both ents and groups in selection, prioritize on ents.
+    if (sel.HasEntities())
     {
-        QList<EntityWeakPtr> entities;
-        SceneTreeWidgetSelection sel = SelectedItems();
-        EntityGroupItem *item = sel.groups.first();
-        if (!item)
-            return;
-
-        for (int i = 0; i < item->childCount(); ++i)
+        QHash<QString, QList<EntityWeakPtr> > groups;
+        foreach(EntityItem *groupped, sel.entities)
         {
-            EntityItem *eItem = static_cast<EntityItem*>(item->child(i));
-            if (eItem)
-                entities << eItem->Entity();
+            if (!groupped || !groupped->Entity())
+                continue;
+            QString groupName = groupped->Entity()->Group();
+            if (!groupName.isEmpty())
+                groups[groupName] << groupped->Entity();
         }
-
-        if (!entities.isEmpty())
-            undoManager_->Push(new GroupEntitiesCommand(entities, undoManager_->Tracker(), item->GroupName(), ""));
+        foreach(const QString &groupName, groups.keys())
+        {
+            const QList<EntityWeakPtr> &entities = groups[groupName];
+            if (!entities.isEmpty())
+            {
+                GroupEntitiesCommand *command = new GroupEntitiesCommand(entities, undoManager_->Tracker(), groupName, "");
+                connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+                connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
+                undoManager_->Push(command);
+            }
+        }
     }
+    // Only groups as we dont want user to make a mistake by mixing items
+    else if (sel.HasGroupsOnly())
+    {
+        foreach (EntityGroupItem *group, sel.groups)
+        {
+            QList<EntityWeakPtr> entities;
+            if (!group)
+                continue;
+
+            foreach(EntityItem *groupped, group->entityItems)
+            {
+                if (groupped && groupped->Entity())
+                    entities << groupped->Entity();
+            }
+            if (!entities.isEmpty())
+            {
+                GroupEntitiesCommand *command = new GroupEntitiesCommand(entities, undoManager_->Tracker(), group->GroupName(), "");
+                connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+                connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
+                undoManager_->Push(command);
+            }
+        }
+    }
+}
+
+void SceneTreeWidget::SortBy(SceneStructureWindow::SortCriteria criteria, Qt::SortOrder order)
+{
+    sortingCriteria = criteria;
+    sortItems(0, order);
 }

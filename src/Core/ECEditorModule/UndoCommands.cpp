@@ -23,6 +23,45 @@
 
 #include "Time/Clock.h"
 
+// TundraUndoCommand
+
+TundraUndoCommand::TundraUndoCommand(QUndoCommand *parent, Framework *framework) :
+    QUndoCommand(parent),
+    framework_(framework),
+    executing_(false)
+{
+}
+
+bool TundraUndoCommand::IsExecuting() const
+{
+    return executing_;
+}
+
+void TundraUndoCommand::SetExecuting(bool executing)
+{
+    if (executing_ == executing)
+        return;
+    executing_ = executing;
+
+    if (executing_)
+    {
+        emit Starting();
+        if (framework_)
+            connect(framework_->Frame(), SIGNAL(Updated(float)), this, SLOT(OnUpdate(float)), Qt::UniqueConnection);
+    }
+    else
+    {
+        emit Finished();
+        if (framework_)
+            disconnect(framework_->Frame(), SIGNAL(Updated(float)), this, SLOT(OnUpdate(float)));
+    }
+}
+
+void TundraUndoCommand::OnUpdate(float frametime)
+{
+    Update(frametime);
+}
+
 // EditIAttributeCommand
 
 EditIAttributeCommand::EditIAttributeCommand(IAttribute *attr, QUndoCommand *parent) :
@@ -391,7 +430,7 @@ void AddEntityCommand::redo()
 // RemoveCommand
 
 RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const QList<EntityWeakPtr> &entities, const QList<ComponentWeakPtr> &components, QUndoCommand * parent) :
-    QUndoCommand(parent),
+    TundraUndoCommand(parent, scene->GetFramework()),
     scene_(scene),
     tracker_(tracker)
 {
@@ -399,7 +438,7 @@ RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker * trac
 }
 
 RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const QList<EntityWeakPtr> &entities, QUndoCommand *parent) :
-    QUndoCommand(parent),
+    TundraUndoCommand(parent, scene->GetFramework()),
     scene_(scene),
     tracker_(tracker)
 {
@@ -407,7 +446,7 @@ RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *track
 }
 
 RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const QList<ComponentWeakPtr> &components, QUndoCommand *parent) :
-    QUndoCommand(parent),
+    TundraUndoCommand(parent, scene->GetFramework()),
     scene_(scene),
     tracker_(tracker)
 {
@@ -415,7 +454,7 @@ RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *track
 }
 
 RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityWeakPtr &entity, QUndoCommand *parent) :
-    QUndoCommand(parent),
+    TundraUndoCommand(parent, scene->GetFramework()),
     scene_(scene),
     tracker_(tracker)
 {
@@ -423,7 +462,7 @@ RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *track
 }
 
 RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const ComponentWeakPtr &component, QUndoCommand *parent) :
-    QUndoCommand(parent),
+    TundraUndoCommand(parent, scene->GetFramework()),
     scene_(scene),
     tracker_(tracker)
 {
@@ -432,8 +471,6 @@ RemoveCommand::RemoveCommand(const ScenePtr &scene, EntityIdChangeTracker *track
 
 void RemoveCommand::Initialize(const QList<EntityWeakPtr> &entityList, const QList<ComponentWeakPtr> &componentList)
 {
-    executing_ = false;
-
     QStringList componentTypes;
     bool componentMultiParented = false;
 
@@ -471,11 +508,6 @@ void RemoveCommand::Initialize(const QList<EntityWeakPtr> &entityList, const QLi
         setText(QString("* Removed %1 Entities").arg(entityList_.size()));
 }
 
-bool RemoveCommand::IsExecuting() const
-{
-    return executing_;
-}
-
 int RemoveCommand::PendingEntityRemoves() const
 {
     return pendingIds_.size();
@@ -492,7 +524,8 @@ void RemoveCommand::undo()
     if (!scene.get())
         return;
 
-    Execute(false);
+    pendingIds_.clear();
+    SetExecuting(false);
 
     if (!entitiesDocument_.isNull())
     {
@@ -561,7 +594,8 @@ void RemoveCommand::redo()
     if (componentMap_.isEmpty() && entityList_.isEmpty())
         return;
 
-    Execute(true);
+    pendingIds_.clear();
+    SetExecuting(true);
 
     // Component removals will block. We are assuming here that there cant be so many components
     // per command that it would be too slow. You would have to multiselect from multiple ents.
@@ -602,34 +636,13 @@ void RemoveCommand::redo()
         pendingIds_ = entityList_;
     }
     else
-        Execute(false);    
-}
-
-void RemoveCommand::Execute(bool execute)
-{
-    if (execute == executing_)
-        return;
-    
-    ScenePtr scene = scene_.lock();
-    executing_ = execute;
-
-    if (executing_)
-    {
-        emit Starting();
-        if (scene.get() && scene->GetFramework())
-            connect(scene->GetFramework()->Frame(), SIGNAL(Updated(float)), this, SLOT(OnUpdate(float)), Qt::UniqueConnection);
-    }
-    else
     {
         pendingIds_.clear();
-
-        emit Stopped();
-        if (scene.get() && scene->GetFramework())
-            disconnect(scene->GetFramework()->Frame(), SIGNAL(Updated(float)), this, SLOT(OnUpdate(float)));
+        SetExecuting(false);
     }
 }
 
-void RemoveCommand::OnUpdate(float frametime)
+void RemoveCommand::Update(float frametime)
 {
     ScenePtr scene = scene_.lock();
     if (scene.get() && !pendingIds_.isEmpty())
@@ -656,7 +669,10 @@ void RemoveCommand::OnUpdate(float frametime)
         }
     }
     else
-        Execute(false);
+    {
+        pendingIds_.clear();
+        SetExecuting(false);
+    }
 }
 
 // RenameCommand
@@ -927,15 +943,15 @@ bool TransformCommand::mergeWith(const QUndoCommand *other)
 // GroupEntitiesCommand
 
 GroupEntitiesCommand::GroupEntitiesCommand(const QList<EntityWeakPtr> &entities, EntityIdChangeTracker * tracker, const QString oldGroupName, const QString newGroupName, QUndoCommand *parent) :
+    TundraUndoCommand(parent),
     tracker_(tracker),
     oldGroupName_(oldGroupName),
-    newGroupName_(newGroupName),
-    QUndoCommand(parent)
+    newGroupName_(newGroupName)
 {
     QString text;
     text += oldGroupName.isEmpty() ? "* Group " : "* Ungroup ";
     text += QString("%1").arg(entities.size());
-    text += entities.size() > 1 ? " entities " : " entity ";
+    text += entities.size() > 1 ? " Entities " : " Entity ";
     text += !oldGroupName.isEmpty() ? QString("from %1").arg(oldGroupName) : "";
     text += !newGroupName.isEmpty() ? QString("to %1").arg(newGroupName) : "";
     setText(text);
@@ -965,7 +981,9 @@ void GroupEntitiesCommand::DoGroupUngroup(QString groupName)
     ScenePtr scene = scene_.lock();
     if (!scene.get())
         return;
-    
+ 
+    SetExecuting(true);
+
     foreach(entity_id_t i, entityIds_)
     {
         entity_id_t id = tracker_->RetrieveId(i);
@@ -973,6 +991,8 @@ void GroupEntitiesCommand::DoGroupUngroup(QString groupName)
         if (entity)
             entity->SetGroup(groupName);
     }
+
+    SetExecuting(false);
 }
 
 /*

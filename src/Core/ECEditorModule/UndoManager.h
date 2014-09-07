@@ -59,6 +59,9 @@ public:
     /// Returns a pointer to the entity ID change tracker
     EntityIdChangeTracker *Tracker() const;
 
+    /// Returns if any command inheriting TundraUndoCommand is currently executing.
+    bool CommandsExecuting() const;
+
     /// Return command by type. See UndoCommands.h for the Tundra types.
     template <typename T>
     QList<const T*> Commands() const

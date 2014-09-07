@@ -8,9 +8,11 @@
 #include "DebugOperatorNew.h"
 
 #include "SceneTreeWidgetItems.h"
+#include "SceneTreeWidget.h"
 #include "SceneStructureWindow.h"
 
 #include "Entity.h"
+#include "UniqueIdGenerator.h"
 #include "AssetReference.h"
 #include "IAsset.h"
 #include "IAssetBundle.h"
@@ -34,24 +36,33 @@ namespace
 EntityGroupItem::EntityGroupItem(const QString &groupName) :
     name(groupName)
 {
+    setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
     setTextColor(0, Qt::black);
     setTextColor(1, QColor(68,68,68));
 
-    UpdateText();
+    setText(0, "Group: " + name);
 }
 
 EntityGroupItem::~EntityGroupItem()
 {
     // Don't leave children free-floating.
     if (treeWidget())
+    {
         foreach(QTreeWidgetItem *child, takeChildren())
             treeWidget()->addTopLevelItem(child);
+    }
 }
 
 void EntityGroupItem::UpdateText()
 {
     setText(0, "Group: " + name);
     setText(1, QString("%1 %2").arg(entityItems.size()).arg(entityItems.size() > 1 ? "Entities" : "Entity"));
+
+    // Groups should be hidde if it has no child node. This can happen when group items are moved to parent entities.
+    // In this case the group is still defined in the Entity but Entity parenting takes priority in the tree.
+    bool visible = (childCount() > 0);
+    if (isHidden() == visible)
+        setHidden(!visible);
 }
 
 void EntityGroupItem::AddEntityItems(QList<EntityItem*> eItems, bool checkParenting, bool addAsChild, bool updateText)
@@ -66,7 +77,12 @@ void EntityGroupItem::AddEntityItems(QList<EntityItem*> eItems, bool checkParent
 void EntityGroupItem::AddEntityItem(EntityItem *eItem, bool checkParenting, bool addAsChild, bool updateText)
 {
     if (entityItems.contains(eItem))
+    {
+        // Update visibility
+        if (updateText)
+            UpdateText();
         return;
+    }
 
     if (checkParenting)
     {
@@ -97,19 +113,56 @@ void EntityGroupItem::ClearEntityItems(bool updateText)
         UpdateText();
 }
 
-void EntityGroupItem::RemoveEntityItem(EntityItem *eItem)
+bool EntityGroupItem::ContainsAllItems(const QList<EntityItem*> &items)
 {
-    if (!entityItems.contains(eItem))
+    foreach(EntityItem *item, items)
+    {
+        if (!entityItems.contains(item))
+            return false;
+    }
+    return true;
+}
+
+void EntityGroupItem::RemoveEntityItem(EntityItem *item, bool updateText)
+{
+    if (!entityItems.contains(item))
         return;
 
-    EntityGroupItem *parentItem = eItem->Parent();
-    removeChild(eItem);
+    EntityGroupItem *parentItem = item->Parent();
+    removeChild(item);
 
     if (parentItem == this)
-        treeWidget()->addTopLevelItem(eItem);
+        treeWidget()->addTopLevelItem(item);
 
-    entityItems.removeAll(eItem);
-    UpdateText();
+    entityItems.removeAll(item);
+
+    if (updateText)
+        UpdateText();
+}
+
+void EntityGroupItem::RemoveAndReparentEntityItem(EntityItem *item, QTreeWidgetItem *newParent, bool updateText)
+{
+    if (entityItems.contains(item))
+    {
+        removeChild(item);
+        entityItems.removeAll(item);
+    }
+    if (newParent)
+    {
+        EntityGroupItem *newGroup = dynamic_cast<EntityGroupItem*>(newParent);
+        EntityItem *newEntity = dynamic_cast<EntityItem*>(newParent);
+        if (newGroup)
+            newGroup->AddEntityItem(item, false, true, updateText);
+        else if (newEntity)
+        {
+            newEntity->addChild(item);
+            newEntity->UpdateText();
+        }
+        else
+            newParent->addChild(item);
+    }
+    if (updateText)
+        UpdateText();
 }
 
 bool EntityGroupItem::operator <(const QTreeWidgetItem &rhs) const
@@ -131,6 +184,8 @@ EntityItem::EntityItem(const EntityPtr &entity, EntityGroupItem *parentItem) :
     ptr(entity),
     id(entity->Id())
 {
+    setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable | Qt::ItemIsDragEnabled);
+
     if (parentItem)
         parentItem->AddEntityItem(this);
 
@@ -148,7 +203,12 @@ void EntityItem::Acked(const EntityPtr &entity)
     ptr = entity;
     id = entity->Id();
 
-    SetText(entity.get());
+    UpdateText();
+}
+
+void EntityItem::UpdateText()
+{
+    SetText(ptr.lock().get());
 }
 
 void EntityItem::SetText(::Entity *entity)
@@ -181,6 +241,16 @@ void EntityItem::SetText(::Entity *entity)
             desc.append(" ");
         desc.append(temporaryText);
     }
+    QColor descColor = color;
+
+    // If no local/temp description, show number of children.
+    size_t numChildren = entity->NumChildren();
+    if (numChildren > 0)
+    {
+        desc = (numChildren > 1 ? QString("%1 Children").arg(numChildren) : "1 Child");
+        if (descColor == Qt::black)
+            descColor = QColor(68,68,68);
+    }
 
     if (text(0).compare(name, Qt::CaseSensitive) != 0)
         setText(0, name);
@@ -189,8 +259,8 @@ void EntityItem::SetText(::Entity *entity)
 
     if (textColor(0) != color)
         setTextColor(0, color);
-    if (!desc.isEmpty() && textColor(1) != color)
-        setTextColor(1, color);
+    if (!desc.isEmpty() && textColor(1) != descColor)
+        setTextColor(1, descColor);
 }
 
 EntityGroupItem *EntityItem::Parent() const
@@ -208,45 +278,61 @@ entity_id_t EntityItem::Id() const
     return id;
 }
 
-bool EntityItem::operator <(const QTreeWidgetItem &rhs) const
+bool EntityItem::operator <(const QTreeWidgetItem &other) const
 {
     PROFILE(EntityItem_OperatorLessThan)
 
     // Entities never go before groups, even when sorting by name.
-    const EntityGroupItem *group = dynamic_cast<const EntityGroupItem*>(&rhs);
+    const EntityGroupItem *group = dynamic_cast<const EntityGroupItem*>(&other);
     if (group)
         return true;
 
-    // Cannot trust to treeWidget()->sortColumn() here due to our hackish approach:
-    // no separate tree widget columns for ID and Name, sort column is only considered
-    // as metadata.
-    SceneStructureWindow *w = qobject_cast<SceneStructureWindow *>(treeWidget()->parent());
-    const int criteria = w ? (int)w->SortingCriteria() : treeWidget()->sortColumn();
+    SceneTreeWidget *tree = qobject_cast<SceneTreeWidget*>(treeWidget());
+    if (!tree)
+        return false;
 
-    // Optimize to cast and check id without string parsing
-    if (criteria == 0)
+    // We can only compare two EntityItems. However this can be a Component/AttributeItem
+    // when Entity has children. In this case, those alway come before EntityItem so return true.
+    const EntityItem *otherItem = dynamic_cast<const EntityItem*>(&other);
+    if (!otherItem || !otherItem->Entity() || ptr.expired())
+        return true;
+
+    const SceneStructureWindow::SortCriteria criteria = tree->SortingCriteria();
+
+    if (criteria == SceneStructureWindow::SortByType || criteria == SceneStructureWindow::SortById)
     {
-        const EntityItem *other = dynamic_cast<const EntityItem*>(&rhs);
-        if (other)
-            return id < other->Id();
+        entity_id_t id_other = otherItem->Id();
+        if (criteria == SceneStructureWindow::SortById)
+            return id < id_other;
+        else
+        {
+            bool replicated = (id < UniqueIdGenerator::FIRST_LOCAL_ID);
+            bool replicated_other = (id_other < UniqueIdGenerator::FIRST_LOCAL_ID);
+            bool temp = Entity()->IsTemporary();
+            bool temp_other = otherItem->Entity()->IsTemporary();
+
+            if ((replicated && !replicated_other) || (!temp && temp_other))
+                return false;
+            else if ((!replicated && replicated_other) || (temp && !temp_other))
+                return true;
+            // Both replicated, local or temp.
+            else
+                return id < id_other;
+        }
     }
-
-    switch(criteria)
+    else if (criteria == SceneStructureWindow::SortByName)
     {
-    case 0: // ID
-        return text(0).split(" ")[0].toUInt() < rhs.text(0).split(" ")[0].toUInt();
-    case 1: // Name
-    {
-        const QStringList lhsText = text(0).split(" ");
-        const QStringList rhsText = rhs.text(0).split(" ");
-        if (lhsText.size() > 1 && rhsText.size() > 1)
-            return lhsText[1].localeAwareCompare(rhsText[1]) < 0;
+        // Fast route for strings. Its more expensive to fetch EC_Name
+        // and the name attribute from both.
+        const QStringList text_me = text(0).split(" ");
+        const QStringList text_other = other.text(0).split(" ");
+        if (text_me.size() > 1 && text_other.size() > 1)
+            return (text_me[1].localeAwareCompare(text_other[1]) < 0);
         else
             return false;
     }
-    default:
-        return QTreeWidgetItem::operator <(rhs);
-    }
+    else
+        return QTreeWidgetItem::operator <(other);
 }
 
 // ComponentItem
@@ -259,6 +345,7 @@ ComponentItem::ComponentItem(const ComponentPtr &comp, EntityItem *parent) :
     typeName(comp->TypeName()),
     name(comp->Name())
 {
+    setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
     SetText(comp.get());
 }
 

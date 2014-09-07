@@ -25,6 +25,45 @@ typedef QList<TransformAttributeWeakPtr> TransformAttributeWeakPtrList;
 class EC_DynamicComponent;
 class EntityIdChangeTracker;
 
+class ECEDITOR_MODULE_API TundraUndoCommand : public QObject, public QUndoCommand
+{
+    Q_OBJECT
+
+public:
+    /// @note Framework needs to only be passed if you want automatic per frame Update invokation.
+    TundraUndoCommand(QUndoCommand *parent, Framework *framework = 0);
+
+    /// Returns if this command is currently executing.
+    bool IsExecuting() const;
+
+signals:
+    /// Emitted before command starts execution.
+    void Starting();
+
+    /// Emitted after command has stopped executing.
+    void Finished();
+
+protected:
+    /// Sets executing state and emits Starting and Finished signals.
+    /** @note You should call this before doing any operations on the target(s)
+        this command is manipulating. */
+    void SetExecuting(bool executing);
+
+    /// Override this function if the command does per frame processing.
+    /** This function will be called each frame while execution is ongoing.
+        @see SetExecuting.*/
+    virtual void Update(float frametime) {}
+
+private slots:
+    void OnUpdate(float frametime);
+
+private:
+    /// @note This can be null if not passed in ctor. Don't use blindly.
+    Framework *framework_;
+
+    bool executing_;
+};
+
 /// Base/interface class for attribute editing command implementations.
 class ECEDITOR_MODULE_API IEditAttributeCommand : public QUndoCommand
 {
@@ -348,7 +387,7 @@ public:
     bool temp_; ///< Temporary state of the entity
 };
 
-class ECEDITOR_MODULE_API RemoveCommand : public QObject, public QUndoCommand
+class ECEDITOR_MODULE_API RemoveCommand : public TundraUndoCommand
 {
     Q_OBJECT
 
@@ -381,26 +420,12 @@ public:
     /// QUndoCommand override
     void redo();
 
-    /// Removes if this command is currently executing.
-    bool IsExecuting() const;
-
     /// Return how many Entities are still pending removal.
     int PendingEntityRemoves() const;
 
-signals:
-    /// Emitted before first entity/component is removed from the scene.
-    void Starting();
-
-    /// Emitted after entity/component removal is done.
-    /** @note As this is done incrementally, not in a single blocking call,
-        all targets might not be removed at this point if the user executed a
-        undo mid removal. */
-    void Stopped();
-
-private slots:
-    void OnUpdate(float frametime);
-
-    void Execute(bool executing);
+protected:
+    /// TundraUndoCommand override.
+    void Update(float frametime);
 
 private:
     void Initialize(const QList<EntityWeakPtr> &entities, const QList<ComponentWeakPtr> &components);
@@ -416,7 +441,6 @@ private:
     QDomDocument componentsDocument_; ///< XML document containing data about the components to be removed
 
     EntityIdList pendingIds_;
-    bool executing_;
 };
 
 /// Represents a rename operation over an entity or a component
@@ -523,10 +547,10 @@ public:
     int nItems_;
 };
 
-class ECEDITOR_MODULE_API GroupEntitiesCommand : public QUndoCommand
+class ECEDITOR_MODULE_API GroupEntitiesCommand : public TundraUndoCommand
 {
 public:
-    GroupEntitiesCommand(const QList<EntityWeakPtr> &entities, EntityIdChangeTracker * tracker, const QString oldGroupName, const QString newGroupName, QUndoCommand *parent = 0);
+    GroupEntitiesCommand(const QList<EntityWeakPtr> &entities, EntityIdChangeTracker *tracker, const QString oldGroupName, const QString newGroupName, QUndoCommand *parent = 0);
 
     /// Internal QUndoCommand unique ID
     enum { Id = 110 };

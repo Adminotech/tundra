@@ -34,6 +34,7 @@ namespace
     const ConfigData cShowGroupsSetting(ConfigAPI::FILE_FRAMEWORK, "Scene Structure Window", "Show Groups", true);
     const ConfigData cShowComponentsSetting(ConfigAPI::FILE_FRAMEWORK, "Scene Structure Window", "Show Components", true);
     const ConfigData cAttributeVisibilitySetting(ConfigAPI::FILE_FRAMEWORK, "Scene Structure Window", "Attribute Visibility", SceneStructureWindow::ShowAssetReferences);
+    const ConfigData cSortCriteriaSetting(ConfigAPI::FILE_FRAMEWORK, "Scene Structure Window", "Sort Criteria", SceneStructureWindow::SortByType);
 
     inline void SetTreeWidgetItemVisible(QTreeWidgetItem *item, bool visible)
     {
@@ -56,13 +57,13 @@ SceneStructureWindow::SceneStructureWindow(Framework *fw, QWidget *parent) :
     attributeVisibility(ShowAssetReferences),
     treeWidget(0),
     expandAndCollapseButton(0),
-    searchField(0),
-    sortingCriteria(SortById)
+    searchField(0)
 {
     ConfigAPI &cfg = *framework->Config();
     showGroups = cfg.DeclareSetting(cShowGroupsSetting).toBool();
     showComponents = cfg.DeclareSetting(cShowComponentsSetting).toBool();
     attributeVisibility = static_cast<AttributeVisibilityType>(cfg.DeclareSetting(cAttributeVisibilitySetting).toUInt());
+    sortingCriteria = static_cast<SortCriteria>(cfg.DeclareSetting(cSortCriteriaSetting).toUInt());
 
     addEntitiesTimer_.setSingleShot(true);
     connect(&addEntitiesTimer_, SIGNAL(timeout()), this, SLOT(ProcessPendingNewEntities()));
@@ -87,9 +88,11 @@ SceneStructureWindow::SceneStructureWindow(Framework *fw, QWidget *parent) :
 
     QLabel *sortLabel = new QLabel(tr("Sort by"), this);
     QComboBox *sortComboBox = new QComboBox(this);
-    sortComboBox->addItem(tr("ID"));
+    sortComboBox->addItem(tr("Type"));
+    sortComboBox->addItem(tr("Id"));
     sortComboBox->addItem(tr("Name"));
     sortComboBox->setFixedHeight(20);
+    sortComboBox->setCurrentIndex(sortingCriteria);
 
     groupCheckBox = new QCheckBox(tr("Groups"), this);
     groupCheckBox->setChecked(showGroups);
@@ -102,7 +105,7 @@ SceneStructureWindow::SceneStructureWindow(Framework *fw, QWidget *parent) :
     attributeComboBox->addItem(tr("None"), DoNotShowAttributes);
     attributeComboBox->addItem(tr("Assets"), ShowAssetReferences);
     attributeComboBox->addItem(tr("Dynamic"), ShowDynamicAttributes);
-//    attributeComboBox->addItem(tr("All"), ShowAllAttributes); /**< @todo Disabled temporarily until the performance problems have been solved. */
+    //attributeComboBox->addItem(tr("All"), ShowAllAttributes); /**< @todo Disabled temporarily until the performance problems have been solved. */
     attributeComboBox->setCurrentIndex(attributeVisibility);
 
     undoButton_ = new QToolButton();
@@ -148,7 +151,7 @@ SceneStructureWindow::SceneStructureWindow(Framework *fw, QWidget *parent) :
     connect(attributeComboBox, SIGNAL(currentIndexChanged(int)), SLOT(SetAttributeVisibilityInternal(int)));
     connect(groupCheckBox, SIGNAL(toggled(bool)), SLOT(ShowGroups(bool)));
     connect(componentCheckBox, SIGNAL(toggled(bool)), SLOT(ShowComponentsInternal(bool)));
-    connect(sortComboBox, SIGNAL(currentIndexChanged(int)), SLOT(Sort(int)));
+    connect(sortComboBox, SIGNAL(currentIndexChanged(int)), SLOT(SortCriterialChanged(int)));
     connect(searchField, SIGNAL(textEdited(const QString &)), SLOT(Search(const QString &)));
     connect(expandAndCollapseButton, SIGNAL(clicked()), SLOT(ExpandOrCollapseAll()));
     connect(treeWidget, SIGNAL(itemCollapsed(QTreeWidgetItem*)), SLOT(CheckTreeExpandStatus(QTreeWidgetItem*)));
@@ -162,7 +165,8 @@ SceneStructureWindow::~SceneStructureWindow()
     ConfigAPI &cfg = *framework->Config();
     cfg.Write(cShowGroupsSetting, cShowGroupsSetting.key, showGroups);
     cfg.Write(cShowComponentsSetting, cShowComponentsSetting.key, showComponents);
-    cfg.Write(cAttributeVisibilitySetting, cAttributeVisibilitySetting.key, attributeVisibility);
+    cfg.Write(cAttributeVisibilitySetting, cAttributeVisibilitySetting.key, static_cast<uint>(attributeVisibility));
+    cfg.Write(cSortCriteriaSetting, cSortCriteriaSetting.key, static_cast<uint>(sortingCriteria));
 
     SetShownScene(ScenePtr());
 }
@@ -782,7 +786,6 @@ EntityGroupItem *SceneStructureWindow::GetOrCreateEntityGroupItem(const QString 
     if (!groupItem)
     {
         groupItem = new EntityGroupItem(name);
-        groupItem->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
         entityGroupItems[name] = groupItem;
 
         SetTreeWidgetItemVisible(groupItem, showGroups);
@@ -901,16 +904,12 @@ SceneStructureWindow::ParentChildPair SceneStructureWindow::AddEntity(Entity* en
     if (EntityItemOfEntity(entity))
         return result;
 
-    const Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable;
-
     EntityGroupItem *groupItem = 0;
     const QString groupName = entity->Group();
     if (!groupName.isEmpty() && showGroups)
         groupItem = GetOrCreateEntityGroupItem(groupName, addToTreeRoot);
 
     EntityItem *entityItem = new EntityItem(entity->shared_from_this(), 0);
-    entityItem->setFlags(flags);
-
     entityItems[entity] = entityItem;
     entityItemsById[entity->Id()] = entityItem;
 
@@ -1346,10 +1345,15 @@ EntityItem *SceneStructureWindow::UpdateEntityParent(Entity* entity, bool moveto
     if (!eItem)
         return 0;
 
-    /// @todo Will not currently work with groups,
-    if (eItem->Parent())
-        return 0;
+    // Note that Group and Parent swapping is not perfect. When they are mixed together
+    // the UI will lie about how many Entities are in a group. It will show actual non parented
+    // number of group entities, instead of the whole group. This cant be changed with the
+    // current EntityGroupItem data structure. At this point its a minor UI bug and should be
+    // less significant as we go forward and move to proper Entity parenting instead of grouping.
 
+    // Note that this function works under the assumption that the Entity level child/parent
+    // swapping has already occurred. This function should be invoked only by the
+    // EntityParentChanged signal or when initializing state.
     EntityPtr parentEntity = entity->Parent();
     if (parentEntity)
     {
@@ -1357,34 +1361,56 @@ EntityItem *SceneStructureWindow::UpdateEntityParent(Entity* entity, bool moveto
         if (!peItem)
             return 0;
 
-        if (eItem->parent() == 0)
-            treeWidget->takeTopLevelItem(treeWidget->indexOfTopLevelItem(eItem));
+        EntityGroupItem *exGroup = eItem->Parent();
+        if (exGroup)
+            exGroup->RemoveAndReparentEntityItem(eItem, peItem, true);
         else
-            eItem->parent()->takeChild(eItem->parent()->indexOfChild(eItem));
+        {
+            if (eItem->parent() == 0)
+                treeWidget->takeTopLevelItem(treeWidget->indexOfTopLevelItem(eItem));
+            else
+            {
+                EntityItem *exParent = dynamic_cast<EntityItem*>(eItem->parent());
+                if (exParent)
+                    exParent->UpdateText();
 
-        peItem->addChild(eItem);
+                eItem->parent()->takeChild(eItem->parent()->indexOfChild(eItem));
+            }
+            peItem->addChild(eItem);
+            peItem->UpdateText();
+        }
         return peItem;
     }
-    else if (movetoRootIfUnparented)
+    else if (movetoRootIfUnparented && eItem->parent())
     {
-        if (eItem->parent())
+        EntityItem *exParent = dynamic_cast<EntityItem*>(eItem->parent());
+        if (exParent)
+            exParent->UpdateText();
+
+        eItem->parent()->takeChild(eItem->parent()->indexOfChild(eItem));
+
+        // Add to group or to root
+        QString groupName = (eItem->Entity() ? eItem->Entity()->Group() : "");
+        if (!groupName.isEmpty())
         {
-            eItem->parent()->takeChild(eItem->parent()->indexOfChild(eItem));
-            treeWidget->addTopLevelItem(eItem);
+            EntityGroupItem *group = GetOrCreateEntityGroupItem(groupName, true);
+            group->AddEntityItem(eItem, false, true, true);
         }
+        else
+            treeWidget->addTopLevelItem(eItem);
     }
     return 0;
 }
 
-void SceneStructureWindow::Sort(int column)
+void SceneStructureWindow::SortCriterialChanged(int criteria)
 {
-    sortingCriteria = (SortCriteria)column;
-    SortBy(sortingCriteria, treeWidget->header()->sortIndicatorOrder());
+    SortBy(static_cast<SortCriteria>(criteria), treeWidget->header()->sortIndicatorOrder());
 }
 
 void SceneStructureWindow::SortBy(SortCriteria criteria, Qt::SortOrder order)
 {
-    treeWidget->sortItems((int)criteria, order);
+    sortingCriteria = criteria;
+    treeWidget->SortBy(sortingCriteria, order);
 }
 
 void SceneStructureWindow::Search(const QString &filter)

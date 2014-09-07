@@ -10,6 +10,8 @@
 #include "SceneFwd.h"
 #include "AssetFwd.h"
 
+#include "SceneStructureWindow.h"
+
 #include <QTreeWidget>
 #include <QPointer>
 #include <QMenu>
@@ -26,6 +28,7 @@ class UndoManager;
 
 struct InvokeItem;
 struct SceneTreeWidgetSelection;
+struct SceneTreeWidgetToolTip;
 
 /// Context menu for SceneTreeWidget.
 /// @cond PRIVATE
@@ -72,6 +75,12 @@ public:
 
     /// @note Available only after the scene is set.
     UndoManager *GetUndoManager() const;
+
+    /// Sort by criteria.
+    void SortBy(SceneStructureWindow::SortCriteria criteria, Qt::SortOrder order);
+
+    /// Returns current sort criteria.
+    SceneStructureWindow::SortCriteria SortingCriteria() const { return sortingCriteria; }
 
 protected:
     /// QAbstractItemView override.
@@ -140,7 +149,12 @@ private:
         This must be cleared before starting any assets saving operations. */
     QSet<QString> savedAssets;
 
+    /// Tooltips are rendered at the bottom of the tree view. If you set this be sure to invoke a paint even.
+    SceneTreeWidgetToolTip *toolTip;
+
     bool fetchReferences; ///< if true, when saving assets, also saves references
+
+    SceneStructureWindow::SortCriteria sortingCriteria;
 
 private slots:
     /// Opens selected entities in EC editor window. An existing editor window is used if possible.
@@ -174,11 +188,11 @@ private slots:
     /// Deletes selected entities, groups and/or components.
     void Delete();
 
-    // Delete command starting execution.
-    void OnDeleteStarting();
+    // Command starting execution.
+    void OnCommandStarting();
 
-    // Delete command stopping execution.
-    void OnDeleteStopped();
+    // Command finished execution.
+    void OnCommmandFinished();
 
     /// Copies selected entities as XML to clipboard.
     void Copy();

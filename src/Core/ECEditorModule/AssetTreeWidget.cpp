@@ -65,55 +65,61 @@ void AssetTreeWidget::contextMenuEvent(QContextMenuEvent *e)
 void AssetTreeWidget::dragEnterEvent(QDragEnterEvent *e)
 {
     const QMimeData *data = e->mimeData();
-    if (data->hasUrls())
+    if (!data->hasUrls())
+        return;
+
+    foreach(QUrl url, data->urls())
     {
-        foreach(QUrl url, data->urls())
-            if (!framework->Asset()->GetResourceTypeFromAssetRef(url.path()).isEmpty())
-                e->acceptProposedAction();
+        if (!framework->Asset()->GetResourceTypeFromAssetRef(url.path()).isEmpty())
+        {
+            e->acceptProposedAction();
+            break;
+        }
     }
-    else
-        QTreeWidget::dragEnterEvent(e);
 }
 
 void AssetTreeWidget::dragMoveEvent(QDragMoveEvent *e)
 {
     const QMimeData *data = e->mimeData();
-    if (data->hasUrls())
+    if (!data->hasUrls())
+        return;
+
+    foreach(QUrl url, data->urls())
     {
-        foreach(QUrl url, data->urls())
-            if (!framework->Asset()->GetResourceTypeFromAssetRef(url.path()).isEmpty())
-                e->acceptProposedAction();
+        if (!framework->Asset()->GetResourceTypeFromAssetRef(url.path()).isEmpty())
+        {
+            e->acceptProposedAction();
+            break;
+        }
     }
-    else
-        QTreeWidget::dragMoveEvent(e);
 }
 
 void AssetTreeWidget::dropEvent(QDropEvent *e)
 {
     const QMimeData *data = e->mimeData();
-    if (data->hasUrls())
+    if (!data->hasUrls())
+        return;
+    
+    QStringList filenames;
+    foreach(QUrl url, data->urls())
     {
-        QStringList filenames;
-        foreach(QUrl url, data->urls())
-            if (!framework->Asset()->GetResourceTypeFromAssetRef(url.path()).isEmpty())
-            {
-                QString filename = url.path();
-#ifdef _WINDOWS
-                // We have '/' as the first char on windows and the filename
-                // is not identified as a file properly. But on other platforms the '/' is valid/required.
-                filename = filename.mid(1);
-#endif
-                filenames << filename;
-            }
-
-        if (!filenames.isEmpty())
+        if (!framework->Asset()->GetResourceTypeFromAssetRef(url.path()).isEmpty())
         {
-            e->acceptProposedAction();
-            Upload(filenames);
+            QString filename = url.path();
+#ifdef _WINDOWS
+            // We have '/' as the first char on windows and the filename
+            // is not identified as a file properly. But on other platforms the '/' is valid/required.
+            filename = filename.mid(1);
+#endif
+            filenames << filename;
         }
     }
-    else
-        QTreeWidget::dropEvent(e);
+
+    if (!filenames.isEmpty())
+    {
+        e->acceptProposedAction();
+        Upload(filenames);
+    }
 }
 
 void AssetTreeWidget::AddAvailableActions(QMenu *menu)

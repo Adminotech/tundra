@@ -55,7 +55,7 @@ ECBrowser::ECBrowser(Framework *framework, ECEditorWindow *editorWindow, QWidget
     framework_(framework)
 {
     setMouseTracking(true);
-    setAcceptDrops(true);
+    setAcceptDrops(false);
     setResizeMode(QtTreePropertyBrowser::Interactive);
     setContextMenuPolicy(Qt::CustomContextMenu);
     connect(this, SIGNAL(customContextMenuRequested(const QPoint &)), SLOT(ShowComponentContextMenu(const QPoint &)));
@@ -63,8 +63,8 @@ ECBrowser::ECBrowser(Framework *framework, ECEditorWindow *editorWindow, QWidget
     assert(treeWidget_);
     treeWidget_->setSortingEnabled(true);
     treeWidget_->setFocusPolicy(Qt::StrongFocus);
-    treeWidget_->setAcceptDrops(true);
-    treeWidget_->setDragDropMode(QAbstractItemView::DropOnly);
+    treeWidget_->setAcceptDrops(false);
+    treeWidget_->setDragDropMode(QAbstractItemView::NoDragDrop);
     treeWidget_->header()->setSortIndicator(0, Qt::AscendingOrder);
 
     connect(treeWidget_, SIGNAL(currentItemChanged(QTreeWidgetItem*, QTreeWidgetItem*)),
@@ -212,157 +212,9 @@ void ECBrowser::ExpandOrCollapseAll()
     }
 }
 
-void ECBrowser::dragEnterEvent(QDragEnterEvent *event)
-{
-    ///\todo Regression, "application/vnd.inventory.item" deprecated, reimplement
-    QTreeWidgetItem *item = treeWidget_->itemAt(event->pos().x(), event->pos().y() - 20);
-    if (event->mimeData()->hasFormat("application/vnd.inventory.item") && item && !item->childCount())
-        event->acceptProposedAction();
-}
-
-void ECBrowser::dropEvent(QDropEvent *event)
-{
-    ///\todo Regression, "application/vnd.inventory.item" deprecated, reimplement
-    QTreeWidgetItem *item = treeWidget_->itemAt(event->pos().x(), event->pos().y() - 20);
-    if(item)
-        dropMimeData(item, 0, event->mimeData(), event->dropAction());
-}
-
-void ECBrowser::dragMoveEvent(QDragMoveEvent *event)
-{
-    ///\todo Regression, "application/vnd.inventory.item" deprecated, reimplement
-    if (event->mimeData()->hasFormat("application/vnd.inventory.item"))
-    {
-        QTreeWidgetItem *item = treeWidget_->itemAt(event->pos().x(), event->pos().y() - 20);
-        if(item && !item->childCount())
-        {
-            event->accept();
-            return;
-        }
-    }
-    event->ignore();
-}
-
 void ECBrowser::focusInEvent(QFocusEvent *event)
 {
     QtTreePropertyBrowser::focusInEvent(event);
-}
-
-bool ECBrowser::dropMimeData(QTreeWidgetItem * /*item*/, int /*index*/, const QMimeData * /*data*/, Qt::DropAction /*action*/)
-{
-    return false;
-
-    ///\todo Regression. Need to reimplement this so that we can drop any kind of strings to ECEditor and not just uuids. -jj.
-#if 0
-    if (action == Qt::IgnoreAction)
-        return true;
-
-    if (!data->hasFormat("application/vnd.inventory.item"))
-        return false;
-
-    QByteArray encodedData = data->data("application/vnd.inventory.item");
-    QDataStream stream(&encodedData, QIODevice::ReadOnly);
-
-    QString asset_id;
-    while(!stream.atEnd())
-    {
-        QString mimedata, asset_type, item_id, name;
-        stream >> mimedata;
-
-        QStringList list = mimedata.split(";", QString::SkipEmptyParts);
-        if (list.size() < 4)
-            continue;
-
-        item_id = list.at(1);
-        if (!RexUUID::IsValid(item_id.toStdString()))
-            continue;
-
-        name = list.at(2);
-        asset_id = list.at(3);
-    }
-
-    if (!RexUUID::IsValid(asset_id.toStdString()))
-        return false;
-
-    QTreeWidgetItem *rootItem = item;
-    while(rootItem->parent())
-        rootItem = rootItem->parent();
-
-    TreeItemToComponentGroup::iterator iter = componentGroups_.find(rootItem);
-    if(iter != componentGroups_.end())
-    {
-        for(uint i = 0; i < (*iter)->components_.size(); i++)
-        {
-            ComponentWeakPtr compWeak = (*iter)->components_[i];
-            if(compWeak.expired())
-                continue;
-
-            QStringList names;
-            names << item->text(0);
-            if(item->parent())
-                names << item->parent()->text(0);
-
-            // Try to find the right attribute.
-            IAttribute *attr = 0;
-            for(uint i = 0; i < names.size(); i++)
-            {
-                attr = compWeak.lock()->GetAttribute(names[i]);
-                if(attr)
-                    break;
-            }
-            if(!attr)
-                continue;
-            if(attr->TypeName().compare("string", Qt::CaseInsensitive) == 0)
-            {
-                Attribute<QString> *attribute = dynamic_cast<Attribute<QString> *>(attr);
-                if(attribute)
-                    attribute->Set(QString::fromStdString(asset_id.toStdString()), AttributeChange::Default);
-            }
-            else if(attr->TypeName().compare("qvariant", Qt::CaseInsensitive) == 0)
-            {
-                Attribute<QVariant> *attribute = dynamic_cast<Attribute<QVariant> *>(attr);
-                if(attribute)
-                {
-                    if(attribute->Get().type() == QVariant::String)
-                    {
-                        attribute->Set(asset_id, AttributeChange::Default);
-                    }
-                }
-            }
-            else if(attr->TypeName().compare("qvariantlist", Qt::CaseInsensitive) == 0)
-            {
-                Attribute<QVariantList > *attribute = dynamic_cast<Attribute<QVariantList > *>(attr);
-                if(attribute)
-                {
-                    // We asume that item's name is form of "[0]","[1]" etc. We need to cut down those first and last characters
-                    // to able to get real index number of that item that is cause sorting can make the item order a bit odd.
-                    QString indexText = "";
-                    QString itemText = item->text(0);
-                    for(uint i = 1; i < itemText.size() - 1; i++)
-                        indexText += itemText[i];
-                    bool ok;
-                    int index = indexText.toInt(&ok);
-                    if(!ok)
-                        return false;
-
-                    QVariantList variants = attribute->Get();
-                    if(variants.size() > index)
-                        variants[index] = asset_id;
-                    else if(variants.size() == index)
-                        variants.push_back(asset_id);
-                    else
-                        return false;
-
-                    attribute->Set(variants, AttributeChange::Default);
-                }
-            }
-        }
-    }
-    else
-        return false;
-
-    return true;
-#endif
 }
 
 void ECBrowser::ShowComponentContextMenu(const QPoint &pos)

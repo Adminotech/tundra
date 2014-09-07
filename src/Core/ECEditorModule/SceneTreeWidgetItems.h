@@ -25,8 +25,13 @@ public:
     /// If @c eItem is attached to another group, it will be removed from that group.
     void AddEntityItems(QList<EntityItem*> eItems, bool checkParenting, bool addAsChild, bool updateText);
     void AddEntityItem(EntityItem *eItem, bool checkParenting = true, bool addAsChild = true, bool updateText = true);
-    void RemoveEntityItem(EntityItem *eItem);
+    
+    void RemoveEntityItem(EntityItem *item, bool updateText = true);
+    void RemoveAndReparentEntityItem(EntityItem *item, QTreeWidgetItem *newParent, bool updateText = true);
+
     void ClearEntityItems(bool updateText);
+
+    bool ContainsAllItems(const QList<EntityItem*> &items);
 
     QList<EntityItem *> entityItems;
 
@@ -50,6 +55,9 @@ public:
 
     /// Entity was acked. Updates ptr, id and text.
     void Acked(const EntityPtr &entity);
+
+    /// Calls SetText with current entity ptr.
+    void UpdateText();
 
     /// Decorates the item (text + color) accordingly to the entity information.
     /** @param entity Entity which the item represents. */
@@ -260,4 +268,63 @@ struct AssetTreeWidgetSelection
 
     QList<AssetItem *> assets; ///< List of selected assets.
     QList<AssetStorageItem *> storages; ///< List of selected asset storages.
+};
+
+struct SceneTreeWidgetToolTip
+{
+    QString message;
+    QString warning;
+    
+    QColor foregroundWarning;
+    QColor foreground;
+    QColor backgroud;
+    
+    QFont font;
+    QTextOption formatting;
+        
+    SceneTreeWidgetToolTip() :
+        foreground(68,68,68),
+        foregroundWarning(183, 131, 27),
+        backgroud(234,234,234)
+    {
+        formatting.setAlignment(Qt::AlignCenter);
+        formatting.setWrapMode(QTextOption::WordWrap);
+
+        font.setBold(true);
+#ifdef Q_OS_WIN
+        font.setFamily("Calibri");
+        font.setPixelSize(16);
+#else
+        font.setFamily("Arial");
+        font.setPixelSize(14);
+#endif        
+    }
+
+    bool IsEmpty() const
+    {
+        return message.isEmpty();
+    }
+
+    void Clear()
+    {
+        message = "";
+        warning = "";
+    }
+
+    void Set(const QString &msg)
+    {
+        message = msg;
+        foreground = QColor(68,68,68);
+    }
+
+    void SetError(const QString &msg)
+    {
+        message = msg;
+        foreground = QColor(198,55,72);
+    }
+
+    void SetWarning(const QString &msg)
+    {
+        warning = msg;
+    }
 };
