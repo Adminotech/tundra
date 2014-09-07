@@ -276,4 +276,7 @@ private slots:
 
     /// Ungroups entity or entities. If 'Ungroup' clicked onto a group, it will ungroup all entities within said group. Otherwise ungroups selected entity / entities
     void UngroupEntities();
+
+    /// Unparent selected entities.
+    void UnparentEntities();
 };

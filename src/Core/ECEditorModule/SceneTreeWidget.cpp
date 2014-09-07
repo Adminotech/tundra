@@ -353,11 +353,26 @@ void SceneTreeWidget::dropEvent(QDropEvent *e)
 
             if (!underMouse)
             {
+                QList<ParentEntitiesCommand::ParentParams> parenting;
                 foreach(EntityItem *selEntItem, sel.entities)
                 {
                     if (selEntItem->Entity() && selEntItem->Entity()->HasParent())
-                        selEntItem->Entity()->SetParent(EntityPtr());
+                    {
+                        ParentEntitiesCommand::ParentParams param;
+                        param.entity = selEntItem->Entity();
+                        param.oldParent = selEntItem->Entity()->Parent();
+
+                        parenting << param;
+                    }
                 }
+                if (!parenting.isEmpty())
+                {
+                    ParentEntitiesCommand *command = new ParentEntitiesCommand(parenting);
+                    connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+                    connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
+                    undoManager_->Push(command);
+                }
+
                 e->acceptProposedAction();
             }
             else
@@ -368,8 +383,9 @@ void SceneTreeWidget::dropEvent(QDropEvent *e)
                 {
                     if (!sel.entities.contains(entItem))
                     {
-                        e->acceptProposedAction();
                         EntityPtr parent = entItem->Entity();
+                        QList<ParentEntitiesCommand::ParentParams> parenting;
+
                         foreach(EntityItem *childCandidate, sel.entities)
                         {
                             if (!childCandidate->Entity())
@@ -378,10 +394,26 @@ void SceneTreeWidget::dropEvent(QDropEvent *e)
                             // It will log a error later on (SyncManager).
                             if (parent->IsLocal() && childCandidate->Entity()->IsReplicated())
                                 continue;
-                            childCandidate->Entity()->SetParent(parent);
+                            
+                            ParentEntitiesCommand::ParentParams param;
+                            param.entity = childCandidate->Entity();
+                            param.oldParent = childCandidate->Entity()->Parent();
+                            param.newParent = parent;
+
+                            parenting << param;
                         }
+                        if (!parenting.isEmpty())
+                        {
+                            ParentEntitiesCommand *command = new ParentEntitiesCommand(parenting);
+                            connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+                            connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
+                            undoManager_->Push(command);
+                        }
+
                         // Expand the parent item
                         entItem->setExpanded(true);
+
+                        e->acceptProposedAction();
                     }
                     return;
                 }
@@ -547,7 +579,7 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
 
     // "Edit", "Edit in new", "New component...", "Delete", "Copy", "Actions..." and "Functions..."
     // "Convert to local", "Convert to replicated", and "Temporary" actions are available only if we have selection.
-    QAction *editAction = 0, *editInNewAction = 0, *newComponentAction = 0, *deleteAction = 0, *deleteGroupsAction = 0,
+    QAction *editAction = 0, *editInNewAction = 0, *newComponentAction = 0, *deleteAction = 0, *deleteGroupsAction = 0, *unparentAction = 0,
         *renameAction = 0, *copyAction = 0, *saveAsAction = 0, *actionsAction = 0, *functionsAction = 0,
         *toLocalAction = 0, *toReplicatedAction = 0, *temporaryAction = 0, *groupEntitiesAction = 0, *ungroupEntitiesAction = 0;
 
@@ -558,6 +590,7 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         // Entity/Scene
         editAction = new QAction(tr("Edit"), menu);
         editInNewAction = new QAction(tr("Edit in new window"), menu);
+
         newComponentAction = new QAction(tr("New Component..."), menu);
         deleteAction = new QAction(tr("Delete"), menu);
         copyAction = new QAction(tr("Copy"), menu);
@@ -566,10 +599,24 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         temporaryAction = new QAction(tr("Temporary"), menu);
         temporaryAction->setCheckable(true);
         temporaryAction->setChecked(false);
+
         saveAsAction = new QAction(tr("Save as..."), menu);
         actionsAction = new QAction(tr("Actions..."), menu);
         functionsAction = new QAction(tr("Functions..."), menu);
         groupEntitiesAction = new QAction(tr("Group selected Entities..."), menu);
+
+        if (sel.HasEntitiesOnly())
+        {
+            bool allParented = true;
+            foreach(EntityItem *entItem, sel.entities)
+            {
+                allParented = (entItem && entItem->Entity() && entItem->Entity()->HasParent());
+                if (!allParented)
+                    break;
+            }
+            if (allParented)
+                unparentAction = new QAction(tr("Unparent selected Entities"), menu);
+        }
 
         // Groups
         if (sel.HasGroupsOnly())
@@ -609,6 +656,9 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         connect(toReplicatedAction, SIGNAL(triggered()), SLOT(ConvertEntityToReplicated()));
         connect(groupEntitiesAction, SIGNAL(triggered()), SLOT(GroupEntities()));
 
+        if (unparentAction)
+            connect(unparentAction, SIGNAL(triggered()), SLOT(UnparentEntities()));
+
         // Groups
         if (ungroupEntitiesAction)
             connect(ungroupEntitiesAction, SIGNAL(triggered()), SLOT(UngroupEntities()));
@@ -639,6 +689,8 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
             menu->addAction(deleteAction);
             menu->addAction(copyAction);
             menu->addAction(groupEntitiesAction);
+            if (unparentAction)
+                menu->addAction(unparentAction);
             if (ungroupEntitiesAction)
                 menu->addAction(ungroupEntitiesAction);
             menu->addAction(toLocalAction);
@@ -1237,7 +1289,9 @@ void SceneTreeWidget::OnCommmandFinished()
     // There can be various command executing, wait for all of
     // the to finish before turning sorting back on.
     if (!undoManager_->CommandsExecuting())
+    {
         setSortingEnabled(true);
+    }
 }
 
 void SceneTreeWidget::Copy()
@@ -2103,6 +2157,37 @@ void SceneTreeWidget::GroupEntities()
             undoManager_->Push(command);
         }
     }
+}
+
+void SceneTreeWidget::UnparentEntities()
+{
+    ScenePtr scn = scene.lock();
+    if (!scn)
+        return;
+        
+    SceneTreeWidgetSelection sel = SelectedItems();
+    if (!sel.HasEntitiesOnly())
+        return;
+
+    QList<ParentEntitiesCommand::ParentParams> parenting;
+    foreach(EntityItem *parented, sel.entities)
+    {
+        if (parented && parented->Entity() && parented->Entity()->HasParent())
+        {
+            ParentEntitiesCommand::ParentParams param;
+            param.entity = parented->Entity();
+            param.oldParent = parented->Entity()->Parent();
+
+            parenting << param;
+        }
+    }
+    if (parenting.isEmpty())
+        return;
+
+    ParentEntitiesCommand *command = new ParentEntitiesCommand(parenting);
+    connect(command, SIGNAL(Starting()), this, SLOT(OnCommandStarting()));
+    connect(command, SIGNAL(Finished()), this, SLOT(OnCommmandFinished()));
+    undoManager_->Push(command);
 }
 
 void SceneTreeWidget::UngroupEntities()

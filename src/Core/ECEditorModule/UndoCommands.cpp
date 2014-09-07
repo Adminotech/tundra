@@ -995,6 +995,54 @@ void GroupEntitiesCommand::DoGroupUngroup(QString groupName)
     SetExecuting(false);
 }
 
+// ParentEntitiesCommand
+
+ParentEntitiesCommand::ParentEntitiesCommand(const QList<ParentParams> &parenting, QUndoCommand *parent) :
+    TundraUndoCommand(parent),
+    parenting_(parenting)
+{
+    // Check from first parent pair if this is a unparenting operation.
+    // If pair.second is null ptr, its a unparenting operation.
+    int numTargets = parenting_.size();
+    const ParentParams &param = parenting_.first();
+    setText(QString("%1 %2")
+        .arg(param.newParent.expired() ? "* Unparent " : "* Parent ")
+        .arg(numTargets > 1 ? QString("%1 Entities").arg(numTargets) : "1 Entity"));
+}
+
+int ParentEntitiesCommand::id() const
+{
+    return Id;
+}
+
+void ParentEntitiesCommand::undo()
+{
+    SetExecuting(true);
+
+    for (int i=0, len=parenting_.size(); i<len; ++i)
+    {
+        const ParentParams &param = parenting_[i];
+        if (!param.entity.expired()) // Don't check if old parent expired, it can be null when undoing a parent set.
+            param.entity.lock()->SetParent(param.oldParent.lock());
+    }
+
+    SetExecuting(false);
+}
+
+void ParentEntitiesCommand::redo()
+{
+    SetExecuting(true);
+
+    for (int i=0, len=parenting_.size(); i<len; ++i)
+    {
+        const ParentParams &param = parenting_[i];
+        if (!param.entity.expired()) // Don't check if new parent expired, it will be null when unparenting.
+            param.entity.lock()->SetParent(param.newParent.lock());
+    }
+
+    SetExecuting(false);
+}
+
 /*
 PasteCommand::PasteCommand(QUndoCommand *parent) :
     QUndoCommand(parent)

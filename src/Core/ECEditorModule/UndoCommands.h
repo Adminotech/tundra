@@ -571,6 +571,34 @@ public:
     EntityIdList entityIds_; ///< List of target entity IDs
 };
 
+class ECEDITOR_MODULE_API ParentEntitiesCommand : public TundraUndoCommand
+{
+public:
+    struct ParentParams
+    {
+        EntityWeakPtr entity;
+        EntityWeakPtr oldParent;
+        EntityWeakPtr newParent;
+    };
+
+    /// Ctor.
+    /** @note This command uses weak ptrs. If any of the Entities involved will expire,
+        it will just result in unparenting/rooting the target entity. */
+    ParentEntitiesCommand(const QList<ParentParams> &parenting, QUndoCommand *parent = 0);
+
+    /// Internal QUndoCommand unique ID
+    enum { Id = 111 };
+
+    /// Returns this command's ID
+    int id () const;
+    /// QUndoCommand override
+    void undo();
+    /// QUndoCommand override
+    void redo();
+
+    QList<ParentParams> parenting_;
+};
+
 /*
 class ECEDITOR_MODULE_API PasteCommand : public QUndoCommand
 {
