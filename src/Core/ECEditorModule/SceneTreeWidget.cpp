@@ -174,6 +174,7 @@ void SceneTreeWidget::contextMenuEvent(QContextMenuEvent *e)
     // Create context menu and show it.
     SAFE_DELETE(contextMenu);
     contextMenu = new Menu(this);
+    contextMenu->setStyleSheet("QMenu::item#titleItem:disabled { color: rgb(188, 99, 22); }");
 
     AddAvailableActions(contextMenu);
 
@@ -594,13 +595,13 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
         newComponentAction = new QAction(tr("New Component..."), menu);
         deleteAction = new QAction(tr("Delete"), menu);
         copyAction = new QAction(tr("Copy"), menu);
-        toLocalAction = new QAction(tr("Convert to local"), menu);
-        toReplicatedAction = new QAction(tr("Convert to replicated"), menu);
+        toLocalAction = new QAction(tr("Convert to Local"), menu);
+        toReplicatedAction = new QAction(tr("Convert to Replicated"), menu);
         temporaryAction = new QAction(tr("Temporary"), menu);
         temporaryAction->setCheckable(true);
         temporaryAction->setChecked(false);
 
-        saveAsAction = new QAction(tr("Save as..."), menu);
+        saveAsAction = new QAction(tr("Save selection as..."), menu);
         actionsAction = new QAction(tr("Actions..."), menu);
         functionsAction = new QAction(tr("Functions..."), menu);
         groupEntitiesAction = new QAction(tr("Group selected Entities..."), menu);
@@ -676,6 +677,7 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
     }
 
     menu->addAction(newEntityAction);
+    menu->addSeparator();
 
     if (hasSelection)
     {
@@ -685,20 +687,24 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
 
         if (!sel.HasGroups())
         {
+            menu->addSeparator();
             menu->addAction(newComponentAction);
             menu->addAction(deleteAction);
             menu->addAction(copyAction);
+            menu->addAction(toLocalAction);
+            menu->addAction(toReplicatedAction);
+            menu->addAction(temporaryAction);
+
+            menu->addSeparator();
             menu->addAction(groupEntitiesAction);
             if (unparentAction)
                 menu->addAction(unparentAction);
             if (ungroupEntitiesAction)
                 menu->addAction(ungroupEntitiesAction);
-            menu->addAction(toLocalAction);
-            menu->addAction(toReplicatedAction);
-            menu->addAction(temporaryAction);
         }
-        else
+        else if (ungroupEntitiesAction || deleteGroupsAction)
         {
+            menu->addSeparator();
             if (ungroupEntitiesAction)
                 menu->addAction(ungroupEntitiesAction);
             if (deleteGroupsAction)
@@ -777,10 +783,10 @@ void SceneTreeWidget::AddAvailableEntityActions(QMenu *menu)
     if (temporaryAction)
         connect(temporaryAction, SIGNAL(toggled(bool)), SLOT(SetAsTemporary(bool)));
 
+    menu->addSeparator();
+
     if (pastePossible)
         menu->addAction(pasteAction);
-
-    menu->addSeparator();
 
     if (hasSelection)
         menu->addAction(saveAsAction);
