@@ -66,8 +66,8 @@ if (INSTALL_EXAMPLE_SCENES)
     setup_install_directory (${TUNDRA_BIN}/scenes)
 endif()
 
-setup_install_directory(${TUNDRA_BIN}/data)        # Data: ui, assets, etc
-setup_remove_file("data/assets/dummy.txt")         # Remove git dummy file from data/assets
+setup_install_directory(${TUNDRA_BIN}/data)
+setup_remove_file("data/assets/.gitignore")
 
 if (NOT ENABLE_TRANSLATIONS)
     setup_remove_directory("data/translations/")
