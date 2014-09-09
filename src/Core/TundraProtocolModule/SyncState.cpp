@@ -135,6 +135,19 @@ void SceneSyncState::SetParentScene(SceneWeakPtr scene)
     scene_ = scene;
 }
 
+EntitySyncState &SceneSyncState::GetOrCreateEntitySyncState(entity_id_t id)
+{
+    EntitySyncState &state = entities[id];
+    if (state.id == 0)
+    {
+        state.id = id;
+        state.weak = scene_.lock()->EntityById(id);
+        if (state.weak.expired())
+            LogError(QString("[SceneSyncState]: GetOrCreateEntitySyncState: Entity with id %1 not in scene.").arg(id));
+    }
+    return state;
+}
+
 void SceneSyncState::Clear()
 {
     dirtyQueue.clear();
@@ -152,14 +165,8 @@ void SceneSyncState::RemoveFromQueue(entity_id_t id)
     {
         if (i->second.isInQueue)
         {
-            for (std::list<EntitySyncState*>::iterator j = dirtyQueue.begin(); j != dirtyQueue.end(); ++j)
-            {
-                if ((*j) == &i->second)
-                {
-                    dirtyQueue.erase(j);
-                    break;
-                }
-            }
+            dirtyQueue.remove(id);
+
             i->second.isInQueue = false;
             for (std::map<component_id_t, ComponentSyncState>::iterator j = i->second.components.begin(); j != i->second.components.end(); ++j)
                 j->second.isInQueue = false;
@@ -170,17 +177,13 @@ void SceneSyncState::RemoveFromQueue(entity_id_t id)
 
 void SceneSyncState::MarkEntityProcessed(entity_id_t id)
 {
-    EntitySyncState& entityState = entities[id];
-    if (!entityState.id)
-        entityState.id = id;
+    EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
     entityState.DirtyProcessed();
 }
 
 void SceneSyncState::MarkComponentProcessed(entity_id_t id, component_id_t compId)
 {
-    EntitySyncState& entityState = entities[id];
-    if (!entityState.id)
-        entityState.id = id;
+    EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
     ComponentSyncState& compState = entityState.components[compId];
     if (!compState.id)
         compState.id = compId;
@@ -202,12 +205,10 @@ bool SceneSyncState::MarkEntityDirty(entity_id_t id, bool hasPropertyChanges, bo
     if (isServer_ && !ShouldMarkAsDirty(id))
         return false;
 
-    EntitySyncState& entityState = entities[id]; // Creates new if did not exist
-    if (!entityState.id)
-        entityState.id = id;
+    EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
     if (!entityState.isInQueue)
     {
-        dirtyQueue.push_back(&entityState);
+        dirtyQueue.insert(id, &entityState);
         entityState.isInQueue = true;
     }
     if (hasPropertyChanges)
@@ -238,7 +239,7 @@ void SceneSyncState::MarkEntityRemoved(entity_id_t id)
     i->second.removed = true;
     if (!i->second.isInQueue)
     {
-        dirtyQueue.push_back(&i->second);
+        dirtyQueue.insert(id, &i->second);
         i->second.isInQueue = true;
     }
 }
@@ -247,9 +248,7 @@ void SceneSyncState::MarkComponentDirty(entity_id_t id, component_id_t compId)
 {
     if (MarkEntityDirty(id))
     {
-        EntitySyncState& entityState = entities[id]; // Creates new if did not exist
-        if (!entityState.id)
-            entityState.id = id;
+        EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
         entityState.MarkComponentDirty(compId);
     }
 }
@@ -269,7 +268,7 @@ void SceneSyncState::MarkAttributeDirty(entity_id_t id, component_id_t compId, u
 {
     if (MarkEntityDirty(id))
     {
-        EntitySyncState& entityState = entities[id];
+        EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
         entityState.MarkComponentDirty(compId);
         ComponentSyncState& compState = entityState.components[compId];
         compState.MarkAttributeDirty(attrIndex);
@@ -280,7 +279,7 @@ void SceneSyncState::MarkAttributeCreated(entity_id_t id, component_id_t compId,
 {
     if (MarkEntityDirty(id))
     {
-        EntitySyncState& entityState = entities[id];
+        EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
         entityState.MarkComponentDirty(compId);
         ComponentSyncState& compState = entityState.components[compId];
         compState.MarkAttributeCreated(attrIndex);
@@ -291,7 +290,7 @@ void SceneSyncState::MarkAttributeRemoved(entity_id_t id, component_id_t compId,
 {
     if (MarkEntityDirty(id))
     {
-        EntitySyncState& entityState = entities[id];
+        EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
         entityState.MarkComponentDirty(compId);
         ComponentSyncState& compState = entityState.components[compId];
         compState.MarkAttributeRemoved(attrIndex);
@@ -410,12 +409,10 @@ EntitySyncState& SceneSyncState::MarkEntityDirtySilent(entity_id_t id)
         entities.erase(existingIter);
     }
 
-    EntitySyncState& entityState = entities[id]; // Creates new if did not exist
-    if (!entityState.id)
-        entityState.id = id;
+    EntitySyncState& entityState = GetOrCreateEntitySyncState(id);
     if (!entityState.isInQueue)
     {
-        dirtyQueue.push_back(&entityState);
+        dirtyQueue.insert(id, &entityState);
         entityState.isInQueue = true;
     }
     return entityState;

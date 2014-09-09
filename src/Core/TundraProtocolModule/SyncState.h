@@ -162,7 +162,10 @@ struct EntitySyncState
     
     std::list<ComponentSyncState*> dirtyQueue; ///< Dirty components
     std::map<component_id_t, ComponentSyncState> components; ///< Component syncstates
+
     entity_id_t id; ///< Entity ID. Duplicated here intentionally to allow recognizing the entity without the parent map.
+    EntityWeakPtr weak; ///< Entity weak ptr.
+
     bool removed; ///< The entity has been removed since last update
     bool isNew; ///< The client does not have the entity and it must be serialized in full
     bool isInQueue; ///< The entity is already in the scene's dirty queue
@@ -279,11 +282,11 @@ public:
     explicit SceneSyncState(u32 userConnectionID = 0, bool isServer = false);
     virtual ~SceneSyncState();
 
-    /// Dirty entities pending processing
-    std::list<EntitySyncState*> dirtyQueue; 
-
     /// Entity sync states
     std::map<entity_id_t, EntitySyncState> entities; 
+
+    /// Dirty entities pending processing
+    QHash<entity_id_t, EntitySyncState*> dirtyQueue;
 
     /// Entity interpolations
     std::map<entity_id_t, RigidBodyInterpolationState> entityInterpolations;
@@ -349,6 +352,10 @@ public slots:
 public:
     void SetParentScene(SceneWeakPtr scene);
     void Clear();
+
+    /// Gets or creates a new entity sync state.
+    /** If a new state is created it will get initialized with id and EntityWeakPtr. */
+    EntitySyncState &GetOrCreateEntitySyncState(entity_id_t id);
     
     void RemoveFromQueue(entity_id_t id);
 

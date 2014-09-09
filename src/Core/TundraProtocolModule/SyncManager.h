@@ -164,6 +164,10 @@ private:
     /// Process one user connection's sync state for changes in the scene. Note that on the client the server is a "virtual" user
     /** @param user User connection to process */
     void ProcessSyncState(UserConnection* user);
+
+    /// Process @c entityState that belongs to @c sceneState.
+    /** This function must only be called if @c entityState is in the @c sceneStates dirtyQueue. */
+    void ProcessEntitySyncState(bool isServer, UserConnection* user, Scene *scene, SceneSyncState *sceneState, EntitySyncState *entityState);
     
     /// Validate the scene manipulation action. If returns false, it is ignored
     /** @param source Where the action came from
