@@ -1051,8 +1051,8 @@ void SyncManager::ReplicateRigidBodyChanges(UserConnection* user)
         if (ess.isNew || ess.removed)
             continue; // Newly created and removed entities are handled through the traditional sync mechanism.
 
-        EntityPtr e = scene->EntityById(ess.id);
-        shared_ptr<EC_Placeable> placeable = e->GetComponent<EC_Placeable>();
+        EntityPtr e = ess.weak.lock();
+        shared_ptr<EC_Placeable> placeable = (e.get() ? e->GetComponent<EC_Placeable>() : shared_ptr<EC_Placeable>());
         if (!placeable.get())
             continue;
 
@@ -1477,12 +1477,11 @@ void SyncManager::HandleEditEntityProperties(UserConnection* source, const char*
     
     if (!ValidateAction(source, cEditEntityPropertiesMessage, entityID))
         return;
-        
-    EntityPtr entity = scene->EntityById(entityID);
 
+    EntitySyncState &entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
     if (entity && !scene->AllowModifyEntity(source, entity.get())) // check if allowed to modify this entity.
         return;
-
     if (!entity)
     {
         LogWarning("Entity " + QString::number(entityID) + " not found for EditAttributes message");
@@ -1494,7 +1493,7 @@ void SyncManager::HandleEditEntityProperties(UserConnection* source, const char*
     entity->SetTemporary(newTemporary, change);
     
     // Remove the properties dirty bit from sender's syncstate so that we do not echo the change back
-    state->entities[entityID].hasPropertyChanges = false;
+    entityState.hasPropertyChanges = false;
 }
 
 void SyncManager::HandleSetEntityParent(UserConnection* source, const char* data, size_t numBytes)
@@ -1547,18 +1546,17 @@ void SyncManager::HandleSetEntityParent(UserConnection* source, const char* data
     if (!ValidateAction(source, cSetEntityParentMessage, entityID))
         return;
     
-    EntityPtr entity = scene->EntityById(entityID);
-    EntityPtr parentEntity = parentEntityID ? scene->EntityById(parentEntityID) : EntityPtr();
-
-    if (entity && !scene->AllowModifyEntity(source, entity.get())) // check if allowed to modify this entity.
+    EntitySyncState &entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
+    if (entity && !scene->AllowModifyEntity(source, entity.get()))
         return;
-
     if (!entity)
     {
         LogWarning("Entity " + QString::number(entityID) + " not found for SetEntityParent message");
         return;
     }
 
+    EntityPtr parentEntity = (parentEntityID ? scene->EntityById(parentEntityID) : EntityPtr());
     if (parentEntityID && !parentEntity)
     {
         LogWarning("Parent entity " + QString::number(parentEntityID) + " not found for SetEntityParent message");
@@ -1568,7 +1566,7 @@ void SyncManager::HandleSetEntityParent(UserConnection* source, const char* data
     entity->SetParent(parentEntity, change);
     
     // Remove the properties dirty bit from sender's syncstate so that we do not echo the change back
-    state->entities[entityID].hasParentChange = false;
+    entityState.hasParentChange = false;
 }
 
 void SyncManager::HandleRegisterComponentType(UserConnection* source, const char* data, size_t numBytes)
@@ -2143,8 +2141,8 @@ void SyncManager::HandleCreateEntity(UserConnection* source, const char* data, s
     if (!scene->AllowModifyEntity(source, 0)) //should be 'ModifyScene', but ModifyEntity is now the signal that covers all
         return;
 
-    bool isServer = owner_->IsServer();
     // For clients, the change type is LocalOnly. For server, the change type is Replicate, so that it will get replicated to all clients in turn
+    bool isServer = owner_->IsServer();
     AttributeChange::Type change = isServer ? AttributeChange::Replicate : AttributeChange::LocalOnly;
     
     kNet::DataDeserializer ds(data, numBytes);
@@ -2209,16 +2207,15 @@ void SyncManager::HandleCreateEntity(UserConnection* source, const char* data, s
                 if (source->unackedIdsToRealIds.find(parentEntityID) != source->unackedIdsToRealIds.end())
                     parentEntityID = source->unackedIdsToRealIds[parentEntityID];
                 else
-                    LogWarning("Client sent unknown unacked parent entity ID " + QString::number(parentEntityID) + " in CreateEntity message");
+                    LogError(QString("[SyncManager]: HandleCreateEntityParent: Client sent unknown unacked parent Entity #%1 in CreateEntity message").arg(parentEntityID));
             }
-
             if (parentEntityID)
             {
                 EntityPtr parentEntity = scene->EntityById(parentEntityID);
                 if (parentEntity)
                     entity->SetParent(parentEntity, change);
                 else
-                    LogWarning("Parent entity id " + QString::number(parentEntityID) + " not found from scene when handling CreateEntity message");
+                    LogError(QString("[SyncManager]: HandleCreateEntityParent: Parent Entity #%1 not found from Scene when handling CreateEntity message").arg(parentEntityID));
             }
         }
 
@@ -2239,6 +2236,7 @@ void SyncManager::HandleCreateEntity(UserConnection* source, const char* data, s
                 /// @todo Inspect if 'state' should be updated or a more fatal error would be appropriate here.
                 LogError(QString("SyncManager::HandleCreateEntity: Attribute data size %1 bytes is bigger than the destination buffer of %2 bytes. In %3 in Entity %4. Entity will be ignored!")
                     .arg(attrDataSize).arg(NUMELEMS(attrDataBuffer_)).arg(framework_->Scene()->ComponentTypeNameForTypeId(typeID)).arg(entity->Id()));
+
                 state->RemoveFromQueue(entity->Id());
                 state->entities.erase(entity->Id());
                 scene->RemoveEntity(entity->Id(), AttributeChange::LocalOnly);
@@ -2315,7 +2313,8 @@ void SyncManager::HandleCreateEntity(UserConnection* source, const char* data, s
                 }
             }
         }
-    } catch(kNet::NetException &/*e*/)
+    }
+    catch(kNet::NetException &/*e*/)
     {
         LogError("Failed to deserialize the creation of a new entity from the peer. Deleting the partially crafted entity!");
         scene->RemoveEntity(entity->Id(), AttributeChange::Disconnected);
@@ -2343,7 +2342,7 @@ void SyncManager::HandleCreateEntity(UserConnection* source, const char* data, s
         }
         source->Send(cCreateEntityReplyMessage, true, true, replyDs);
     }
-    
+
     // Mark the entity processed (undirty) in the sender's syncstate so that create is not echoed back
     state->MarkEntityProcessed(entityID);
 }
@@ -2360,8 +2359,8 @@ void SyncManager::HandleCreateComponents(UserConnection* source, const char* dat
         return;
     }
     
-    bool isServer = owner_->IsServer();
     // For clients, the change type is LocalOnly. For server, the change type is Replicate, so that it will get replicated to all clients in turn
+    bool isServer = owner_->IsServer();
     AttributeChange::Type change = isServer ? AttributeChange::Replicate : AttributeChange::LocalOnly;
     
     std::vector<std::pair<component_id_t, component_id_t> > componentIdRewrites;
@@ -2370,6 +2369,7 @@ void SyncManager::HandleCreateComponents(UserConnection* source, const char* dat
     EntityPtr entity;
     u32 sceneID;
     entity_id_t entityID;
+
     try
     {
         kNet::DataDeserializer ds(data, numBytes);
@@ -2379,7 +2379,8 @@ void SyncManager::HandleCreateComponents(UserConnection* source, const char* dat
         if (!ValidateAction(source, cCreateComponentsMessage, entityID))
             return;
 
-        entity = scene->EntityById(entityID);
+        EntitySyncState &entityState = state->entities[entityID];
+        entity = entityState.weak.lock();
         if (!entity)
         {
             LogWarning("Entity " + QString::number(entityID) + " not found for CreateComponents message");
@@ -2535,10 +2536,9 @@ void SyncManager::HandleRemoveEntity(UserConnection* source, const char* data, s
         return;
 
     EntityPtr entity = scene->EntityById(entityID);
-
     if (entity && !scene->AllowModifyEntity(source, entity.get()))
         return;
-
+    // @todo Is this second check ensuring AllowModifyEntity didn't remove the Entity from Scene?
     if (!scene->EntityById(entityID))
     {
         LogWarning("Missing entity " + QString::number(entityID) + " for RemoveEntity message");
@@ -2546,6 +2546,7 @@ void SyncManager::HandleRemoveEntity(UserConnection* source, const char* data, s
     }
     
     scene->RemoveEntity(entityID, change);
+
     // Delete from the sender's syncstate so that we don't echo the delete back needlessly
     state->RemoveFromQueue(entityID); // Be sure to erase from dirty queue so that we don't invoke UDB
     state->entities.erase(entityID);
@@ -2563,8 +2564,8 @@ void SyncManager::HandleRemoveComponents(UserConnection* source, const char* dat
         return;
     }
     
-    bool isServer = owner_->IsServer();
     // For clients, the change type is LocalOnly. For server, the change type is Replicate, so that it will get replicated to all clients in turn
+    bool isServer = owner_->IsServer();
     AttributeChange::Type change = isServer ? AttributeChange::Replicate : AttributeChange::LocalOnly;
     
     kNet::DataDeserializer ds(data, numBytes);
@@ -2575,11 +2576,10 @@ void SyncManager::HandleRemoveComponents(UserConnection* source, const char* dat
     if (!ValidateAction(source, cRemoveComponentsMessage, entityID))
         return;
 
-    EntityPtr entity = scene->EntityById(entityID);
-
+    EntitySyncState &entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
     if (entity && !scene->AllowModifyEntity(source, entity.get()))
         return;
-
     if (!entity)
     {
         LogWarning("Entity " + QString::number(entityID) + " not found for RemoveComponents message");
@@ -2596,12 +2596,9 @@ void SyncManager::HandleRemoveComponents(UserConnection* source, const char* dat
             continue;
         }
         entity->RemoveComponent(comp, change);
-        // Delete from the sender's syncstate, so that we don't echo the delete back needlessly
-        if (state->entities.find(entityID) != state->entities.end())
-        {
-            state->entities[entityID].RemoveFromQueue(compID); // Be sure to erase from dirty queue so that we don't invoke UDB
-            state->entities[entityID].components.erase(compID);
-        }
+
+        entityState.RemoveFromQueue(compID); // Be sure to erase from dirty queue so that we don't invoke UDB
+        entityState.components.erase(compID);
     }
 }
 
@@ -2629,7 +2626,8 @@ void SyncManager::HandleCreateAttributes(UserConnection* source, const char* dat
     if (!ValidateAction(source, cCreateAttributesMessage, entityID))
         return;
     
-    EntityPtr entity = scene->EntityById(entityID);
+    EntitySyncState &entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
     if (!entity)
     {
         LogWarning("Entity " + QString::number(entityID) + " not found for CreateAttributes message");
@@ -2684,7 +2682,7 @@ void SyncManager::HandleCreateAttributes(UserConnection* source, const char* dat
         }
         
         // Remove the corresponding add command from the sender's syncstate, so that the attribute add is not echoed back
-        state->entities[entityID].components[compID].newAndRemovedAttributes.erase(attrIndex);
+        entityState.components[compID].newAndRemovedAttributes.erase(attrIndex);
     }
     
     // Signal attribute changes after creating and reading all
@@ -2693,8 +2691,9 @@ void SyncManager::HandleCreateAttributes(UserConnection* source, const char* dat
         IComponent* owner = addedAttrs[i]->Owner();
         u8 attrIndex = addedAttrs[i]->Index();
         owner->EmitAttributeChanged(addedAttrs[i], change);
+
         // Remove the dirty bit from sender's syncstate so that we do not echo the change back
-        state->entities[entityID].components[owner->Id()].dirtyAttributes[attrIndex >> 3] &= ~(1 << (attrIndex & 7));
+        entityState.components[owner->Id()].dirtyAttributes[attrIndex >> 3] &= ~(1 << (attrIndex & 7));
     }
 }
 
@@ -2710,8 +2709,8 @@ void SyncManager::HandleRemoveAttributes(UserConnection* source, const char* dat
         return;
     }
     
-    bool isServer = owner_->IsServer();
     // For clients, the change type is LocalOnly. For server, the change type is Replicate, so that it will get replicated to all clients in turn
+    bool isServer = owner_->IsServer();
     AttributeChange::Type change = isServer ? AttributeChange::Replicate : AttributeChange::LocalOnly;
     
     kNet::DataDeserializer ds(data, numBytes);
@@ -2722,11 +2721,10 @@ void SyncManager::HandleRemoveAttributes(UserConnection* source, const char* dat
     if (!ValidateAction(source, cRemoveAttributesMessage, entityID))
         return;
     
-    EntityPtr entity = scene->EntityById(entityID);
-
+    EntitySyncState &entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
     if (entity && !scene->AllowModifyEntity(source, entity.get()))
         return;
-
     if (!entity)
     {
         LogWarning("Entity " + QString::number(entityID) + " not found for RemoveAttributes message");
@@ -2746,8 +2744,9 @@ void SyncManager::HandleRemoveAttributes(UserConnection* source, const char* dat
         }
         
         comp->RemoveAttribute(attrIndex, change);
+
         // Remove the corresponding remove command from the sender's syncstate, so that the attribute remove is not echoed back
-        state->entities[entityID].components[compID].newAndRemovedAttributes.erase(attrIndex);
+        entityState.components[compID].newAndRemovedAttributes.erase(attrIndex);
     }
 }
 
@@ -2763,8 +2762,8 @@ void SyncManager::HandleEditAttributes(UserConnection* source, const char* data,
         return;
     }
     
-    bool isServer = owner_->IsServer();
     // For clients, the change type is LocalOnly. For server, the change type is Replicate, so that it will get replicated to all clients in turn
+    bool isServer = owner_->IsServer();
     AttributeChange::Type change = isServer ? AttributeChange::Replicate : AttributeChange::LocalOnly;
     
     kNet::DataDeserializer ds(data, numBytes);
@@ -2775,11 +2774,10 @@ void SyncManager::HandleEditAttributes(UserConnection* source, const char* data,
     if (!ValidateAction(source, cRemoveAttributesMessage, entityID))
         return;
 
-    EntityPtr entity = scene->EntityById(entityID);
-
+    EntitySyncState &entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
     if (entity && !scene->AllowModifyEntity(source, entity.get())) // check if allowed to modify this entity.
         return;
-
     if (!entity)
     {
         LogWarning("Entity " + QString::number(entityID) + " not found for EditAttributes message");
@@ -2787,14 +2785,12 @@ void SyncManager::HandleEditAttributes(UserConnection* source, const char* data,
     }
     
     // Record the update time for calculating the update interval
-    float updateInterval = updatePeriod_; // Default update interval if state not found or interval not measured yet
-    std::map<entity_id_t, EntitySyncState>::iterator it = state->entities.find(entityID);
-    if (it != state->entities.end())
-    {
-        it->second.UpdateReceived();
-        if (it->second.avgUpdateInterval > 0.0f)
-            updateInterval = it->second.avgUpdateInterval;
-    }
+    // Default update interval if state not found or interval not measured yet
+    float updateInterval = updatePeriod_;
+    entityState.UpdateReceived();
+    if (entityState.avgUpdateInterval > 0.0f)
+        updateInterval = entityState.avgUpdateInterval;
+
     // Add a fudge factor in case there is jitter in packet receipt or the server is too taxed
     updateInterval *= 1.25f;
 
@@ -2897,8 +2893,9 @@ void SyncManager::HandleEditAttributes(UserConnection* source, const char* data,
         IComponent* owner = changedAttrs[i]->Owner();
         u8 attrIndex = changedAttrs[i]->Index();
         owner->EmitAttributeChanged(changedAttrs[i], change);
+
         // Remove the dirty bit from sender's syncstate so that we do not echo the change back
-        state->entities[entityID].components[owner->Id()].dirtyAttributes[attrIndex >> 3] &= ~(1 << (attrIndex & 7));
+        entityState.components[owner->Id()].dirtyAttributes[attrIndex >> 3] &= ~(1 << (attrIndex & 7));
     }
 }
 
@@ -2923,20 +2920,21 @@ void SyncManager::HandleCreateEntityReply(UserConnection* source, const char* da
     kNet::DataDeserializer ds(data, numBytes);
     unsigned sceneID = ds.ReadVLE<kNet::VLE8_16_32>(); ///\todo Dummy ID. Lookup scene once multiscene is properly supported
     UNREFERENCED_PARAM(sceneID)
+
     entity_id_t senderEntityID = ds.ReadVLE<kNet::VLE8_16_32>() | UniqueIdGenerator::FIRST_UNACKED_ID;
     entity_id_t entityID = ds.ReadVLE<kNet::VLE8_16_32>();
     scene->ChangeEntityId(senderEntityID, entityID);
-    state->RemoveFromQueue(senderEntityID); // Make sure we don't have stale pointers in the dirty queue
-    state->entities[entityID] = state->entities[senderEntityID]; // Copy the sync state to the new ID
-    state->entities[entityID].id = entityID; // Must remember to change ID manually
-    state->entities[entityID].weak = scene->EntityById(entityID); // Refresh the weak ptr
-    state->entities.erase(senderEntityID);
+
+    state->RemoveFromQueue(senderEntityID);                         // Make sure we don't have stale pointers in the dirty queue
+    state->entities[entityID] = state->entities[senderEntityID];    // Copy the sync state to the new ID
+    state->entities[entityID].id = entityID;                        // Must remember to change ID manually
+    state->entities[entityID].weak = scene->EntityById(entityID);   // Refresh the weak ptr
+    state->entities.erase(senderEntityID);                          // Remove old id from the state
     
     //std::cout << "CreateEntityReply, entity " << senderEntityID << " -> " << entityID << std::endl;
 
     EntitySyncState& entityState = state->entities[entityID];
-    
-    EntityPtr entity = scene->EntityById(entityID);
+    EntityPtr entity = entityState.weak.lock();
     if (!entity)
     {
         LogError("Failed to get entity after ID change");
@@ -2960,15 +2958,13 @@ void SyncManager::HandleCreateEntityReply(UserConnection* source, const char* da
         IComponent* comp = entity->GetComponentById(compID).get();
         scene->EmitComponentAcked(comp, senderCompID);
     }
-    
+
     // Send notification
     scene->EmitEntityAcked(entity.get(), senderEntityID);
-    
+
+    // Now mark every component dirty so they will be inspected for changes on the next update
     for (std::map<component_id_t, ComponentSyncState>::iterator i = entityState.components.begin(); i != entityState.components.end(); ++i)
-    {
-        // Now mark every component dirty so they will be inspected for changes on the next update
         state->MarkComponentDirty(entityID, i->first);
-    }
 }
 
 void SyncManager::HandleCreateComponentsReply(UserConnection* source, const char* data, size_t numBytes)
@@ -2994,9 +2990,9 @@ void SyncManager::HandleCreateComponentsReply(UserConnection* source, const char
     UNREFERENCED_PARAM(sceneID)
     entity_id_t entityID = ds.ReadVLE<kNet::VLE8_16_32>();
     state->RemoveFromQueue(entityID); // Make sure we don't have stale pointers in the dirty queue
-    EntitySyncState& entityState = state->entities[entityID];
     
-    EntityPtr entity = scene->EntityById(entityID);
+    EntitySyncState& entityState = state->entities[entityID];
+    EntityPtr entity = entityState.weak.lock();
     if (!entity)
     {
         LogError("Failed to get entity after ID change");
