@@ -222,7 +222,7 @@ public:
     /// @cond PRIVATE
     // Not publicly documented as ideally Scene should not know about Placeable until its defined in TundraCore.
     /// Fix parent Entity ids that are set to EC_Placeable::parentRef.
-    /** If @c printStats is true, a summary of the exeuction is printed once done. */
+    /** If @c printStats is true, a summary of the execution is printed once done. */
     void FixPlaceableParentIds(const QList<Entity*> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats = false) const;
     void FixPlaceableParentIds(const QList<EntityWeakPtr> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats = false) const; ///< @overload
     void FixPlaceableParentIds(const std::vector<EntityWeakPtr> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats = false) const; ///< @overload
@@ -284,7 +284,7 @@ public slots:
     /** @todo Exposed as Q_PROPERTY, doesn't need to be a slot. */
     bool ViewEnabled() const { return viewEnabled_; }
 
-    /// Is scene authoritative ie. a server or standalone scene
+    /// Is scene authoritative i.e. a server or standalone scene
     /** @todo Exposed as Q_PROPERTY, doesn't need to be a slot. */
     bool IsAuthority() const { return authority_; }
 
@@ -296,14 +296,14 @@ public slots:
     EntityPtr EntityById(entity_id_t id) const;
 
     /// Returns entity with the specified name.
-    /** @note The name of the entity is stored in a component EC_Name. If this component is not present in the entity, it has no name.
+    /** @note The name of the entity is stored in a Name component. If this component is not present in the entity, it has no name.
         @note Returns a shared pointer, but it is preferable to use a weak pointer, EntityWeakPtr,
               to avoid dangling references that prevent entities from being properly destroyed.
         @note @note O(n)
         @sa EntityById, FindEntities, FindEntitiesContaining */
     EntityPtr EntityByName(const QString &name) const;
 
-    /// Returns whether name is unique within the scene, ie. is only encountered once, or not at all.
+    /// Returns whether name is unique within the scene, i.e. is only encountered once, or not at all.
     /** @note O(n) */
     bool IsUniqueName(const QString& name) const;
 
@@ -371,7 +371,7 @@ public slots:
         @param sensitivity Case sensitivity for the string matching. */
     EntityList FindEntitiesByName(const QString &name, Qt::CaseSensitivity sensitivity = Qt::CaseSensitive) const;
 
-    /// Return root-level entities, ie. those that have no parent.
+    /// Return root-level entities, i.e. those that have no parent.
     EntityList RootLevelEntities() const;
 
     /// Loads the scene from XML.
@@ -396,7 +396,7 @@ public slots:
         @param saveTemporary Are temporary entities wanted to be included.
         @param saveLocal Are local entities wanted to be included.
         @return true if successful */
-    bool SaveSceneXML(const QString& filename, bool saveTemporary, bool saveLocal);
+    bool SaveSceneXML(const QString& filename, bool saveTemporary, bool saveLocal) const;
 
     /// Loads the scene from a binary file.
     /** @param filename File name
@@ -440,13 +440,13 @@ public slots:
 
     /// Returns @c ent parent Entity id.
     /** Check both Entity and EC_Placeble::parentRef parenting,
-        Entity parenting takes presedence.
+        Entity parenting takes precedence.
         @return Returns 0 if parent is not set or the parent ref is not a Entity id (but a entity name). */
     entity_id_t EntityParentId(const Entity *ent) const;
 
     /// Sorts @c entities by scene hierarchy and returns the sorted list.
-    /** Takes into account both Entity::Parent and EC_Placeable::parentRef pareting,
-        Entity leven parenting takes presedence. */
+    /** Takes into account both Entity::Parent and EC_Placeable::parentRef parenting,
+        Entity-level parenting takes precedence. */
     QList<Entity*> SortEntities(const QList<Entity*> &entities) const;
     QList<EntityWeakPtr> SortEntities(const std::vector<EntityWeakPtr> entities) const; ///< @overload
     EntityDescList SortEntities(const EntityDescList &entities) const; ///< @overload
@@ -465,7 +465,7 @@ public slots:
 
     /// Emits a notification of entity reparenting
     /** @param entity Entity that is being reparented
-        @paran newParent New parent entity
+        @param newParent New parent entity
         @param change Change signaling mode */
     void EmitEntityParentChanged(Entity *entity, Entity *newParent, AttributeChange::Type change = AttributeChange::Default);
 

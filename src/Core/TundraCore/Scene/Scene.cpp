@@ -495,24 +495,20 @@ QByteArray Scene::SerializeToXmlString(bool serializeTemporary, bool serializeLo
     QDomDocument sceneDoc("Scene");
     QDomElement sceneElem = sceneDoc.createElement("scene");
 
-    EntityList rootLevel = RootLevelEntities();
+    const bool serializeChildren = true;
 
-    for(EntityList::const_iterator iter = rootLevel.begin(); iter != rootLevel.end(); ++iter)
-    {
-        EntityPtr ent = *iter;
-        if ((ent->IsLocal() && !serializeLocal) || (ent->IsTemporary() && !serializeTemporary))
-            continue;
-        ent->SerializeToXML(sceneDoc, sceneElem, serializeTemporary);
-    }
+    foreach(const EntityPtr ent, RootLevelEntities())
+        if (ent->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+            ent->SerializeToXML(sceneDoc, sceneElem, serializeTemporary, serializeChildren, serializeLocal);
 
     sceneDoc.appendChild(sceneElem);
 
     return sceneDoc.toByteArray();
 }
 
-bool Scene::SaveSceneXML(const QString& filename, bool saveTemporary, bool saveLocal)
+bool Scene::SaveSceneXML(const QString& filename, bool serializeTemporary, bool serializeLocal) const
 {
-    QByteArray bytes = SerializeToXmlString(saveTemporary, saveLocal);
+    const QByteArray bytes = SerializeToXmlString(serializeTemporary, serializeLocal);
     QFile scenefile(filename);
     if (scenefile.open(QFile::WriteOnly))
     {
@@ -537,7 +533,6 @@ QList<Entity *> Scene::LoadSceneBinary(const QString& filename, bool clearScene,
         return ret;
     }
 
-    ///\todo Use Latin 1?
     QByteArray bytes = file.readAll();
     file.close();
 
@@ -553,43 +548,29 @@ QList<Entity *> Scene::LoadSceneBinary(const QString& filename, bool clearScene,
     return CreateContentFromBinary(bytes.data(), bytes.size(), useEntityIDsFromFile, change);
 }
 
-bool Scene::SaveSceneBinary(const QString& filename, bool getTemporary, bool getLocal) const
+bool Scene::SaveSceneBinary(const QString& filename, bool serializeTemporary, bool serializeLocal) const
 {
     QByteArray bytes;
     // Assume 4MB max for now
     bytes.resize(4 * 1024 * 1024);
     DataSerializer dest(bytes.data(), bytes.size());
-    
-    // Count number of entities we accept
-    uint num_entities = 0;
-    EntityList rootLevel = RootLevelEntities();
 
-    for(EntityList::const_iterator iter = rootLevel.begin(); iter != rootLevel.end(); ++iter)
+    // Filter the entities we accept
+    const bool serializeChildren = true;
+    EntityList serialized = RootLevelEntities();
+    for(EntityList::const_iterator iter = serialized.begin(); iter != serialized.end();)
     {
-        bool serialize = true;
-        EntityPtr ent = *iter;
-        if (ent->IsLocal() && !getLocal)
-            serialize = false;
-        if (ent->IsTemporary() && !getTemporary)
-            serialize = false;
-        if (serialize)
-            ++num_entities;
+        if ((*iter)->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+             ++iter;
+        else
+            iter = serialized.erase(iter);
     }
-    
-    dest.Add<u32>(num_entities);
 
-    for(EntityList::const_iterator iter = rootLevel.begin(); iter != rootLevel.end(); ++iter)
-    {
-        bool serialize = true;
-        EntityPtr ent = *iter;
-        if (ent->IsLocal() && !getLocal)
-            serialize = false;
-        if (ent->IsTemporary() && !getTemporary)
-            serialize = false;
-        if (serialize)
-            ent->SerializeToBinary(dest, getTemporary);
-    }
-    
+    dest.Add<u32>(serialized.size());
+
+    foreach(const EntityPtr entity, serialized)
+        entity->SerializeToBinary(dest, serializeTemporary, serializeChildren, serializeLocal);
+
     bytes.resize(static_cast<int>(dest.BytesFilled()));
     QFile scenefile(filename);
     if (scenefile.open(QFile::WriteOnly))

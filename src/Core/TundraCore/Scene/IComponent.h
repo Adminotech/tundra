@@ -107,8 +107,8 @@ public:
     /// Deletes potential dynamic attributes.
     virtual ~IComponent();
 
-    /// Returns the typename of this component.
-    /** The typename is the "class" type of the component,
+    /// Returns the type name of this component.
+    /** The type name is the "class" type of the component,
         e.g. "EC_Mesh" or "EC_DynamicComponent". The type name of a component cannot be an empty string.
         The type name of a component never changes at runtime.
         @note Prefer TypeId over TypeName when inspecting the component type (performance). */
@@ -146,7 +146,8 @@ public:
     /** @param doc The XML document to serialize this component to.
         @param baseElement Points to the <entity> element of the document doc. This element is the Entity that
                 owns this component. This component will be serialized as a child tree of this element. 
-        @param serializeTemporary Serialize temporary components for application-specific purposes. The default value is false */
+        @param serializeTemporary Serialize temporary components for application-specific purposes, note that this
+            is only for metadata purposes and doesn't have an actual effect. The default value is false.*/
     virtual void SerializeTo(QDomDocument& doc, QDomElement& baseElement, bool serializeTemporary = false) const;
 
     /// Deserializes this component from the given XML document.
@@ -157,12 +158,12 @@ public:
     virtual void DeserializeFrom(QDomElement& element, AttributeChange::Type change);
 
     /// Serialize attributes to binary
-    /** @note does not include syncmode, type name or name. These are left for higher-level logic, and
+    /** @note does not include sync mode, type name or name. These are left for higher-level logic, and
         it depends on the situation if they are needed or not */
     virtual void SerializeToBinary(kNet::DataSerializer& dest) const;
 
     /// Deserialize attributes from binary
-    /** @note does not include syncmode, type name or name. These are left for higher-level logic, and
+    /** @note does not include sync mode, type name or name. These are left for higher-level logic, and
         it depends on the situation if they are needed or not. */
     virtual void DeserializeFromBinary(kNet::DataDeserializer& source, AttributeChange::Type change);
 
@@ -298,15 +299,14 @@ public slots:
         This function is called by IAttribute::Changed whenever the value in that
         attribute is changed. */
     void EmitAttributeChanged(IAttribute* attribute, AttributeChange::Type change);
+    /// @overload
+    /** @param attributeName Name of the attribute that changed. @note this is a no-op if the named attribute is not found.
+        @todo Is this needed? Seems unused; could be removed? If needed, signaling by attribute ID would be preferred. */
+    void EmitAttributeChanged(const QString& attributeName, AttributeChange::Type change);
 
     /// Informs this component that the metadata of a member Attribute has changed.
     /** @param The attribute of which metadata was changed. The attribute passed here must be an Attribute member of this component. */
     void EmitAttributeMetadataChanged(IAttribute* attribute);
-
-    /// @overload
-    /** @param attributeName Name of the attribute that changed. @note this is a no-op if the named attribute is not found.
-        @param change Informs to the component the type of change that occurred. */
-    void EmitAttributeChanged(const QString& attributeName, AttributeChange::Type change);
 
     /// Informs that every attribute in this Component has changed with the change
     /** you specify. If change is Replicate, or it is Default and the UpdateMode is Replicate,
@@ -348,10 +348,13 @@ public slots:
     /// Returns list of attribute IDs of the component.
     QStringList GetAttributeIds() const;
 
-    /// Crafts a component type name string that is guaranteed not to thave the "EC_" prefix.
+    /// Crafts a component type name string that is guaranteed not to have the "EC_" prefix.
     static QString EnsureTypeNameWithoutPrefix(const QString &tn) { return (tn.startsWith("EC_", Qt::CaseInsensitive) ? tn.mid(3) : tn); }
     /// Crafts a component type name string that is guaranteed to have the "EC_" prefix.
     static QString EnsureTypeNameWithPrefix(const QString &tn) { return (tn.startsWith("EC_", Qt::CaseInsensitive) ? tn : "EC_" + tn); }
+
+    /// Helper function for determinating whether or not this component should be serialized with the provided serialization options.
+    bool ShouldBeSerialized(bool serializeLocal, bool serializeTemporary) const;
 
     // DEPRECATED
     void SetNetworkSyncEnabled(bool enable); /**< @deprecated Currently a no-op, as replication mode can not be changed after adding to an entity. @todo Remove! */
@@ -394,6 +397,7 @@ protected:
 
     /// Helper function for adding an attribute and it's type to the component XML serialization.
     void WriteAttribute(QDomDocument& doc, QDomElement& compElement, const QString& name, const QString& id, const QString& value, const QString &type) const;
+    void WriteAttribute(QDomDocument& doc, QDomElement& compElement, const IAttribute *attr) const;
 
     /// Helper function for starting deserialization.
     /** Checks that XML element contains the right kind of EC, and if it is right, sets the component name.

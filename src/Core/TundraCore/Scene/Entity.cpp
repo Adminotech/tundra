@@ -437,54 +437,56 @@ QObjectList Entity::GetComponentsRaw(const QString &type_name) const
     return ret;
 }
 
-void Entity::SerializeToBinary(kNet::DataSerializer &dst, bool serializeTemporary, bool serializeChildren) const
+void Entity::SerializeToBinary(kNet::DataSerializer &dst, bool serializeTemporary, bool serializeChildren, bool serializeLocal) const
 {
     dst.Add<u32>(Id());
     dst.Add<u8>(IsReplicated() ? 1 : 0);
-    uint num_serializable = 0;
-    uint num_serializable_children = 0;
+    std::vector<ComponentPtr> serializable;
+    std::vector<EntityPtr> serializableChildren;
     for (ComponentMap::const_iterator i = components_.begin(); i != components_.end(); ++i)
-        if (serializeTemporary || !i->second->IsTemporary())
-            num_serializable++;
+        if (i->second->ShouldBeSerialized(serializeLocal, serializeTemporary))
+            serializable.push_back(i->second);
+
     if (serializeChildren)
     {
-        for (ChildEntityVector::const_iterator i = children_.begin(); i != children_.end(); ++i)
-            if (serializeTemporary || !i->lock()->IsTemporary())
-                num_serializable_children++;
+        foreach(const EntityWeakPtr &childWeak, children_)
+        {
+            const EntityPtr child = childWeak.lock();
+            if (child && child->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+                serializableChildren.push_back(child);
+        }
     }
 
     /// \hack Retain binary compatibility with earlier scene format, at the cost of max. 65535 components or child entities
-    if (num_serializable > 0xffff)
+    if (serializable.size() > 0xffff)
         LogError("Entity::SerializeToBinary: entity contains more than 65535 components, binary save will be erroneous");
-    if (num_serializable_children > 0xffff)
+    if (serializableChildren.size() > 0xffff)
         LogError("Entity::SerializeToBinary: entity contains more than 65535 child entities, binary save will be erroneous");
 
-    dst.Add<u32>(num_serializable | (num_serializable_children << 16));
-    for (ComponentMap::const_iterator i = components_.begin(); i != components_.end(); ++i)
-        if (serializeTemporary || !i->second->IsTemporary())
-        {
-            dst.Add<u32>(i->second->TypeId()); ///\todo VLE this!
-            dst.AddString(i->second->Name().toStdString());
-            dst.Add<u8>(i->second->IsReplicated() ? 1 : 0);
-            
-            // Write each component to a separate buffer, then write out its size first, so we can skip unknown components
-            QByteArray comp_bytes;
-            // Assume 64KB max per component for now
-            comp_bytes.resize(64 * 1024);
-            kNet::DataSerializer comp_dest(comp_bytes.data(), comp_bytes.size());
-            i->second->SerializeToBinary(comp_dest);
-            comp_bytes.resize((int)comp_dest.BytesFilled());
-            
-            dst.Add<u32>(comp_bytes.size());
-            dst.AddArray<u8>((const u8*)comp_bytes.data(), comp_bytes.size());
-        }
+    dst.Add<u32>(serializable.size() | (serializableChildren.size() << 16));
+    foreach(const ComponentPtr &comp, serializable)
+    {
+        dst.Add<u32>(comp->TypeId()); ///\todo VLE this!
+        dst.AddString(comp->Name().toStdString());
+        dst.Add<u8>(comp->IsReplicated() ? 1 : 0);
+
+        // Write each component to a separate buffer, then write out its size first, so we can skip unknown components
+        QByteArray comp_bytes;
+        // Assume 64KB max per component for now
+        comp_bytes.resize(64 * 1024);
+        kNet::DataSerializer comp_dest(comp_bytes.data(), comp_bytes.size());
+        comp->SerializeToBinary(comp_dest);
+        comp_bytes.resize((int)comp_dest.BytesFilled());
+
+        dst.Add<u32>(comp_bytes.size());
+        dst.AddArray<u8>((const u8*)comp_bytes.data(), comp_bytes.size());
+    }
 
     // Serialize child entities
     if (serializeChildren)
     {
-        for (ChildEntityVector::const_iterator i = children_.begin(); i != children_.end(); ++i)
-            if (serializeTemporary || !i->lock()->IsTemporary())
-                i->lock()->SerializeToBinary(dst, serializeTemporary, true);
+        foreach(const EntityPtr child, serializableChildren)
+            child->SerializeToBinary(dst, serializeTemporary, true);
     }
 }
 
@@ -493,7 +495,7 @@ void Entity::DeserializeFromBinary(kNet::DataDeserializer &src, AttributeChange:
 {
 }*/
 
-void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool serializeTemporary, bool serializeChildren) const
+void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool serializeTemporary, bool serializeChildren, bool serializeLocal) const
 {
     QDomElement entity_elem = doc.createElement("entity");
     entity_elem.setAttribute("id", QString::number(Id()));
@@ -502,13 +504,18 @@ void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool s
         entity_elem.setAttribute("temporary", BoolToString(IsTemporary()));
 
     for (ComponentMap::const_iterator i = components_.begin(); i != components_.end(); ++i)
-        i->second->SerializeTo(doc, entity_elem, serializeTemporary);
+        if (i->second->ShouldBeSerialized(serializeLocal, serializeTemporary))
+            i->second->SerializeTo(doc, entity_elem, serializeTemporary);
 
     // Serialize child entities
     if (serializeChildren)
     {
         for(ChildEntityVector::const_iterator i = children_.begin(); i != children_.end(); ++i)
-            i->lock()->SerializeToXML(doc, entity_elem, serializeTemporary, true);
+        {
+            const EntityPtr child = i->lock();
+            if (child && child->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+                child->SerializeToXML(doc, entity_elem, serializeTemporary, serializeLocal);
+        }
     }
 
     if (!base_element.isNull())
@@ -522,13 +529,13 @@ void Entity::DeserializeFromXML(QDomElement& element, AttributeChange::Type chan
 {
 }*/
 
-QString Entity::SerializeToXMLString(bool serializeTemporary, bool serializeChildren, bool createSceneElement) const
+QString Entity::SerializeToXMLString(bool serializeTemporary, bool serializeChildren, bool createSceneElement, bool serializeLocal) const
 {
     if (createSceneElement)
     {
         QDomDocument sceneDoc("Scene");
         QDomElement sceneElem = sceneDoc.createElement("scene");
-        SerializeToXML(sceneDoc, sceneElem, serializeTemporary);
+        SerializeToXML(sceneDoc, sceneElem, serializeTemporary, serializeChildren, serializeLocal);
         sceneDoc.appendChild(sceneElem);
         return sceneDoc.toString();
     }
@@ -536,7 +543,7 @@ QString Entity::SerializeToXMLString(bool serializeTemporary, bool serializeChil
     {
         QDomDocument entity_doc("Entity");
         QDomElement null_elem;
-        SerializeToXML(entity_doc, null_elem, serializeTemporary, serializeChildren);
+        SerializeToXML(entity_doc, null_elem, serializeTemporary, serializeChildren, serializeLocal);
         return entity_doc.toString();
     }
 }
@@ -579,7 +586,8 @@ EntityPtr Entity::Clone(bool local, bool temporary, const QString &cloneName, At
     }
     // Serialize child entities
     for(ChildEntityVector::const_iterator i = children_.begin(); i != children_.end(); ++i)
-        i->lock()->SerializeToXML(doc, entityElem, true, true);
+        if (!i->expired())
+            i->lock()->SerializeToXML(doc, entityElem, true, true);
 
     sceneElem.appendChild(entityElem);
     doc.appendChild(sceneElem);
@@ -912,6 +920,17 @@ EntityList Entity::Children(bool recursive) const
     EntityList ret;
     CollectChildren(ret, recursive);
     return ret;
+}
+
+bool Entity::ShouldBeSerialized(bool serializeLocal, bool serializeTemporary, bool serializeChildren) const
+{
+    if (IsLocal() && !serializeLocal)
+        return false;
+    if (IsTemporary() && !serializeTemporary)
+        return false;
+    if (Parent() && !serializeChildren)
+        return false;
+    return true;
 }
 
 void Entity::CollectChildren(EntityList& children, bool recursive) const

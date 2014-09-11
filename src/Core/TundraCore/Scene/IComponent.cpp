@@ -153,6 +153,14 @@ QStringList IComponent::GetAttributeIds() const
     return attribute_list;
 }
 
+bool IComponent::ShouldBeSerialized(bool serializeLocal, bool serializeTemporary) const
+{
+    if (IsLocal() && !serializeLocal)
+        return false;
+    if (IsTemporary() && !serializeTemporary)
+        return false;
+    return true;
+}
 
 IAttribute* IComponent::GetAttribute(const QString &name) const
 {
@@ -479,6 +487,11 @@ void IComponent::WriteAttribute(QDomDocument& doc, QDomElement& comp_element, co
     comp_element.appendChild(attribute_element);
 }
 
+void IComponent::WriteAttribute(QDomDocument& doc, QDomElement& compElement, const IAttribute *attr) const
+{
+    WriteAttribute(doc, compElement, attr->Name(), attr->Id(), attr->ToString(), attr->TypeName());
+}
+
 bool IComponent::BeginDeserialization(QDomElement& compElem)
 {
     if (ParseUInt(compElem.attribute("typeId"), 0xffffffff) == TypeId() || // typeId takes precedence over typeName
@@ -533,22 +546,9 @@ void IComponent::EmitAttributeMetadataChanged(IAttribute* attribute)
 
 void IComponent::EmitAttributeChanged(const QString& attributeName, AttributeChange::Type change)
 {
-    // If this message should be sent with the default attribute change mode specified in the IComponent,
-    // take the change mode from this component.
-    if (change == AttributeChange::Default)
-        change = updateMode;
-    assert(change != AttributeChange::Default);
-
-    if (change == AttributeChange::Disconnected)
-        return; // No signals
-
-    // Roll through attributes and check name match
-    for(uint i = 0; i < attributes.size(); ++i)
-        if (attributes[i] && attributes[i]->Name() == attributeName)
-        {
-            EmitAttributeChanged(attributes[i], change);
-            break;
-        }
+    IAttribute *attr = AttributeByName(attributeName);
+    if (attr)
+        EmitAttributeChanged(attr, change);
 }
 
 void IComponent::SerializeTo(QDomDocument& doc, QDomElement& base_element, bool serializeTemporary) const
@@ -557,7 +557,7 @@ void IComponent::SerializeTo(QDomDocument& doc, QDomElement& base_element, bool 
 
     for(uint i = 0; i < attributes.size(); ++i)
         if (attributes[i])
-            WriteAttribute(doc, comp_element, attributes[i]->Name(), attributes[i]->Id(), attributes[i]->ToString(), attributes[i]->TypeName());
+            WriteAttribute(doc, comp_element, attributes[i]);
 }
 
 void IComponent::DeserializeFrom(QDomElement& element, AttributeChange::Type change)

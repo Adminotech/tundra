@@ -103,7 +103,7 @@ public:
     /// @todo Implement a deserialization flow that takes that into account. In the meanwhile, use Scene
     /// functions for achieving the same.
 
-    void SerializeToBinary(kNet::DataSerializer &dst, bool saveTemporary = false, bool saveChildren = true) const;
+    void SerializeToBinary(kNet::DataSerializer &dst, bool saveTemporary = false, bool saveChildren = true, bool serializeLocal = true) const;
 //        void DeserializeFromBinary(kNet::DataDeserializer &src, AttributeChange::Type change);
 
     /// Emit EnterView signal. Called by the rendering subsystem
@@ -289,17 +289,19 @@ public slots:
     /// Serializes this entity and its' components to the given XML document
     /** @param doc The XML document to serialize this entity to.
         @param base_element Points to the <scene> element of this XML document. This entity will be serialized as a child to base_element.
-        @param serializeTemporary Serialize temporary entities for application-specific purposes. The default value is false. 
-        @param serializeChildren Serialize child entities. Default true. */
-    void SerializeToXML(QDomDocument& doc, QDomElement& base_element, bool serializeTemporary = false, bool serializeChildren = true) const;
+        @param serializeTemporary Serialize temporary entities or components for application-specific purposes. The default value is false. 
+        @param serializeChildren Serialize child entities. Default true.
+        @param bool serializeLocal Serialize local entities. Default true.*/
+    void SerializeToXML(QDomDocument& doc, QDomElement& base_element, bool serializeTemporary = false, bool serializeChildren = true, bool serializeLocal = true) const;
 //        void DeserializeFromXML(QDomElement& element, AttributeChange::Type change);
 
     /// Serializes this entity, and returns the generated XML as a string
     /** @param serializeTemporary Serialize temporary entities for application-specific purposes. The default value is false.
         @param serializeChildren Serialize child entities. Default true.
         @param createSceneElement Whether to wrap the entity XML element in a scene XML element. Default true.
+        @param bool serializeLocal Serialize local entities. Default true.
         @sa SerializeToXML */
-    QString SerializeToXMLString(bool serializeTemporary = false, bool serializeChildren = true, bool createSceneElement = true) const;
+    QString SerializeToXMLString(bool serializeTemporary = false, bool serializeChildren = true, bool createSceneElement = true, bool serializeLocal = true) const;
 //        bool DeserializeFromXMLString(const QString &src, AttributeChange::Type change);
 
     /// Sets name of the entity to EC_Name component. If the component doesn't exist, it will be created.
@@ -456,6 +458,9 @@ public slots:
 
     /// Returns child entities. Optionally recursive
     EntityList Children(bool recursive = false) const;
+
+    /// Helper function for determinating whether or not this entity should be serialized with the provided serialization options.
+    bool ShouldBeSerialized(bool serializeLocal, bool serializeTemporary, bool serializeChildren) const;
 
     // DEPRECATED:
     /// @cond PRIVATE
