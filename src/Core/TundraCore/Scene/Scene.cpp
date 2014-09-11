@@ -610,7 +610,9 @@ QList<Entity *> Scene::CreateContentFromXml(const QDomDocument &xml, bool useEnt
         return QList<Entity*>();
     }
 
-    std::vector<EntityWeakPtr> entities;
+    /// @todo std::vector was observed to be slighty more optimal here, but going with QList for now
+    /// in order to clean up the very messy QList/std::vector<Entity*/EntityWeakPtr/EntityPtr> conversions.
+    QList<EntityWeakPtr> entities;
     
     // Check for existence of the scene element before we begin
     QDomElement scene_elem = xml.firstChildElement("scene");
@@ -628,7 +630,7 @@ QList<Entity *> Scene::CreateContentFromXml(const QDomDocument &xml, bool useEnt
         storage_elem = storage_elem.nextSiblingElement("storage");
     }
     
-    QHash<entity_id_t, entity_id_t> oldToNewIds;
+    EntityIdMap oldToNewIds;
 
     // Spawn all entities in the scene storage.
     QDomElement ent_elem = scene_elem.firstChildElement("entity");
@@ -642,7 +644,7 @@ QList<Entity *> Scene::CreateContentFromXml(const QDomDocument &xml, bool useEnt
     // This is done to combat the runtime detection of "parent entity/placeable created"
     // that slows down the import considerably on large scenes that relies heavily on parenting.
     // Note: Unlike CreateContentFromSceneDesc this is done post Entity creation as we don't have full
-    // infomation prior to it. This will create the entities but the actual signaling happens below,
+    // information prior to it. This will create the entities but the actual signaling happens below,
     // so sorting here still makes a difference.
     QList<EntityWeakPtr> sortedDescEntities = SortEntities(entities);
 
@@ -674,6 +676,7 @@ QList<Entity *> Scene::CreateContentFromXml(const QDomDocument &xml, bool useEnt
     
     // The above signals may have caused scripts to remove entities. Return those that still exist.
     QList<Entity *> ret;
+    ret.reserve(sortedDescEntities.size());
     for(int i=0, len=sortedDescEntities.size(); i<len; ++i)
     {
         if (!sortedDescEntities[i].expired())
@@ -683,13 +686,13 @@ QList<Entity *> Scene::CreateContentFromXml(const QDomDocument &xml, bool useEnt
     return ret;
 }
 
-void Scene::CreateEntityFromXml(EntityPtr parent, const QDomElement& ent_elem, bool useEntityIDsFromFile, AttributeChange::Type change, std::vector<EntityWeakPtr>& entities, QHash<entity_id_t, entity_id_t>& oldToNewIds)
+void Scene::CreateEntityFromXml(EntityPtr parent, const QDomElement& ent_elem, bool useEntityIDsFromFile,
+    AttributeChange::Type change, QList<EntityWeakPtr>& entities, EntityIdMap& oldToNewIds)
 {
     const bool replicated = ParseBool(ent_elem.attribute("sync"), true);
     const bool temporary = ParseBool(ent_elem.attribute("temporary"), false);
 
-    QString id_str = ent_elem.attribute("id");
-    entity_id_t id = !id_str.isEmpty() ? static_cast<entity_id_t>(id_str.toInt()) : 0;
+    entity_id_t id = ent_elem.attribute("id").toUInt(); // toUInt() return 0 on failure.
     if (!useEntityIDsFromFile || id == 0) // If we don't want to use entity IDs from file, or if file doesn't contain one, generate a new one.
     {
         entity_id_t originaId = id;
@@ -793,8 +796,8 @@ QList<Entity *> Scene::CreateContentFromBinary(const char *data, int numBytes, b
     assert(data);
     assert(numBytes > 0);
 
-    std::vector<EntityWeakPtr> entities;
-    QHash<entity_id_t, entity_id_t> oldToNewIds;
+    QList<EntityWeakPtr> entities;
+    EntityIdMap oldToNewIds;
 
     try
     {
@@ -817,7 +820,7 @@ QList<Entity *> Scene::CreateContentFromBinary(const char *data, int numBytes, b
         FixPlaceableParentIds(entities, oldToNewIds, AttributeChange::Disconnected);
 
     // Now that we have each entity spawned to the scene, trigger all the signals for EntityCreated/ComponentChanged messages.
-    for(unsigned i = 0; i < entities.size(); ++i)
+    for(int i = 0; i < entities.size(); ++i)
     {
         EntityWeakPtr weakEnt = entities[i];
 
@@ -838,14 +841,16 @@ QList<Entity *> Scene::CreateContentFromBinary(const char *data, int numBytes, b
     
     // The above signals may have caused scripts to remove entities. Return those that still exist.
     QList<Entity *> ret;
-    for(unsigned i = 0; i < entities.size(); ++i)
+    ret.reserve(entities.size());
+    for(int i = 0; i < entities.size(); ++i)
         if (!entities[i].expired())
             ret.append(entities[i].lock().get());
 
     return ret;
 }
 
-void Scene::CreateEntityFromBinary(EntityPtr parent, kNet::DataDeserializer& source, bool useEntityIDsFromFile, AttributeChange::Type change, std::vector<EntityWeakPtr>& entities, QHash<entity_id_t, entity_id_t>& oldToNewIds)
+void Scene::CreateEntityFromBinary(EntityPtr parent, kNet::DataDeserializer& source, bool useEntityIDsFromFile,
+    AttributeChange::Type change, QList<EntityWeakPtr>& entities, EntityIdMap& oldToNewIds)
 {
     entity_id_t id = source.Read<u32>();
     bool replicated = source.Read<u8>() ? true : false;
@@ -945,7 +950,7 @@ QList<Entity *> Scene::CreateContentFromSceneDesc(const SceneDesc &desc, bool us
     // that slows down the import considerably on large scenes that relies heavily on parenting.
     EntityDescList sortedDescEntities = SortEntities(desc.entities);
 
-    QHash<entity_id_t, entity_id_t> oldToNewIds;
+    EntityIdMap oldToNewIds;
     for (int ei=0, eilen=sortedDescEntities.size(); ei<eilen; ++ei)
         CreateEntityFromDesc(EntityPtr(), sortedDescEntities[ei], useEntityIDsFromFile, change, ret, oldToNewIds);
 
@@ -974,9 +979,10 @@ QList<Entity *> Scene::CreateContentFromSceneDesc(const SceneDesc &desc, bool us
     return ret;
 }
 
-void Scene::CreateEntityFromDesc(EntityPtr parent, const EntityDesc& e, bool useEntityIDsFromFile, AttributeChange::Type change, QList<Entity *>& entities, QHash<entity_id_t, entity_id_t>& oldToNewIds)
+void Scene::CreateEntityFromDesc(EntityPtr parent, const EntityDesc& e, bool useEntityIDsFromFile,
+    AttributeChange::Type change, QList<Entity *>& entities, EntityIdMap& oldToNewIds)
 {
-    entity_id_t id = static_cast<entity_id_t>(e.id.toInt());
+    entity_id_t id = e.id.toUInt();
 
     if (e.id.isEmpty() || !useEntityIDsFromFile)
     {
@@ -1054,7 +1060,7 @@ void Scene::CreateEntityFromDesc(EntityPtr parent, const EntityDesc& e, bool use
                            attr->FromString(a.value, AttributeChange::Disconnected); // Trigger no signal yet when scene is in incoherent state
                         }
                     }
-                }                   
+                }
             }
         }
 
@@ -1329,7 +1335,7 @@ SceneDesc Scene::CreateSceneDescFromBinary(QByteArray &data, SceneDesc &sceneDes
         {
             EntityDesc entityDesc;
             entity_id_t id = source.Read<u32>();
-            entityDesc.id = QString::number(static_cast<uint>(id));
+            entityDesc.id = QString::number(id);
 
             const uint num_components = source.Read<u32>();
             for(uint i = 0; i < num_components; ++i)
@@ -1436,7 +1442,7 @@ QByteArray Scene::GetEntityXml(Entity *entity) const
     if (entity)
     {
         QDomElement entity_elem = scene_doc.createElement("entity");
-        entity_elem.setAttribute("id", QString::number(static_cast<uint>(entity->Id())));
+        entity_elem.setAttribute("id", QString::number(entity->Id()));
         const Entity::ComponentMap &components = entity->Components();
         for (Entity::ComponentMap::const_iterator i = components.begin(); i != components.end(); ++i)
             i->second->SerializeTo(scene_doc, entity_elem);
@@ -1737,26 +1743,20 @@ int EntityInsertIndex(const Scene *scene, const Entity *ent, T &container)
     return (insertIndex < container.size() ? insertIndex : -1);
 }
 
-QList<EntityWeakPtr> ConvertStdToQtList(const std::vector<EntityWeakPtr> entities)
+QList<EntityWeakPtr> Scene::SortEntities(const QList<EntityWeakPtr> &entities) const
 {
-    QList<EntityWeakPtr> temp;
-    for (size_t tempi=0, templen=entities.size(); tempi<templen; ++tempi)
-        temp.push_back(entities[tempi]);
-    return temp;
-}
-
-QList<EntityWeakPtr> Scene::SortEntities(const std::vector<EntityWeakPtr> entities) const
-{
-    PolledTimer t; t.Start();
+    PolledTimer t;
 
     QList<Entity*> rawEntities;
+    /// @todo In Scene's internal usage we know that nothing has could not have
+    /// deleted the entities yet (no signals triggered) and this could be skipped.
     for (size_t ei=0, eilen=entities.size(); ei<eilen; ++ei)
     {
         EntityWeakPtr weakEnt = entities[ei];
         if (weakEnt.expired())
         {
-            LogError(QString("Scene::SortEntities: Input std::vector<EntityWeakPtr> contained expired pointer at index %1. Aborting sort and returning original list.").arg(ei));
-            return ConvertStdToQtList(entities);
+            LogError(QString("Scene::SortEntities: Input contained an expired weak_ptr at index %1. Aborting sort and returning original list.").arg(ei));
+            return entities;
         }
         rawEntities.push_back(weakEnt.lock().get());
     }
@@ -1775,7 +1775,7 @@ QList<EntityWeakPtr> Scene::SortEntities(const std::vector<EntityWeakPtr> entiti
     {
         LogError(QString("Scene::SortEntities: Sorting resulted in loss of information. Returning original unsorted list. Sorted size: %1 Unsorted size: %2.")
             .arg(sortedEntities.size()).arg(entities.size()));
-        return ConvertStdToQtList(entities);
+        return entities;
     }
 
     LogDebug(QString("Scene::SortEntities: Sorted Entities in %1 msecs. Input Entities %2").arg(t.MSecsElapsed(), 0, 'f', 4).arg(entities.size()));
@@ -1784,7 +1784,7 @@ QList<EntityWeakPtr> Scene::SortEntities(const std::vector<EntityWeakPtr> entiti
 
 QList<Entity*> Scene::SortEntities(const QList<Entity*> &entities) const
 {
-    PolledTimer t; t.Start();
+    PolledTimer t;
 
     QList<Entity*> sortedEntities;
     for (int ei=0, eilen=entities.size(); ei<eilen; ++ei)
@@ -1792,7 +1792,7 @@ QList<Entity*> Scene::SortEntities(const QList<Entity*> &entities) const
         Entity *ent = entities[ei];
         if (!ent)
         {
-            LogError(QString("Scene::SortEntities: Input QList<Entity*> contained null pointer at index %1. Aborting sort and returning original list.").arg(ei));
+            LogError(QString("Scene::SortEntities: Input contained a null pointer at index %1. Aborting sort and returning original list.").arg(ei));
             return entities;
         }
 
@@ -1815,7 +1815,7 @@ QList<Entity*> Scene::SortEntities(const QList<Entity*> &entities) const
 
 EntityDescList Scene::SortEntities(const EntityDescList &entities) const
 {
-    PolledTimer t; t.Start();
+    PolledTimer t;
 
     EntityDescList iterDescEntities = entities;
     EntityDescList sortedDescEntities;
@@ -1902,20 +1902,12 @@ entity_id_t Scene::EntityParentId(const Entity *ent) const
 entity_id_t Scene::PlaceableParentId(const Entity *ent) const
 {
     ComponentPtr comp = ent->Component(20); // EC_Placeable
-
-    entity_id_t parentId = 0;
-    if (!comp.get())
-        return parentId;
-    
-    Attribute<EntityReference> *parentRef = dynamic_cast<Attribute<EntityReference> *>(comp->AttributeById("parentRef"));
-    if (parentRef && !parentRef->Get().IsEmpty())
-    {
-        bool isNumber = false;
-        parentId = parentRef->Get().ref.toUInt(&isNumber);
-        if (!isNumber)
-            parentId = 0;
-    }
-    return parentId;
+    if (!comp)
+        return 0;
+    Attribute<EntityReference> *parentRef = static_cast<Attribute<EntityReference> *>(comp->AttributeById("parentRef"));
+    if (!parentRef->Get().IsEmpty())
+        return parentRef->Get().ref.toUInt(); // toUInt() returns 0 on failure
+    return 0;
 }
 
 entity_id_t Scene::PlaceableParentId(const EntityDesc &ent) const
@@ -1926,40 +1918,22 @@ entity_id_t Scene::PlaceableParentId(const EntityDesc &ent) const
         const ComponentDesc &comp = ent.components[ci];
         if (comp.typeId == 20)
         {
-            entity_id_t parentId = 0;
-            const QString attrId = "parentRef";
-
             // Find attribute "parentRef"
+            const QString parentRefId = "parentRef";
             for (int ai=0, ailen=comp.attributes.size(); ai<ailen; ++ai)
             {
                 const AttributeDesc &attr = comp.attributes[ai];
-                if (attr.id.compare(attrId, Qt::CaseSensitive) == 0)
-                {
-                    bool isNumber = false;
-                    parentId = attr.value.toUInt(&isNumber);
-                    if (!isNumber)
-                        parentId = 0;
-                    break;
-                }
+                if (attr.id.compare(parentRefId, Qt::CaseSensitive) == 0)
+                    return attr.value.toUInt(); // toUInt() returns 0 on failure
             }
-            return parentId;
+            return 0; // parentRef not found for some reason (invalid desc data?);
         }
     }
     return 0;
 }
 
-void Scene::FixPlaceableParentIds(const std::vector<EntityWeakPtr> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats) const
-{
-    QList<Entity*> rawEntities;
-    for (size_t i=0, len=entities.size(); i<len; ++i)
-    {
-        if (!entities[i].expired())
-            rawEntities << entities[i].lock().get();
-    }
-    FixPlaceableParentIds(rawEntities, oldToNewIds, change, printStats);
-}
-
-void Scene::FixPlaceableParentIds(const QList<EntityWeakPtr> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats) const
+uint Scene::FixPlaceableParentIds(const QList<EntityWeakPtr> &entities, const EntityIdMap &oldToNewIds,
+    AttributeChange::Type change, bool printStats) const
 {
     QList<Entity*> rawEntities;
     for (int i=0, len=entities.size(); i<len; ++i)
@@ -1967,13 +1941,14 @@ void Scene::FixPlaceableParentIds(const QList<EntityWeakPtr> entities, const QHa
         if (!entities[i].expired())
             rawEntities << entities[i].lock().get();
     }
-    FixPlaceableParentIds(rawEntities, oldToNewIds, change, printStats);
+    return FixPlaceableParentIds(rawEntities, oldToNewIds, change, printStats);
 }
 
-void Scene::FixPlaceableParentIds(const QList<Entity*> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats) const
+uint Scene::FixPlaceableParentIds(const QList<Entity *> &entities, const EntityIdMap &oldToNewIds,
+    AttributeChange::Type change, bool printStats) const
 {
-    PolledTimer t; t.Start();
-    int fixed = 0;
+    PolledTimer t;
+    uint fixed = 0;
 
     foreach(Entity *entity, entities)
     {
@@ -1981,15 +1956,14 @@ void Scene::FixPlaceableParentIds(const QList<Entity*> entities, const QHash<ent
             continue;
 
         ComponentPtr placeable = entity->Component(20); // EC_Placeable
-        Attribute<EntityReference> *parentRef = (placeable.get() ? dynamic_cast<Attribute<EntityReference> *>(placeable->AttributeById("parentRef")) : 0);
+        Attribute<EntityReference> *parentRef = (placeable.get() ? static_cast<Attribute<EntityReference> *>(placeable->AttributeById("parentRef")) : 0);
         if (parentRef && !parentRef->Get().IsEmpty())
         {
             // We only need to fix the id parent refs. Ones with Entity names should
             // work as expected (if names are unique which would be a authoring problem
             // and not addressed by Tundra).
-            bool isNumber = false;
-            entity_id_t refId = parentRef->Get().ref.toUInt(&isNumber);
-            if (isNumber && refId > 0 && oldToNewIds.contains(refId))
+            entity_id_t refId = parentRef->Get().ref.toUInt(); // toUInt() returns 0 on failure
+            if (refId > 0 && oldToNewIds.contains(refId))
             {
                 parentRef->Set(EntityReference(oldToNewIds[refId]), change);
                 fixed++;
@@ -2001,4 +1975,5 @@ void Scene::FixPlaceableParentIds(const QList<Entity*> entities, const QHash<ent
         LogInfo(QString("Scene::FixPlaceableParentIds: Fixed %1 parentRefs in %2 msecs. Input Entities %3").arg(fixed).arg(t.MSecsElapsed(), 0, 'f', 4).arg(entities.size()));
     else
         LogDebug(QString("Scene::FixPlaceableParentIds: Fixed %1 parentRefs in %2 msecs. Input Entities %3").arg(fixed).arg(t.MSecsElapsed(), 0, 'f', 4).arg(entities.size()));
+    return fixed;
 }

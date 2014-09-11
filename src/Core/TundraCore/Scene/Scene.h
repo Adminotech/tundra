@@ -46,7 +46,8 @@ public:
 
     typedef std::map<entity_id_t, EntityPtr> EntityMap; ///< Maps entities to their unique IDs.
     typedef EntityMap::iterator iterator; ///< entity iterator, see begin() and end()
-    typedef EntityMap::const_iterator const_iterator;///< const entity iterator. see begin() and end()
+    typedef EntityMap::const_iterator const_iterator; ///< const entity iterator. see begin() and end()
+    typedef QHash<entity_id_t, entity_id_t> EntityIdMap; ///< Used to map entity ID changes (oldId, newId).
 
     /// Returns name of the scene.
     const QString &Name() const { return name_; }
@@ -222,10 +223,10 @@ public:
     /// @cond PRIVATE
     // Not publicly documented as ideally Scene should not know about Placeable until its defined in TundraCore.
     /// Fix parent Entity ids that are set to EC_Placeable::parentRef.
-    /** If @c printStats is true, a summary of the execution is printed once done. */
-    void FixPlaceableParentIds(const QList<Entity*> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats = false) const;
-    void FixPlaceableParentIds(const QList<EntityWeakPtr> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats = false) const; ///< @overload
-    void FixPlaceableParentIds(const std::vector<EntityWeakPtr> entities, const QHash<entity_id_t, entity_id_t> &oldToNewIds, AttributeChange::Type change, bool printStats = false) const; ///< @overload
+    /** If @c printStats is true, a summary of the execution is printed once done.
+        @return Number of fixed parent refs. */
+    uint FixPlaceableParentIds(const QList<Entity *> &entities, const EntityIdMap &oldToNewIds, AttributeChange::Type change, bool printStats = false) const;
+    uint FixPlaceableParentIds(const QList<EntityWeakPtr> &entities, const EntityIdMap &oldToNewIds, AttributeChange::Type change, bool printStats = false) const; /**< @overload */
     /// @endcond
 
 public slots:
@@ -448,8 +449,8 @@ public slots:
     /** Takes into account both Entity::Parent and EC_Placeable::parentRef parenting,
         Entity-level parenting takes precedence. */
     QList<Entity*> SortEntities(const QList<Entity*> &entities) const;
-    QList<EntityWeakPtr> SortEntities(const std::vector<EntityWeakPtr> entities) const; ///< @overload
-    EntityDescList SortEntities(const EntityDescList &entities) const; ///< @overload
+    QList<EntityWeakPtr> SortEntities(const QList<EntityWeakPtr> &entities) const;
+    EntityDescList SortEntities(const EntityDescList &entities) const;
 
     /// Checks whether editing an entity is allowed.
     /** Emits AboutToModifyEntity.
@@ -550,11 +551,14 @@ private:
     friend class ::SceneAPI;
 
     /// Create entity from an XML element and recurse into child entities. Called internally.
-    void CreateEntityFromXml(EntityPtr parent, const QDomElement& ent_elem, bool useEntityIDsFromFile, AttributeChange::Type change, std::vector<EntityWeakPtr>& entities, QHash<entity_id_t, entity_id_t>& oldToNewIds);
+    void CreateEntityFromXml(EntityPtr parent, const QDomElement& ent_elem, bool useEntityIDsFromFile,
+        AttributeChange::Type change, QList<EntityWeakPtr>& entities, EntityIdMap& oldToNewIds);
     /// Create entity from binary data and recurse into child entities. Called internally.
-    void CreateEntityFromBinary(EntityPtr parent, kNet::DataDeserializer& source, bool useEntityIDsFromFile, AttributeChange::Type change, std::vector<EntityWeakPtr>& entities, QHash<entity_id_t, entity_id_t>& oldToNewIds);
+    void CreateEntityFromBinary(EntityPtr parent, kNet::DataDeserializer& source, bool useEntityIDsFromFile,
+        AttributeChange::Type change, QList<EntityWeakPtr>& entities, EntityIdMap& oldToNewIds);
     /// Create entity from entity desc and recurse into child entities. Called internally.
-    void CreateEntityFromDesc(EntityPtr parent, const EntityDesc& source, bool useEntityIDsFromFile, AttributeChange::Type change, QList<Entity *>& entities, QHash<entity_id_t, entity_id_t>& oldToNewIds);
+    void CreateEntityFromDesc(EntityPtr parent, const EntityDesc& source, bool useEntityIDsFromFile,
+        AttributeChange::Type change, QList<Entity *>& entities, EntityIdMap& oldToNewIds);
     /// Create entity desc from an XML element and recurse into child entities. Called internally.
     void CreateEntityDescFromXml(SceneDesc& sceneDesc, QList<EntityDesc>& dest, const QDomElement& ent_elem) const;
 
