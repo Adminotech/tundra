@@ -153,11 +153,11 @@ QStringList IComponent::GetAttributeIds() const
     return attribute_list;
 }
 
-bool IComponent::ShouldBeSerialized(bool serializeLocal, bool serializeTemporary) const
+bool IComponent::ShouldBeSerialized(bool serializeTemporary, bool serializeLocal) const
 {
-    if (IsLocal() && !serializeLocal)
-        return false;
     if (IsTemporary() && !serializeTemporary)
+        return false;
+    if (IsLocal() && !serializeLocal)
         return false;
     return true;
 }

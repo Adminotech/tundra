@@ -905,7 +905,8 @@ QString SceneTreeWidget::SelectionAsXml() const
     // Create root Scene element always for consistency, even if we only have one entity
     QDomDocument sceneDoc("Scene");
     QDomElement sceneElem = sceneDoc.createElement("scene");
-
+    // Always save temp and local objects for hand-picked selection.
+    const bool serializeTemp = true, serializeLocal = true;
     if (selection.HasEntities())
     {
         foreach(EntityItem *eItem, selection.entities)
@@ -913,7 +914,7 @@ QString SceneTreeWidget::SelectionAsXml() const
             EntityPtr entity = eItem->Entity();
             assert(entity);
             if (entity)
-                entity->SerializeToXML(sceneDoc, sceneElem, true);
+                entity->SerializeToXML(sceneDoc, sceneElem, serializeTemp, serializeLocal);
         }
 
         sceneDoc.appendChild(sceneElem);
@@ -924,7 +925,7 @@ QString SceneTreeWidget::SelectionAsXml() const
         {
             ComponentPtr component = cItem->Component();
             if (component)
-                component->SerializeTo(sceneDoc, sceneElem, true);
+                component->SerializeTo(sceneDoc, sceneElem, serializeTemp);
         }
 
         sceneDoc.appendChild(sceneElem);
@@ -936,7 +937,7 @@ QString SceneTreeWidget::SelectionAsXml() const
             {
                 EntityItem *eItem = static_cast<EntityItem*>(gItem->child(i));
                 if (eItem && eItem->Entity())
-                    eItem->Entity()->SerializeToXML(sceneDoc, sceneElem, true);
+                    eItem->Entity()->SerializeToXML(sceneDoc, sceneElem, serializeTemp, serializeLocal);
             }
 
         sceneDoc.appendChild(sceneElem);
@@ -1685,6 +1686,9 @@ void SceneTreeWidget::SaveSelectionDialogClosed(int result)
         SceneTreeWidgetSelection sel = SelectedItems();
         if (!sel.IsEmpty())
         {
+            // Always save temp and local objects for hand-picked selection.
+            const bool serializeTemp = true, serializeLocal = true;
+
             // Assume 4MB max for now
             bytes.resize(4 * 1024 * 1024);
             kNet::DataSerializer dest(bytes.data(), bytes.size());
@@ -1696,7 +1700,7 @@ void SceneTreeWidget::SaveSelectionDialogClosed(int result)
                 EntityPtr entity = eItem->Entity();
                 assert(entity);
                 if (entity)
-                    entity->SerializeToBinary(dest);
+                    entity->SerializeToBinary(dest, serializeTemp, serializeLocal);
             }
 
             bytes.resize((int)dest.BytesFilled());

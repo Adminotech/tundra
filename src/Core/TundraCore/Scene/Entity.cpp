@@ -437,14 +437,14 @@ QObjectList Entity::GetComponentsRaw(const QString &type_name) const
     return ret;
 }
 
-void Entity::SerializeToBinary(kNet::DataSerializer &dst, bool serializeTemporary, bool serializeChildren, bool serializeLocal) const
+void Entity::SerializeToBinary(kNet::DataSerializer &dst, bool serializeTemporary, bool serializeLocal, bool serializeChildren) const
 {
     dst.Add<u32>(Id());
     dst.Add<u8>(IsReplicated() ? 1 : 0);
     std::vector<ComponentPtr> serializable;
     std::vector<EntityPtr> serializableChildren;
     for (ComponentMap::const_iterator i = components_.begin(); i != components_.end(); ++i)
-        if (i->second->ShouldBeSerialized(serializeLocal, serializeTemporary))
+        if (i->second->ShouldBeSerialized(serializeTemporary, serializeLocal))
             serializable.push_back(i->second);
 
     if (serializeChildren)
@@ -452,7 +452,7 @@ void Entity::SerializeToBinary(kNet::DataSerializer &dst, bool serializeTemporar
         foreach(const EntityWeakPtr &childWeak, children_)
         {
             const EntityPtr child = childWeak.lock();
-            if (child && child->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+            if (child && child->ShouldBeSerialized(serializeTemporary, serializeLocal, serializeChildren))
                 serializableChildren.push_back(child);
         }
     }
@@ -495,7 +495,7 @@ void Entity::DeserializeFromBinary(kNet::DataDeserializer &src, AttributeChange:
 {
 }*/
 
-void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool serializeTemporary, bool serializeChildren, bool serializeLocal) const
+void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool serializeTemporary, bool serializeLocal, bool serializeChildren) const
 {
     QDomElement entity_elem = doc.createElement("entity");
     entity_elem.setAttribute("id", QString::number(Id()));
@@ -504,7 +504,7 @@ void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool s
         entity_elem.setAttribute("temporary", BoolToString(IsTemporary()));
 
     for (ComponentMap::const_iterator i = components_.begin(); i != components_.end(); ++i)
-        if (i->second->ShouldBeSerialized(serializeLocal, serializeTemporary))
+        if (i->second->ShouldBeSerialized(serializeTemporary, serializeLocal))
             i->second->SerializeTo(doc, entity_elem, serializeTemporary);
 
     // Serialize child entities
@@ -513,7 +513,7 @@ void Entity::SerializeToXML(QDomDocument &doc, QDomElement &base_element, bool s
         for(ChildEntityVector::const_iterator i = children_.begin(); i != children_.end(); ++i)
         {
             const EntityPtr child = i->lock();
-            if (child && child->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+            if (child && child->ShouldBeSerialized(serializeTemporary, serializeLocal, serializeChildren))
                 child->SerializeToXML(doc, entity_elem, serializeTemporary, serializeLocal);
         }
     }
@@ -529,13 +529,13 @@ void Entity::DeserializeFromXML(QDomElement& element, AttributeChange::Type chan
 {
 }*/
 
-QString Entity::SerializeToXMLString(bool serializeTemporary, bool serializeChildren, bool createSceneElement, bool serializeLocal) const
+QString Entity::SerializeToXMLString(bool serializeTemporary, bool serializeLocal, bool serializeChildren, bool createSceneElement) const
 {
     if (createSceneElement)
     {
         QDomDocument sceneDoc("Scene");
         QDomElement sceneElem = sceneDoc.createElement("scene");
-        SerializeToXML(sceneDoc, sceneElem, serializeTemporary, serializeChildren, serializeLocal);
+        SerializeToXML(sceneDoc, sceneElem, serializeTemporary, serializeLocal, serializeChildren);
         sceneDoc.appendChild(sceneElem);
         return sceneDoc.toString();
     }
@@ -543,7 +543,7 @@ QString Entity::SerializeToXMLString(bool serializeTemporary, bool serializeChil
     {
         QDomDocument entity_doc("Entity");
         QDomElement null_elem;
-        SerializeToXML(entity_doc, null_elem, serializeTemporary, serializeChildren, serializeLocal);
+        SerializeToXML(entity_doc, null_elem, serializeTemporary, serializeLocal, serializeChildren);
         return entity_doc.toString();
     }
 }
@@ -922,11 +922,11 @@ EntityList Entity::Children(bool recursive) const
     return ret;
 }
 
-bool Entity::ShouldBeSerialized(bool serializeLocal, bool serializeTemporary, bool serializeChildren) const
+bool Entity::ShouldBeSerialized(bool serializeTemporary, bool serializeLocal, bool serializeChildren) const
 {
-    if (IsLocal() && !serializeLocal)
-        return false;
     if (IsTemporary() && !serializeTemporary)
+        return false;
+    if (IsLocal() && !serializeLocal)
         return false;
     if (Parent() && !serializeChildren)
         return false;

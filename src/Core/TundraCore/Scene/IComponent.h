@@ -354,7 +354,7 @@ public slots:
     static QString EnsureTypeNameWithPrefix(const QString &tn) { return (tn.startsWith("EC_", Qt::CaseInsensitive) ? tn : "EC_" + tn); }
 
     /// Helper function for determinating whether or not this component should be serialized with the provided serialization options.
-    bool ShouldBeSerialized(bool serializeLocal, bool serializeTemporary) const;
+    bool ShouldBeSerialized(bool serializeTemporary, bool serializeLocal) const;
 
     // DEPRECATED
     void SetNetworkSyncEnabled(bool enable); /**< @deprecated Currently a no-op, as replication mode can not be changed after adding to an entity. @todo Remove! */

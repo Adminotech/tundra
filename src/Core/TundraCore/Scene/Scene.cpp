@@ -498,8 +498,8 @@ QByteArray Scene::SerializeToXmlString(bool serializeTemporary, bool serializeLo
     const bool serializeChildren = true;
 
     foreach(const EntityPtr ent, RootLevelEntities())
-        if (ent->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
-            ent->SerializeToXML(sceneDoc, sceneElem, serializeTemporary, serializeChildren, serializeLocal);
+        if (ent->ShouldBeSerialized(serializeTemporary, serializeLocal, serializeChildren))
+            ent->SerializeToXML(sceneDoc, sceneElem, serializeTemporary, serializeLocal, serializeChildren);
 
     sceneDoc.appendChild(sceneElem);
 
@@ -560,7 +560,7 @@ bool Scene::SaveSceneBinary(const QString& filename, bool serializeTemporary, bo
     EntityList serialized = RootLevelEntities();
     for(EntityList::const_iterator iter = serialized.begin(); iter != serialized.end();)
     {
-        if ((*iter)->ShouldBeSerialized(serializeLocal, serializeTemporary, serializeChildren))
+        if ((*iter)->ShouldBeSerialized(serializeTemporary, serializeLocal, serializeChildren))
              ++iter;
         else
             iter = serialized.erase(iter);
