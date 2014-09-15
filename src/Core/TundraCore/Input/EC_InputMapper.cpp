@@ -112,19 +112,10 @@ void EC_InputMapper::HandleKeyEvent(KeyEvent *e)
 {
     if (!enabled.Get())
         return;
+    if (!keyrepeatTrigger.Get() && e->eventType == KeyEvent::KeyPressed && e->keyPressCount > 1)
+        return; // ignore key repeats as requested
 
-    // Do not act on already handled key events.
-    if (!e || e->handled)
-        return;
-    
-    if (!keyrepeatTrigger.Get())
-    {
-        // Now we do not repeat key pressed events.
-        if (e != 0 && e->eventType == KeyEvent::KeyPressed &&  e->keyPressCount > 1)
-            return;
-    }
-
-    ActionInvocationMap::iterator it;
+    ActionInvocationMap::const_iterator it;
     // If 'modifiers are enabled', then it means we distinguish 'E', 'Shift+E' and 'Ctrl+E' as separate key sequences...
     // But this separation can only be done for pressed and hold-down keyboard events. If 'E' is released, it needs to be detected as released individual of
     // whether any modifiers are down.
@@ -142,26 +133,19 @@ void EC_InputMapper::HandleKeyEvent(KeyEvent *e)
         return;
     }
 
-    ActionInvocation& invocation = it.value();
-    QString &action = invocation.name;
+    const ActionInvocation& invocation = it.value();
+    const QString &action = invocation.name;
     int execType = invocation.executionType;
     // If zero execution type, use default
     if (!execType)
         execType = executionType.Get();
-    
+
     // If the action has parameters, parse them from the action string.
-    int idx = action.indexOf('(');
-    if (idx != -1)
-    {
-        QString act = action.left(idx);
-        QString parsedAction = action.mid(idx + 1);
-        parsedAction.remove('(');
-        parsedAction.remove(')');
-        QStringList parameters = parsedAction.split(',');
-        entity->Exec((EntityAction::ExecTypeField)execType, act, parameters);
-    }
-    else
-        entity->Exec((EntityAction::ExecTypeField)execType, action);
+    QString command;
+    QStringList parameters;
+    ParseCommand(action, command, parameters);
+    entity->Exec((EntityAction::ExecTypeField)execType, command, parameters);
+
     if (suppressKeyEvents.Get())
         e->Suppress();
 }

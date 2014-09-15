@@ -116,3 +116,8 @@ QString TUNDRACORE_API CamelCase(const QString &str, bool lowerCase = true);
 
 /// Returns if the string only contains alphanumeric characters with regexp "[A-Za-z0-9]".
 bool TUNDRACORE_API IsAlphanumeric(QString &str, int &invalidCharPosition);
+
+/// Splits a string of form "MyFunctionName(param1, param2, param3, ...)" into
+/// a commandName = "MyFunctionName" and a list of parameters as a StringList.
+/// The parameters can contain parentheses.
+void TUNDRACORE_API ParseCommand(QString command, QString &commandName, QStringList &parameterList);

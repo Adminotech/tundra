@@ -135,34 +135,6 @@ void ConsoleAPI::UnregisterCommand(const QString &name)
     commands.erase(it);
 }
 
-/// Splits a string of form "MyFunctionName(param1, param2, param3, ...)" into
-/// a commandName = "MyFunctionName" and a list of parameters as a StringList.
-void ParseCommand(QString command, QString &commandName, QStringList &parameterList)
-{
-    command = command.trimmed();
-    if (command.isEmpty())
-        return;
-
-    int split = command.indexOf("(");
-    if (split == -1)
-    {
-        commandName = command;
-        return;
-    }
-
-    commandName = command.left(split).trimmed();
-    // Take into account the possible ending ")" and strip it away from the parameter list.
-    // Remove it only if it's the last character in the string, as f.ex. some code execution console
-    // command could contain ')' in the syntax.
-    int endOfSplit = command.lastIndexOf(")");
-    if (endOfSplit != -1 && endOfSplit == command.length()-1)
-        command.remove(endOfSplit, 1);
-    parameterList = command.mid(split+1).split(",");
-    // Trim parameters in order to avoid errors if/when converting strings to other data types.
-    for(int i = 0; i < parameterList.size(); ++i)
-        parameterList[i] = parameterList[i].trimmed();
-}
-
 void ConsoleAPI::ExecuteCommand(const QString &command)
 {
     PROFILE(ConsoleAPI_ExecuteCommand);
