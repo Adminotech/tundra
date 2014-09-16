@@ -68,20 +68,21 @@ public slots:
         use the your mouse events position to execute a raycast operation yourself. */
     RaycastResult* CurrentMouseRaycastResult() const;
 
-    /// Returns the closest intersect point when raycasting from @c from to @to.
-    /** @param Source position where raycast is executed.
-     ** @param Target position for the raycast.
-     ** @param Layer mask @see OgreWorld::Raycast. 
-     ** @return Intersect world position. float3::zero is returned if nothing was hit, use float3::IsZero() to check the result. */
+    /// Returns the closest intersect point when raycasting from @c from to @c to.
+    /** @param from Source position where raycast is executed.
+        @param to Target position for the raycast.
+        @param layerMask Layer mask @see OgreWorld::Raycast.
+        @param maxDistance Max. distance to raycast @see OgreWorld::Raycast.
+        @return Intersect world position. float3::nan is returned if nothing was hit, use float3::IsFinite() to check the result. */
     float3 RaycastClosestIntersect(const float3 &from, const float3 &to, unsigned layerMask = 0xffffffff, float maxDistance = 1000.0f) const;
     /// @overload
     float3 RaycastClosestIntersect(const float3 &from, const QList<float3> &to, unsigned layerMask = 0xffffffff, float maxDistance = 1000.0f) const;
-    
-    /// Returns the furthest intersect point when raycasting from @c from to @to.
-    /** @param Source position where raycast is executed.
-     ** @param Target position for the raycast.
-     ** @param Layer mask @see OgreWorld::Raycast. 
-     ** @return Intersect world position. float3::zero is returned if nothing was hit, use float3::IsZero() to check the result. */
+
+    /// Returns the furthest intersect point when raycasting from @c from to @c to.
+    /** @param from Source position where raycast is executed.
+        @param to Target position for the raycast.
+        @param layerMask Layer mask @see OgreWorld::Raycast. 
+        @return Intersect world position. float3::nan is returned if nothing was hit, use float3::IsFinite() to check the result. */
     float3 RaycastFurthestIntersect(const float3 &from, const float3 &to, unsigned layerMask = 0xffffffff) const;
     /// @overload
     float3 RaycastFurthestIntersect(const float3 &from, const QList<float3> &to, unsigned layerMask = 0xffffffff) const;

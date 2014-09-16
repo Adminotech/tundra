@@ -69,11 +69,11 @@ float3 SceneInteract::RaycastClosestIntersect(const float3 &from, const float3 &
 
 float3 SceneInteract::RaycastClosestIntersect(const float3 &from, const QList<float3> &to, unsigned layerMask, float maxDistance) const
 {
-    float3 intersection = float3::zero;
-    OgreWorldPtr world = framework_->GetModule<OgreRenderer::OgreRenderingModule>()->GetRenderer()->GetActiveOgreWorld();
+    float3 intersection = float3::nan;
+    OgreWorldPtr world = framework_->Module<OgreRenderingModule>()->Renderer()->ActiveOgreWorld();
     if (!world)
         return intersection;
-        
+
     Ray ray;
     ray.pos = from;
 
@@ -84,13 +84,10 @@ float3 SceneInteract::RaycastClosestIntersect(const float3 &from, const QList<fl
         
         // We use Raycast as the closest hit entity is enough for us.
         RaycastResult *result = world->Raycast(ray, layerMask, maxDistance);
-        if (result && result->entity && !IsInf(result->t))
+        if (result->entity && result->t < closest)
         {
-            if (result->t < closest)
-            {
-                closest = result->t;
-                intersection = result->pos;
-            }
+            closest = result->t;
+            intersection = result->pos;
         }
     }
     return intersection;
@@ -103,8 +100,8 @@ float3 SceneInteract::RaycastFurthestIntersect(const float3 &from, const float3 
 
 float3 SceneInteract::RaycastFurthestIntersect(const float3 &from, const QList<float3> &to, unsigned layerMask) const
 {
-    float3 intersection = float3::zero;
-    OgreWorldPtr world = framework_->GetModule<OgreRenderer::OgreRenderingModule>()->GetRenderer()->GetActiveOgreWorld();
+    float3 intersection = float3::nan;
+    OgreWorldPtr world = framework_->Module<OgreRenderingModule>()->Renderer()->ActiveOgreWorld();
     if (!world)
         return intersection;
 
@@ -124,13 +121,10 @@ float3 SceneInteract::RaycastFurthestIntersect(const float3 &from, const QList<f
         {
             // Last result is picked as the results are already ordered by distance.
             RaycastResult *result = results.last();
-            if (result && result->entity && !IsInf(result->t))
+            if (result->t > furthest)
             {
-                if (result->t > furthest)
-                {
-                    furthest = result->t;
-                    intersection = result->pos;
-                }
+                furthest = result->t;
+                intersection = result->pos;
             }
         }
     }
