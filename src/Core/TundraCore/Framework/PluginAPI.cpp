@@ -98,9 +98,11 @@ void PluginAPI::UnloadPlugins()
     {
 #ifdef WIN32
         FreeLibrary((HMODULE)iter->handle);
+#elif defined(__APPLE__)
+        dlclose(iter->handle);
 #else
-    /// \bug caused memory errors in destructors in the dlclose call chain
-    //        dlclose(iter->handle);
+        /// \bug In Linux this caused memory errors in destructors in the dlclose call chain
+//        dlclose(iter->handle);
 #endif
     }
     plugins.clear();
