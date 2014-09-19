@@ -20,6 +20,7 @@ VS*\                            Build scripts specific to certain Visual Studio 
 BuildAll.cmd                    Master script for building both dependencies and Tundra from
                                 command-line (using default generator and build configuration).
 BuildDeps.cmd                   Master script for building dependencies from command-line.
+BuildTundra.cmd                 Master script for building Tundra from command-line.
 BuildTundra_Debug.cmd           Script for building Debug Tundra from command-line.
 BuildTundra_RelWithDebInfo.cmd  Script for building RelWithDebInfo Tundra from command-line.
 RunCMake.cmd                    Master script for running CMake for Tundra. Should be called
