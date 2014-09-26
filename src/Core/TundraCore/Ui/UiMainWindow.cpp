@@ -66,6 +66,7 @@ void UiMainWindow::LoadWindowSettingsFromFile()
     int windowY = owner->Config()->Get(configData, "window top", -1).toInt();
     bool maximized = owner->Config()->Get(configData, "window maximized", false).toBool();
     bool fullscreen = owner->Config()->Get(configData, "fullscreen", false).toBool() || owner->HasCommandLineParameter("--fullscreen");
+    qDebug() << "WINDOWX" << windowX;
 
 #ifdef Q_WS_MAC
     // Fullscreen causes crash on Mac OS X. See https://github.com/realXtend/naali/issues/522
@@ -80,7 +81,7 @@ void UiMainWindow::LoadWindowSettingsFromFile()
     
     width = max(1, min(DesktopWidth(), width));
     height = max(1, min(DesktopHeight(), height));
-    windowX = max(0, min(DesktopWidth()-width, windowX));
+    //windowX = max(0, min(DesktopWidth()-width, windowX));
     windowY = max(25, min(DesktopHeight()-height, windowY));
 
     resize(width, height);
