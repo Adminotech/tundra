@@ -75,8 +75,6 @@ set (ENABLE_PROFILING 1)            # Enable the following flag to add compile w
 set (ENABLE_JS_PROFILING 0)         # Enable js profiling?
 set (ENABLE_MEMORY_LEAK_CHECKS 0)   # If the following flag is defined, memory leak checking is enabled in all modules when building on MSVC.
 
-message("\n")
-
 if (TUNDRACORE_SHARED)
     add_definitions(-DTUNDRACORE_SHARED)
 endif()
@@ -115,8 +113,7 @@ if (MSVC)
     endif()
 endif()
 
-###### ENTITY-COMPONENTS ######
-message("\n=========== Configuring Optional Entity-Components ===========\n")
+message("============== Configuring Optional Entity-Components ================\n") # 70 visible chars to match CMakeLists.txt's prints
 
 ## The AddEntityComponent macros must appear before any of the add_subdirectory() directives for modules that use the ECs, or otherwise
 ## they will not be able to conditionally compile the EC.
@@ -137,8 +134,7 @@ if (NOT BUILD_SDK_ONLY)
     AddEntityComponent(EC_StencilGlow)
 endif()
 
-###### TUNDRA FRAMEWORK ######
-message("\n=========== Configuring Tundra Framework ===========\n")
+message("=================== Configuring Tundra Framework =====================\n")
 
 ## The following are the core modules/libs that are required 
 ## for the project to build. None of these can be omitted.
@@ -155,8 +151,8 @@ if (MSVC)
     AddProject(Core TundraConsole)
 endif()
 
-###### MANDATORY PLUGINS ######
-message("\n=========== Configuring Mandatory Plugins ===========\n")
+message("=================== Configuring Mandatory Plugin =====================\n")
+
 ## Here we have plugins that cannot be omitted from the build.
 AddProject(Core OgreRenderingModule)
 AddProject(Core TundraProtocolModule)
@@ -164,8 +160,8 @@ AddProject(Core AssetModule)
 AddProject(Core PhysicsModule)          # Optional in theory, if your application doesn't need physics, but currently TundraProtocolModule depends on this. Depends on OgreRenderingModule and EnvironmentModule.
 AddProject(Core EnvironmentModule)      # Optional in theory, if you drop PhysicsModule and DebugStatsModule. Depends on OgreRenderingModule.
 
-###### OPTIONAL PLUGINS ######
-message("\n=========== Configuring Optional Plugins ===========\n")
+message("=================== Configuring Optional Plugins =====================\n")
+
 # Add addons projects if they have been checked out from the separate repository
 if (EXISTS src/TundraAddons)
     add_subdirectory(src/TundraAddons)

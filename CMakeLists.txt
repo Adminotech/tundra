@@ -23,6 +23,8 @@ if (DEFINED TUNDRA_VERSION_POSTFIX)
     add_definitions(-DTUNDRA_VERSION_POSTFIX="${TUNDRA_VERSION_POSTFIX}")
 endif()
 
+message("") # newline before any other output from the script
+
 # TUNDRA_NO_BOOST defines whether we want to replace usage of Boost with the C++ TR1/11 standard equivalents.
 # Setting TUNDRA_NO_BOOST to TRUE, i.e. disabling usage of Boost in the Tundra codebase, requires compiler
 # with up-to-date C++ TR1 and preferably the C99 standard cstdint header. Also if the used compiler has C++11 
@@ -90,7 +92,7 @@ macro(PrintUsedEnvVariables)
     # in most cases as they should be resolved to our CMake variables and get cached.
     # This way this printed list wont lie if ran without env variables and we are still
     # successfully finding all the deps from our cacher (or in bad cases assumed) dirs.
-    message("\n=========== Used Environment Variables ===========\n")
+    message("===================== Used Environment Variables =====================\n") # 70 visible chars
     message(STATUS "TUNDRA_DEP_PATH  = " ${ENV_TUNDRA_DEP_PATH})
     message(STATUS "QTDIR            = " ${ENV_QT_DIR})
     if (NOT TUNDRA_NO_BOOST)
@@ -101,10 +103,11 @@ macro(PrintUsedEnvVariables)
     message(STATUS "HYDRAX_HOME      = " ${HYDRAX_HOME})
     message(STATUS "KNET_DIR         = " ${KNET_DIR})
     message(STATUS "BULLET_DIR       = " ${BULLET_DIR})
+    message("")
 endmacro()
 
 macro(PrintUsedBuildConfig)
-    message("\n=========== Used Build Configuration =============\n")
+    message("===================== Used Build Configuration =======================\n")
     message(STATUS "TUNDRA_NO_BOOST            = " ${TUNDRA_NO_BOOST})
     message(STATUS "TUNDRA_NO_AUDIO            = " ${TUNDRA_NO_AUDIO})
     message(STATUS "TUNDRA_CPP11_ENABLED       = " ${TUNDRA_CPP11_ENABLED})
@@ -398,7 +401,7 @@ if (NOT ENV_TUNDRA_DEP_PATH)
     message(FATAL_ERROR "TUNDRA_DEP_PATH could not be resolved from a environment variable or from cmake cache!")
 endif ()
 
-message ("\n\n=========== Configuring Dependencies ===========\n")
+message("====================== Configuring Dependencies ======================\n")
 
 # Find needed external libraries, abort on error
 configure_boost()
@@ -425,6 +428,8 @@ endif()
 if (APPLE)
     use_package_assimp()
 endif()
+
+message("")
 
 # Convenience macro for including all TundraCore subfolders.
 macro(UseTundraCore)

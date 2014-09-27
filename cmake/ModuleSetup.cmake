@@ -23,7 +23,7 @@ macro (init_target NAME)
     set (TARGET_NAME ${NAME})
     set (TARGET_OUTPUT ${ARGV2})
     
-    message ("** " ${TARGET_NAME})
+    message("* " ${TARGET_NAME}) # "** " is used for dep prints so differentiate from them
 
     # Headers or libraries are found here will just work
     # Removed from windows due we dont have anything here directly.
@@ -86,13 +86,11 @@ macro (final_target)
     endif ()
 
     if (NOT "${PROJECT_TYPE}" STREQUAL "")
-        message (STATUS "-- project type:")
-        message (STATUS "       ${PROJECT_TYPE}")
+        # message (STATUS "-- project type: " ${PROJECT_TYPE})
         set_target_properties (${TARGET_NAME} PROPERTIES FOLDER ${PROJECT_TYPE})
     endif ()
-    
-    # pretty printing
-    message ("")
+
+    message("") # newline after each project
     
     # run the setup install macro for everything included in this build
     setup_install_target ()
@@ -110,8 +108,7 @@ macro (build_library TARGET_NAME LIB_TYPE)
         set (TARGET_LIB_TYPE ${LIB_TYPE})
     endif ()
 
-    message (STATUS "-- build type:")
-    message (STATUS "       " ${TARGET_LIB_TYPE} " library")
+    message(STATUS "build type: " ${TARGET_LIB_TYPE} " library")
    
     # *unix add -fPIC for static libraries
     if (UNIX AND ${TARGET_LIB_TYPE} STREQUAL "STATIC")
@@ -148,12 +145,11 @@ macro (build_library TARGET_NAME LIB_TYPE)
             string (REGEX MATCH  ".*/src/Core/?.*" TARGET_IS_CORE ${CMAKE_CURRENT_SOURCE_DIR})
             string (REGEX MATCH  ".*/src/EntityComponents/?.*" TARGET_IS_EC ${CMAKE_CURRENT_SOURCE_DIR})
             if (TARGET_IS_CORE)
-                message (STATUS "-- SDK lib output path:")
+                message (STATUS "SDK lib output path: " ${PROJECT_BINARY_DIR}/lib)
             elseif (TARGET_IS_EC)
-                message (STATUS "-- SDK EC lib output path:")
+                message (STATUS "SDK EC lib output path: " ${PROJECT_BINARY_DIR}/lib)
             endif ()
             if (TARGET_IS_CORE OR TARGET_IS_EC)
-                message (STATUS "       " ${PROJECT_BINARY_DIR}/lib)
                 set_target_properties (${TARGET_NAME} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
             endif ()
         endif ()
@@ -185,7 +181,7 @@ endmacro (build_executable)
 
 # include and lib directories, and definitions
 macro (use_package PREFIX)
-    message (STATUS "-- using " ${PREFIX})
+    message (STATUS "using " ${PREFIX})
     add_definitions (${${PREFIX}_DEFINITIONS})
     include_directories (${${PREFIX}_INCLUDE_DIRS})
     link_directories (${${PREFIX}_LIBRARY_DIRS})
@@ -195,47 +191,61 @@ endmacro (use_package)
 # include module header dir and add link dir. Takes in list of relative paths to the modules.
 # Example:      use_modules(mycompany/plugins/OurModuleOne 3rdParty/AnotherModule)
 #               link_modules(OurModuleOne AnotherModule)
-macro (use_modules)
-    message (STATUS "-- using modules:")
+macro(use_modules)
+    set(moduleList_ "")
     foreach (modulePath_ ${ARGN})
-        message (STATUS "       " ${modulePath_})
         include_directories (${modulePath_})
         link_directories (${modulePath_})
-    endforeach ()
-endmacro (use_modules)
+        if (moduleList_ STREQUAL "")
+            set(moduleList_ ${module_})
+        else()
+            set(moduleList_ "${moduleList_}, ${module_}") 
+    endforeach()
+    message(STATUS "using modules: " ${moduleList_})
+endmacro()
 
 # Macro for src/Core modules: include local module headers and add link directory
 # Example:      use_core_modules(Framework Input Ui)
 #               link_modules(Framework Input Ui)
-macro (use_core_modules)
-    message (STATUS "-- using Core modules:")
+macro(use_core_modules)
+    set(moduleList_ "")
     set (INTERNAL_MODULE_DIR ${PROJECT_SOURCE_DIR}/src/Core)
     foreach (module_ ${ARGN})
-        message (STATUS "       " ${module_})
         include_directories (${INTERNAL_MODULE_DIR}/${module_})
         link_directories (${INTERNAL_MODULE_DIR}/${module_})
+        if (moduleList_ STREQUAL "")
+            set(moduleList_ ${module_})
+        else()
+            set(moduleList_ "${moduleList_}, ${module_}") 
+        endif()
     endforeach ()
-endmacro (use_core_modules)
+    message (STATUS "using Core modules: " ${moduleList_})
+endmacro()
 
 # Macro for src/Application modules: include local module headers and add link directory
 # Example:      use_app_modules(JavascripModule)
 #               link_modules(JavascripModule)
 macro (use_app_modules)
-    message (STATUS "-- using Application modules:")
+    set(moduleList_ "")
     set (INTERNAL_MODULE_DIR ${PROJECT_SOURCE_DIR}/src/Application)
     foreach (module_ ${ARGN})
-        message (STATUS "       " ${module_})
         include_directories (${INTERNAL_MODULE_DIR}/${module_})
         link_directories (${INTERNAL_MODULE_DIR}/${module_})
+        if (moduleList_ STREQUAL "")
+            set(moduleList_ ${module_})
+        else()
+            set(moduleList_ "${moduleList_}, ${module_}") 
+        endif()
     endforeach ()
-endmacro (use_app_modules)
+    message (STATUS "using Application modules: " ${moduleList_})
+endmacro()
 
 # Macro for EC include and link directory addition.
 # The EC list can have items from src/EntityComponents/ or any relative path from the Tundra source tree root.
 # note: You should not use this directly, use link_entity_components that will call this when needed.
 # Example:      use_entity_components(EC_Sound 3rdparty/myecs/EC_Thingie)
 macro (use_entity_components)
-    message (STATUS "-- using Entity-Components:")
+    set(moduleList_ "")
     set (INTERNAL_MODULE_DIR ${PROJECT_SOURCE_DIR}/src/EntityComponents)
     foreach (entityComponent_ ${ARGN})
         if (IS_DIRECTORY ${INTERNAL_MODULE_DIR}/${entityComponent_})
@@ -249,9 +259,15 @@ macro (use_entity_components)
         else ()
             message(FATAL_ERROR "Could not resolve use_entity_components() call with " ${entityComponent_} ". Are you sure the component is there?")
         endif ()
-        message (STATUS "       " ${_compNameInternal})
+        
+        if (moduleList_ STREQUAL "")
+            set(moduleList_ ${_compNameInternal})
+        else()
+            set(moduleList_ "${moduleList_}, ${_compNameInternal}") 
+        endif()
     endforeach ()
-endmacro (use_entity_components)
+    message(STATUS "using Entity-Components: " ${moduleList_})
+endmacro()
 
 # Links the current project to the given EC, if that EC has been added to the build. Otherwise omits the EC.
 # The EC list can have items from src/EntityComponents/ or any relative path from the Tundra source tree root.
