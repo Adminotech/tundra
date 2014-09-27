@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "FrameworkFwd.h"
 #include "ECEditorModuleApi.h"
 #include "EntityAction.h"
 
@@ -20,7 +21,6 @@ class QTextEdit;
 class QCheckBox;
 class QTextEdit;
 
-class IArgumentType;
 struct InvokeItem;
 
 /// Utility data structure for indentifying and handling of function signatures.
@@ -106,7 +106,7 @@ public:
 
     /// Returns list of arguments for the current function.
     /// Remember to call UpdateValueFromEditor() for each argument before using them.
-    QList<IArgumentType *> Arguments() const;
+    ArgumentTypeList Arguments() const;
 
     /// Sets return value text.
     /** @param text Text to be shown. */
@@ -134,7 +134,7 @@ private:
     QCheckBox *slotsCheckBox; ///< "Slots" function filter check box.
     QCheckBox *signalsCheckBox; ///< "Signals" function filter check box.
     QObjectWeakPtrList objects; ///< List of objects.
-    QList<IArgumentType *> currentArguments; ///< Argument types for currently active function in the combo box.
+    ArgumentTypeList currentArguments; ///< Argument types for currently active function in the combo box.
 
 private slots:
     /// Emits finished(2).

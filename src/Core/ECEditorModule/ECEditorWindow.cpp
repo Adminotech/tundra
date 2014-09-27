@@ -378,7 +378,7 @@ void ECEditorWindow::FunctionDialogFinished(int result)
     // Get the list of parameters we will pass to the function we are invoking,
     // and update the latest values to them from the editor widgets the user inputted.
     QVariantList params;
-    foreach(IArgumentType *arg, dialog->Arguments())
+    foreach(const ArgumentTypePtr &arg, dialog->Arguments())
     {
         arg->UpdateValueFromEditor();
         params << arg->ToQVariant();

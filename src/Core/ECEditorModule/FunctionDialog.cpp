@@ -140,7 +140,7 @@ FunctionDialog::FunctionDialog(const QObjectWeakPtrList &objs, const InvokeItem 
 
 FunctionDialog::~FunctionDialog()
 {
-    qDeleteAll(currentArguments);
+    currentArguments.clear();
 }
 
 QObjectWeakPtrList FunctionDialog::Objects() const
@@ -153,7 +153,7 @@ QString FunctionDialog::Function() const
     return functionComboBox->CurrentFunction().function;
 }
 
-QList<IArgumentType *> FunctionDialog::Arguments() const
+ArgumentTypeList FunctionDialog::Arguments() const
 {
     return currentArguments;
 }
@@ -319,7 +319,6 @@ void FunctionDialog::UpdateEditors()
         doxygenView->hide();
     }
 
-    qDeleteAll(currentArguments);
     currentArguments.clear();
     currentArguments = FunctionInvoker::CreateArgumentList(obj, fmd.signature);
     if (currentArguments.empty() || (currentArguments.size() != fmd.parameters.size()))

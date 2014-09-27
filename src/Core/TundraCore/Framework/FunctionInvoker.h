@@ -7,8 +7,7 @@
 #pragma once
 
 #include "TundraCoreApi.h"
-
-class IArgumentType;
+#include "FrameworkFwd.h"
 
 /// Utility class which wraps QMetaObject::invokeMethod() functionality with more user-friendly API.
 class TUNDRACORE_API FunctionInvoker
@@ -26,7 +25,7 @@ public:
     /// Creates argument type list for function of object @c obj with the signature @c signature.
     /** @param obj Object.
         @param signature of the function, e.g. "SetName(QString)". */
-    static QList<IArgumentType *> CreateArgumentList(const QObject *obj, const QString &signature);
+    static ArgumentTypeList CreateArgumentList(const QObject *obj, const QString &signature);
 
     /// Returns number of arguments for function of object @c obj with the signature @c signature.
     /** @param obj Object.
@@ -38,12 +37,12 @@ private:
     /// Returns Argument type object for spesific parameter type name.
     /** @param type Type name of the function parameter.
         @return Argument type, or 0 if invalid type name was given. */
-    static IArgumentType *CreateArgumentType(const QString &type);
+    static shared_ptr<IArgumentType> CreateArgumentType(const QString &type);
 
     /// Creates return value argument type for function @c function of object.@c obj.
     /** @param obj Object.
         @param function Name of the function, e.g. "SetName". */
-    static IArgumentType *CreateReturnValueArgument(const QObject *obj, const QString &function);
+    static shared_ptr<IArgumentType> CreateReturnValueArgument(const QObject *obj, const QString &function);
 
-    static void Invoke(QObject *obj, const QString &function, QList<IArgumentType *> &args, QVariant *ret, QString *errorMsg);
+    static void InvokeInternal(QObject *obj, const QString &function, ArgumentTypeList &args, QVariant *ret, QString *errorMsg);
 };

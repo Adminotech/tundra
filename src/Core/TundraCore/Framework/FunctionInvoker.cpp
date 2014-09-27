@@ -17,11 +17,11 @@
 void FunctionInvoker::Invoke(QObject *obj, const QString &function, const QVariantList &params,
                              QVariant *ret, QString *errorMsg)
 {
-    QList<IArgumentType *> args;
+    ArgumentTypeList args;
 
     foreach(const QVariant &p, params)
     {
-        IArgumentType *arg = CreateArgumentType(p.typeName());
+        shared_ptr<IArgumentType> arg = CreateArgumentType(p.typeName());
         if (!arg)
         {
             if (errorMsg)
@@ -33,14 +33,14 @@ void FunctionInvoker::Invoke(QObject *obj, const QString &function, const QVaria
         args.push_back(arg);
     }
 
-    Invoke(obj, function, args, ret, errorMsg);
+    InvokeInternal(obj, function, args, ret, errorMsg);
 }
 
-void FunctionInvoker::Invoke(QObject *obj, const QString &function, QList<IArgumentType *> &arguments,
+void FunctionInvoker::InvokeInternal(QObject *obj, const QString &function, ArgumentTypeList &arguments,
                              QVariant *ret, QString *errorMsg)
 {
     QList<QGenericArgument> args;
-    foreach(IArgumentType *arg, arguments)
+    foreach(const shared_ptr<IArgumentType> arg, arguments)
         args.push_back(arg->Value());
 
     while(args.size() < 10)
@@ -48,7 +48,7 @@ void FunctionInvoker::Invoke(QObject *obj, const QString &function, QList<IArgum
 
     try
     {
-        IArgumentType *retArgType = CreateReturnValueArgument(obj, function);
+        shared_ptr<IArgumentType> retArgType = CreateReturnValueArgument(obj, function);
         if (retArgType)
         {
             QGenericReturnArgument retArg = retArgType->ReturnValue();
@@ -91,7 +91,7 @@ void FunctionInvoker::Invoke(QObject *obj, const QString &function, QList<IArgum
 void FunctionInvoker::Invoke(QObject *obj, const QString &functionSignature, const QStringList &params,
                              QVariant *ret, QString *errorMsg)
 {
-    QList<IArgumentType *> args = CreateArgumentList(obj, functionSignature);
+    ArgumentTypeList args = CreateArgumentList(obj, functionSignature);
     if (args.size() != params.size())
     {
         LogError("FunctionInvoker::Invoke: Parameter number mismatch: " + QString::number(params.size()) +
@@ -104,12 +104,12 @@ void FunctionInvoker::Invoke(QObject *obj, const QString &functionSignature, con
 
     int idx = functionSignature.indexOf("(");
     QString functionBasename = idx != -1 ? functionSignature.left(idx) : functionSignature;
-    Invoke(obj, functionBasename, args, ret, errorMsg);
+    InvokeInternal(obj, functionBasename, args, ret, errorMsg);
 }
 
-QList<IArgumentType *> FunctionInvoker::CreateArgumentList(const QObject *obj, const QString &signature)
+ArgumentTypeList FunctionInvoker::CreateArgumentList(const QObject *obj, const QString &signature)
 {
-    QList<IArgumentType *> args;
+    ArgumentTypeList args;
     QByteArray normalizedSignature = QMetaObject::normalizedSignature(signature.toStdString().c_str());
     const QMetaObject *mo = obj->metaObject();
 
@@ -122,11 +122,11 @@ QList<IArgumentType *> FunctionInvoker::CreateArgumentList(const QObject *obj, c
             {
                 foreach(const QByteArray &param, mm.parameterTypes())
                 {
-                    IArgumentType *arg = CreateArgumentType(QString(param));
+                    shared_ptr<IArgumentType> arg = CreateArgumentType(QString(param));
                     if (arg)
                         args.append(arg);
                     else
-                        return QList<IArgumentType*>(); // We failed to create some argument - can't call this function!
+                        return ArgumentTypeList(); // We failed to create some argument - can't call this function!
                 }
             }
         }
@@ -157,47 +157,46 @@ int FunctionInvoker::NumArgsForFunction(const QObject *obj, const QString &signa
     return -1;
 }
 
-IArgumentType *FunctionInvoker::CreateArgumentType(const QString &type)
+shared_ptr<IArgumentType> FunctionInvoker::CreateArgumentType(const QString &type)
 {
-    IArgumentType *arg = 0;
     /// @todo Support For Entity *, and EntityPtr by using EntityReference.
     if (type == "void")
-        arg = new VoidArgumentType;
+        return MAKE_SHARED(VoidArgumentType);
     else if (type == "QString")
-        arg = new ArgumentType<QString>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<QString>, type.toStdString().c_str());
     else if (type == "QStringList")
-        arg = new ArgumentType<QStringList>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<QStringList>, type.toStdString().c_str());
     else if (type == "std::string")
-        arg = new ArgumentType<std::string>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<std::string>, type.toStdString().c_str());
     else if (type == "bool")
-        arg = new ArgumentType<bool>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<bool>, type.toStdString().c_str());
     else if(type == "unsigned short" || type == "ushort" || type == "u16")
-        arg = new ArgumentType<unsigned short>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<unsigned short>, type.toStdString().c_str());
     else if(type == "short" || type == "s16")
-        arg = new ArgumentType<short>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<short>, type.toStdString().c_str());
     else if(type == "unsigned int" || type == "uint" || type == "size_t" || type == "unsigned" || type == "entity_id_t" || type == "component_id_t")
-        arg = new ArgumentType<unsigned int>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<unsigned int>, type.toStdString().c_str());
     else if (type == "int" || type == "signed")
-        arg = new ArgumentType<int>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<int>, type.toStdString().c_str());
     else if (type == "u32" || type == "unsigned long")
-        arg = new ArgumentType<unsigned long>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<unsigned long>, type.toStdString().c_str());
     else if (type == "s32" || type == "long")
-        arg = new ArgumentType<long>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<long>, type.toStdString().c_str());
     else if (type == "float" || type == "f32")
-        arg = new ArgumentType<float>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<float>, type.toStdString().c_str());
     else if (type == "double" || type == "f64")
-        arg = new ArgumentType<double>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<double>, type.toStdString().c_str());
     else if (type == "float3")
-        arg = new ArgumentType<float3>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<float3>, type.toStdString().c_str());
     else if (type == "Quat")
-        arg = new ArgumentType<Quat>(type.toStdString().c_str());
+        return MAKE_SHARED(ArgumentType<Quat>, type.toStdString().c_str());
     else
         LogError("FunctionInvoker::CreateArgumentType: Unsupported argument type: " + type);
 
-    return arg;
+    return shared_ptr<IArgumentType>();
 }
 
-IArgumentType *FunctionInvoker::CreateReturnValueArgument(const QObject *obj, const QString &function)
+shared_ptr<IArgumentType> FunctionInvoker::CreateReturnValueArgument(const QObject *obj, const QString &function)
 {
     const QMetaObject *mo = obj->metaObject();
     while (mo)
