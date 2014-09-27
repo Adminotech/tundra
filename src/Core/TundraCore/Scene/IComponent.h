@@ -121,7 +121,7 @@ public:
     /** The name of a component is a custom user-specified name for
         this component instance, and identifies separate instances of the same component in an object. 
         The (TypeName, Name) pairs of all components in an Entity must be unique. The Name string can be empty. */
-    const QString &Name() const { return name; }
+    const QString &Name() const { return componentName; }
 
     /// Sets the name of the component.
     /** This call will silently fail if there already exists a component with the
@@ -428,7 +428,7 @@ protected:
     virtual bool eventFilter(QObject *obj, QEvent *e);
 
     Entity* parentEntity; ///< The Entity this Component is part of, or null if this Component is not attached to any Entity.
-    QString name; ///< The name of this component, by default an empty string.
+    QString componentName; ///< The name of this component, by default an empty string.
     AttributeVector attributes; ///< Attributes of the component.
     component_id_t id; ///< Component id, unique within the parent entity
     bool replicated; ///< Network sync enabled -flag

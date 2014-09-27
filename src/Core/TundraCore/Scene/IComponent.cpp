@@ -47,15 +47,15 @@ void IComponent::SetNewId(entity_id_t newId)
     id = newId;
 }
 
-void IComponent::SetName(const QString& name_)
+void IComponent::SetName(const QString& name)
 {
     // no point to send a signal if name have stayed same as before.
-    if (name == name_)
+    if (componentName == name)
         return;
 
-    QString oldName = name;
-    name = name_;
-    emit ComponentNameChanged(name, oldName);
+    QString oldName = componentName;
+    componentName = name;
+    emit ComponentNameChanged(componentName, oldName);
 }
 
 bool IComponent::IsUnacked() const

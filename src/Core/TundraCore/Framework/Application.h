@@ -218,8 +218,10 @@ private:
     bool appActivated;
     QSplashScreen *splashScreen;
     QTimer frameUpdateTimer;
+#ifdef ENABLE_TRANSLATIONS
     QTranslator *nativeTranslator;
     QTranslator *appTranslator;
+#endif
     static const char *organizationName;
     static const char *applicationName;
     static const char *version;

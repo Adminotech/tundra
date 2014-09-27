@@ -724,18 +724,18 @@ void AssetAPI::ForgetAllAssets()
 
     // ForgetBundle removes the bundle it is given to from the assetBundles map, so this loop terminates.
     // All bundle sub assets are unloaded from the assets map below.
-    while(assetBundles.size() > 0)
+    while(!assetBundles.empty())
         ForgetBundle(assetBundles.begin()->second, false);
     assetBundles.clear();
     bundleMonitors.clear();
 
     // ForgetAsset removes the asset it is given to from the assets map, so this loop terminates.
-    while(assets.size() > 0)
+    while(!assets.empty())
         ForgetAsset(assets.begin()->second, false);
     assets.clear();
    
     // Abort all current transfers.
-    while (currentTransfers.size() > 0)
+    while(!currentTransfers.empty())
     {
         AssetTransferPtr abortTransfer = currentTransfers.begin()->second;
         if (!abortTransfer.get())
@@ -1226,8 +1226,6 @@ QString AssetAPI::GenerateUniqueAssetName(QString assetTypePrefix, QString asset
 
 QString AssetAPI::GenerateTemporaryNonexistingAssetFilename(QString filenameSuffix) const
 {
-    static unsigned long uniqueRunningFilenameCounter = 1;
-
     // Create this file path into the cache dir to avoid
     // windows non-admin users having no write permission to the run folder
     QDir cacheDir;
@@ -1237,6 +1235,7 @@ QString AssetAPI::GenerateTemporaryNonexistingAssetFilename(QString filenameSuff
         cacheDir = QDir(Application::UserDataDirectory());
     if (cacheDir.exists())
     {
+        static unsigned long uniqueRunningFilenameCounter = 1;
         QString filename;
         // We loop until we manage to generate a single filename that does not exist, incrementing a running counter at each iteration.
         for(int i = 0; i < 10000; ++i) // The intent is to loop 'infinitely' until a name is found, but do an artificial limit to avoid voodoo bugs.

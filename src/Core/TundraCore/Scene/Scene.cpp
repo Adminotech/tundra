@@ -225,13 +225,13 @@ void Scene::RemoveAllEntities(bool signal, AttributeChange::Type change)
         if (it->second.get() && !it->second->Parent())
             entIds.push_back(it->second->Id());
     }
-    while(entIds.size() > 0)
+    while(!entIds.empty())
     {
         RemoveEntity(entIds.back(), change);
         entIds.pop_back();
     }
     
-    if (entities_.size())
+    if (!entities_.empty())
     {
         LogWarning("Scene::RemoveAllEntities: entity map was not clear after removing all entities, clearing manually");
         entities_.clear();

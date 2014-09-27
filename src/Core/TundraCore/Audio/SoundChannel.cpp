@@ -173,7 +173,7 @@ QString SoundChannel::SoundName() const
     AudioAssetPtr asset = playing_sounds_.size() > 0 ? playing_sounds_.front() : AudioAssetPtr();
     if (asset)
         return asset->Name();
-    asset = pending_sounds_.size() > 0 ? pending_sounds_.front() : AudioAssetPtr();
+    asset = !pending_sounds_.empty() ? pending_sounds_.front() : AudioAssetPtr();
     if (asset)
         return asset->Name();
     
@@ -295,7 +295,7 @@ void SoundChannel::QueueBuffers()
 {
 #ifndef TUNDRA_NO_AUDIO
     // See that we do have waiting sounds and they're ready to play
-    AudioAssetPtr pending = pending_sounds_.size() > 0 ? pending_sounds_.front() : AudioAssetPtr();
+    AudioAssetPtr pending = !pending_sounds_.empty() ? pending_sounds_.front() : AudioAssetPtr();
 
     if (!pending)
         return;
@@ -311,7 +311,7 @@ void SoundChannel::QueueBuffers()
     bool queued = false;
     
     // Buffer pending sounds, move them to playing vector
-    while(pending_sounds_.size() > 0)
+    while(!pending_sounds_.empty())
     {
         AudioAssetPtr sound = pending_sounds_.front();
         if (!sound)

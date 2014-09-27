@@ -56,7 +56,7 @@ public:
             break;
         }
 
-        if (new_pos < 0 || new_pos > size_)
+        if (new_pos > size_)
             return -1;
         position_ = new_pos;
         return 0;
@@ -75,19 +75,19 @@ private:
 
 size_t OggReadCallback(void* ptr, size_t size, size_t nmemb, void* datasource)
 {
-    OggMemDataSource* source = (OggMemDataSource*)datasource;
+    OggMemDataSource* source = static_cast<OggMemDataSource*>(datasource);
     return source->Read(ptr, size * nmemb);
 }
 
 int OggSeekCallback(void* datasource, ogg_int64_t offset, int whence)
 {
-    OggMemDataSource* source = (OggMemDataSource*)datasource;
+    OggMemDataSource* source = static_cast<OggMemDataSource*>(datasource);
     return source->Seek(offset, whence);
 }
 
 long OggTellCallback(void* datasource)
 {
-    OggMemDataSource* source = (OggMemDataSource*)datasource;
+    OggMemDataSource* source = static_cast<OggMemDataSource*>(datasource);
     return source->Tell();
 }
 

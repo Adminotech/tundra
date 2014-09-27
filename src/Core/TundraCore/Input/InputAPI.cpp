@@ -244,7 +244,7 @@ void InputAPI::DumpInputContexts()
         DumpInputContext(idx, ic);
     }
 
-    if (untrackedInputContexts.size() > 0 )
+    if (!untrackedInputContexts.empty())
         LogInfo("Untracked input contexts: ");
     foreach(const InputContextPtr &ic, untrackedInputContexts)
         DumpInputContext(idx, ic);
