@@ -22,9 +22,9 @@ file(GLOB MOC_FILES
     Input/InputAPI.h Input/InputContext.h Input/KeyEvent.h Input/KeyEventSignal.h Input/MouseEvent.h
     Input/GestureEvent.h Input/EC_InputMapper.h
     Scene/SceneAPI.h Scene/Scene.h Scene/Entity.h Scene/IComponent.h Scene/EntityAction.h
-    Scene/EC_Name.h Scene/EC_DynamicComponent.h Scene/AttributeChangeType.h Scene/ChangeRequest.h
-    Scene/EC_PlaceholderComponent.h
+    Scene/AttributeChangeType.h Scene/ChangeRequest.h Scene/EC_*.h 
     Ui/UiAPI.h Ui/UiGraphicsView.h Ui/UiMainWindow.h Ui/UiProxyWidget.h Ui/QtUiAsset.h Ui/RedirectedPaintWidget.h
+    Script/EC_Script.h Script/IScriptInstance.h Script/ScriptAsset.h
 )
 
 AddSourceFolder(Asset)
@@ -33,6 +33,7 @@ AddSourceFolder(Console)
 AddSourceFolder(Framework)
 AddSourceFolder(Input)
 AddSourceFolder(Scene)
+AddSourceFolder(Script)
 AddSourceFolder(Ui)
 
 set(SOURCE_FILES ${CPP_FILES} ${H_FILES})
@@ -74,3 +75,4 @@ final_target()
 
 # Declare Windows core dependencies
 setup_install_windows_deps ("qjson.dll" Release|RelWithDebInfo|Debug)
+ 

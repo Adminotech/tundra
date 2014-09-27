@@ -29,7 +29,6 @@ link_package(QT4)
 link_ogre()
 link_boost()
 link_modules(TundraCore Math TundraProtocolModule)
-link_entity_components(EC_Script)
 
 SetupCompileFlagsWithPCH()
 

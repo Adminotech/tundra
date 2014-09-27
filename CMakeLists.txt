@@ -435,6 +435,7 @@ macro(UseTundraCore)
     include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Framework)
     include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Input)
     include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Scene)
+    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Script)
     include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Ui)
 endmacro()
 
