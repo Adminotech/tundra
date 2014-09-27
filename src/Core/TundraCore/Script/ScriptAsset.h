@@ -2,10 +2,11 @@
 
 #pragma once
 
+#include "TundraCoreApi.h"
 #include "IAsset.h"
 
 /// Contains data of a script file loaded to the system.
-class ScriptAsset : public IAsset
+class TUNDRACORE_API ScriptAsset : public IAsset
 {
     Q_OBJECT
 

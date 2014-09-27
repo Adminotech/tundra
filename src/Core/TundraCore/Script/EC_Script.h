@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "TundraCoreApi.h"
 #include "IComponent.h"
 #include "AssetReference.h"
 #include "AssetFwd.h"
@@ -62,7 +63,7 @@ typedef shared_ptr<ScriptAsset> ScriptAssetPtr;
 
     <b>Doesn't depend on any other entity-component</b>.
     </table> */
-class EC_Script: public IComponent
+class TUNDRACORE_API EC_Script: public IComponent
 {
     Q_OBJECT
     COMPONENT_NAME("Script", 5)

@@ -22,7 +22,6 @@ add_definitions(-DDEBUGSTATS_MODULE_EXPORTS)
 use_package_bullet()
 UseTundraCore()
 use_core_modules(TundraCore Math OgreRenderingModule AssetModule EnvironmentModule PhysicsModule ECEditorModule TundraProtocolModule)
-use_entity_components(EC_Script)
 
 build_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${MOC_SRCS} ${UI_SRCS})
 
@@ -30,7 +29,6 @@ link_package(QT4)
 link_package_knet()
 link_ogre()
 link_modules(TundraCore OgreRenderingModule EnvironmentModule AssetModule PhysicsModule ECEditorModule TundraProtocolModule)
-link_entity_components(EC_Script)
 
 SetupCompileFlagsWithPCH()
 

@@ -1,21 +1,21 @@
 /**
- *  For conditions of distribution and use, see copyright notice in LICENSE
- *
- *  @file   IScriptInterface.h
- *  @brief  Interface for different script instances, e.g. Javascript of Python.
- */
+    For conditions of distribution and use, see copyright notice in LICENSE
+
+    @file   IScriptInterface.h
+    @brief  Interface for different script instances, e.g. Javascript of Python. */
 
 #pragma once
+
+#include "TundraCoreApi.h"
 
 #include <QObject>
 #include <QMap>
 #include <QString>
 
 /// Interface for different script instances, e.g. Javascript or Python.
-class IScriptInstance : public QObject
+class TUNDRACORE_API IScriptInstance : public QObject
 {
-
-Q_OBJECT
+    Q_OBJECT
 
 public:
     /// Default constuctor.
@@ -35,11 +35,11 @@ public:
 
     /// Return whether the script has been run.
     virtual bool IsEvaluated() const = 0;
-    
+
 public slots:
     /// Dumps engine information into a string. Used for debugging/profiling.
     virtual QMap<QString, uint> DumpEngineInformation() = 0;
-    
+
 protected:
     /// Whether this instance executed trusted code or not. 
     /** By default everything loaded remotely (with e.g. http) is untrusted,
@@ -47,6 +47,4 @@ protected:
         With qt/javascript means that can not load qt dlls to get qt networking etc.,
         and with python loading remote code is not allowed at all (cpython always has system access). */
     bool trusted_;
-
 };
-
