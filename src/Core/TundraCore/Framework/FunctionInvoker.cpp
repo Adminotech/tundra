@@ -21,7 +21,7 @@ void FunctionInvoker::Invoke(QObject *obj, const QString &function, const QVaria
 
     foreach(const QVariant &p, params)
     {
-        shared_ptr<IArgumentType> arg = CreateArgumentType(p.typeName());
+        ArgumentTypePtr arg = CreateArgumentType(p.typeName());
         if (!arg)
         {
             if (errorMsg)
@@ -40,7 +40,7 @@ void FunctionInvoker::InvokeInternal(QObject *obj, const QString &function, Argu
                              QVariant *ret, QString *errorMsg)
 {
     QList<QGenericArgument> args;
-    foreach(const shared_ptr<IArgumentType> arg, arguments)
+    foreach(const ArgumentTypePtr arg, arguments)
         args.push_back(arg->Value());
 
     while(args.size() < 10)
@@ -48,7 +48,7 @@ void FunctionInvoker::InvokeInternal(QObject *obj, const QString &function, Argu
 
     try
     {
-        shared_ptr<IArgumentType> retArgType = CreateReturnValueArgument(obj, function);
+        ArgumentTypePtr retArgType = CreateReturnValueArgument(obj, function);
         if (retArgType)
         {
             QGenericReturnArgument retArg = retArgType->ReturnValue();
@@ -110,9 +110,9 @@ void FunctionInvoker::Invoke(QObject *obj, const QString &functionSignature, con
 ArgumentTypeList FunctionInvoker::CreateArgumentList(const QObject *obj, const QString &signature)
 {
     ArgumentTypeList args;
-    QByteArray normalizedSignature = QMetaObject::normalizedSignature(signature.toStdString().c_str());
-    const QMetaObject *mo = obj->metaObject();
+    const QByteArray normalizedSignature = QMetaObject::normalizedSignature(signature.toStdString().c_str());
 
+    const QMetaObject *mo = obj->metaObject();
     while (mo)
     {
         for(int i = mo->methodOffset(); i < mo->methodCount(); ++i)
@@ -122,7 +122,7 @@ ArgumentTypeList FunctionInvoker::CreateArgumentList(const QObject *obj, const Q
             {
                 foreach(const QByteArray &param, mm.parameterTypes())
                 {
-                    shared_ptr<IArgumentType> arg = CreateArgumentType(QString(param));
+                    ArgumentTypePtr arg = CreateArgumentType(QString(param));
                     if (arg)
                         args.append(arg);
                     else
@@ -139,9 +139,9 @@ ArgumentTypeList FunctionInvoker::CreateArgumentList(const QObject *obj, const Q
 
 int FunctionInvoker::NumArgsForFunction(const QObject *obj, const QString &signature)
 {
-    QByteArray normalizedSignature = QMetaObject::normalizedSignature(signature.toStdString().c_str());
-    const QMetaObject *mo = obj->metaObject();
+    const QByteArray normalizedSignature = QMetaObject::normalizedSignature(signature.toStdString().c_str());
 
+    const QMetaObject *mo = obj->metaObject();
     while (mo)
     {
         for(int i = mo->methodOffset(); i < mo->methodCount(); ++i)
@@ -157,7 +157,7 @@ int FunctionInvoker::NumArgsForFunction(const QObject *obj, const QString &signa
     return -1;
 }
 
-shared_ptr<IArgumentType> FunctionInvoker::CreateArgumentType(const QString &type)
+ArgumentTypePtr FunctionInvoker::CreateArgumentType(const QString &type)
 {
     /// @todo Support For Entity *, and EntityPtr by using EntityReference.
     if (type == "void")
@@ -193,10 +193,10 @@ shared_ptr<IArgumentType> FunctionInvoker::CreateArgumentType(const QString &typ
     else
         LogError("FunctionInvoker::CreateArgumentType: Unsupported argument type: " + type);
 
-    return shared_ptr<IArgumentType>();
+    return ArgumentTypePtr();
 }
 
-shared_ptr<IArgumentType> FunctionInvoker::CreateReturnValueArgument(const QObject *obj, const QString &function)
+ArgumentTypePtr FunctionInvoker::CreateReturnValueArgument(const QObject *obj, const QString &function)
 {
     const QMetaObject *mo = obj->metaObject();
     while (mo)

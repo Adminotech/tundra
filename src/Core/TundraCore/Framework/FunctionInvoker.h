@@ -37,12 +37,12 @@ private:
     /// Returns Argument type object for spesific parameter type name.
     /** @param type Type name of the function parameter.
         @return Argument type, or 0 if invalid type name was given. */
-    static shared_ptr<IArgumentType> CreateArgumentType(const QString &type);
+    static ArgumentTypePtr CreateArgumentType(const QString &type);
 
     /// Creates return value argument type for function @c function of object.@c obj.
     /** @param obj Object.
         @param function Name of the function, e.g. "SetName". */
-    static shared_ptr<IArgumentType> CreateReturnValueArgument(const QObject *obj, const QString &function);
+    static ArgumentTypePtr CreateReturnValueArgument(const QObject *obj, const QString &function);
 
     static void InvokeInternal(QObject *obj, const QString &function, ArgumentTypeList &args, QVariant *ret, QString *errorMsg);
 };
