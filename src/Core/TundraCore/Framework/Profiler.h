@@ -14,7 +14,7 @@
 /// @cond PRIVATE
 #define TRACESTART(x) TRACE_START(x)
 #define TRACEEND(x) TRACE_END(x)
-/// #endcond
+/// @endcond
 
 #if defined(PROFILING)
 
@@ -40,7 +40,7 @@
 #define RESETPROFILER(x) RESET_PROFILER(x)
 #define STARTTIMEDBLOCK(x) START_TIMED_BLOCK(x)
 #define LOGTIMEDBLOCK(x) LOG_TIMED_BLOCK(x)
-/// #endcond
+/// @endcond
 #else
 #define PROFILE(x)
 #define ELIFORP(x)
@@ -51,7 +51,7 @@
 #define RESETPROFILER
 #define STARTTIMEDBLOCK(name)
 #define LOGTIMEDBLOCK(name)
-/// #endcond
+/// @endcond
 #endif
 
 class ProfilerNodeTree;
