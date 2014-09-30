@@ -9,8 +9,12 @@
 #include "HighPerfClock.h"
 
 // Allows short-timed block tracing
-#define TRACESTART(x) kNet::PolledTimer polledTimer_##x;
-#define TRACEEND(x) std::cout << #x << " finished in " << polledTimer_##x.MSecsElapsed() << " msecs." << std::endl;
+#define TRACE_START(x) kNet::PolledTimer polledTimer_##x;
+#define TRACE_END(x) std::cout << #x << " finished in " << polledTimer_##x.MSecsElapsed() << " msecs." << std::endl;
+/// @cond PRIVATE
+#define TRACESTART(x) TRACE_START(x)
+#define TRACEEND(x) TRACE_END(x)
+/// #endcond
 
 #if defined(PROFILING)
 
@@ -28,16 +32,26 @@
 /// Resets profiling data per frame and prepares the next frame.
 /// \todo Currently this is not called at any point in the code, as DebugStatsModule implements its own profiler frame counting via the custom 
 /// fields in the profiler nodes.
-#define RESETPROFILER { ProfilerSection::GetProfiler()->ResetValues(); }
+#define RESET_PROFILER { ProfilerSection::GetProfiler()->ResetValues(); }
+#define START_TIMED_BLOCK(name) tick_t timedBlock##name = GetCurrentClockTime();
+#define LOG_TIMED_BLOCK(name) { float elapsed = (float)(GetCurrentClockTime() - timedBlock##name) / GetCurrentClockFreq(); printf("%s: Took %f seconds.\n", #name, elapsed); }
 
-#define STARTTIMEDBLOCK(name) tick_t timedBlock##name = GetCurrentClockTime();
-#define LOGTIMEDBLOCK(name) { float elapsed = (float)(GetCurrentClockTime() - timedBlock##name) / GetCurrentClockFreq(); printf("%s: Took %f seconds.\n", #name, elapsed); }
+/// @cond PRIVATE
+#define RESETPROFILER(x) RESET_PROFILER(x)
+#define STARTTIMEDBLOCK(x) START_TIMED_BLOCK(x)
+#define LOGTIMEDBLOCK(x) LOG_TIMED_BLOCK(x)
+/// #endcond
 #else
-#define STARTTIMEDBLOCK(name)
-#define LOGTIMEDBLOCK(name)
 #define PROFILE(x)
 #define ELIFORP(x)
+#define RESET_PROFILER(x)
+#define START_TIMED_BLOCK(x)
+#define LOG_TIMED_BLOCK(x)
+/// @cond PRIVATE
 #define RESETPROFILER
+#define STARTTIMEDBLOCK(name)
+#define LOGTIMEDBLOCK(name)
+/// #endcond
 #endif
 
 class ProfilerNodeTree;
