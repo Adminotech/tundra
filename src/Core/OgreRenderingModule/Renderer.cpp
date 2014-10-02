@@ -470,7 +470,9 @@ namespace OgreRenderer
             ogreRoot->setRenderSystem(renderSystem);
 
             // Instantiate overlay system
+#include "DisableMemoryLeakCheck.h"
             overlaySystem = new Ogre::OverlaySystem();
+#include "EnableMemoryLeakCheck.h"
 
             // Initialize but don't create rendering window yet
             ogreRoot->initialise(false);

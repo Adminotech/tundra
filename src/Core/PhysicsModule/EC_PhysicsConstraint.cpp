@@ -219,6 +219,7 @@ void EC_PhysicsConstraint::Create()
     btTransform ownTransform(FromEulerDegToQuat(rotation.Get()), position.Get().Mul(worldScale));
     btTransform otherTransform(FromEulerDegToQuat(otherRotation.Get()), otherPosition.Get().Mul(otherWorldScale));
 
+#include "DisableMemoryLeakCheck.h"
     switch(type.Get())
     {
         case PointToPoint:
@@ -240,6 +241,7 @@ void EC_PhysicsConstraint::Create()
         default:
             break;
     }
+#include "EnableMemoryLeakCheck.h"
 
     if (constraint_)
     {

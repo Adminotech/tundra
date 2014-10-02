@@ -6,6 +6,8 @@ Licensed under the MIT license:
 */
 
 #include "StableHeaders.h"
+#include "DebugOperatorNew.h"
+
 #include "OpenAssetImport.h"
 
 #include "CoreDefines.h"
@@ -29,6 +31,8 @@ Licensed under the MIT license:
 #include <assimp/cimport.h>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include "MemoryLeakCheck.h"
 
 //#define SKELETON_ENABLED
 

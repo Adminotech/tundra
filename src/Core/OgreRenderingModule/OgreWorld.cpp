@@ -1104,7 +1104,9 @@ void OgreWorld::SetupShadows()
         if (!csmGpuConstants_)
             csmGpuConstants_ = new Ogre::CSMGpuConstants(shadowTextureCount);
 
+#include "DisableMemoryLeakCheck.h"
         Ogre::StableCSMShadowCameraSetup* shadowSetup = new Ogre::StableCSMShadowCameraSetup(csmGpuConstants_);
+#include "EnableMemoryLeakCheck.h"
 
         // Default values. EC_SceneShadowSetup can adjust them if created.
         // Lower lamdba means more uniform, higher lambda means more logarithmic
@@ -1121,7 +1123,9 @@ void OgreWorld::SetupShadows()
     }
     else
     {
+#include "DisableMemoryLeakCheck.h"
         OgreFocusedShadowCameraSetup* shadowSetup = new OgreFocusedShadowCameraSetup();
+#include "EnableMemoryLeakCheck.h"
         sceneManager_->setShadowCameraSetup(Ogre::ShadowCameraSetupPtr(shadowSetup));
     }
 
