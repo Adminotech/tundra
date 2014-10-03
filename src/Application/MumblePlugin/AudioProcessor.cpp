@@ -1023,14 +1023,14 @@ namespace MumbleAudio
         QMutexLocker lock(&mutexInput);
         if (!inputAudioStates.empty())
         {
-        for (AudioStateMap::iterator iter = inputAudioStates.begin(); iter != inputAudioStates.end(); ++iter)
-        {
-            UserAudioState *userAudioState = iter->second;
-            if (userAudioState)
-                SAFE_DELETE(userAudioState);
+            for(AudioStateMap::iterator iter = inputAudioStates.begin(); iter != inputAudioStates.end(); ++iter)
+            {
+                UserAudioState *userAudioState = iter->second;
+                if (userAudioState)
+                    SAFE_DELETE(userAudioState);
+            }
+            inputAudioStates.clear();
         }
-        inputAudioStates.clear();
-    }
     }
 
     void AudioProcessor::ClearInputAudio(uint userId)
