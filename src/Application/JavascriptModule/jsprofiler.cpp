@@ -42,7 +42,11 @@ inline suseconds_t getTimeOfDay()
     return t.tv_usec;
 }
 
-Profiler::Profiler(QScriptEngine *engine) : QScriptEngineAgent(engine), first(true)
+Profiler::Profiler(QScriptEngine *engine) :
+    QScriptEngineAgent(engine),
+    first(true),
+    currentFunctionCache(0),
+    scriptIdCache(-1)
 {
 }
 

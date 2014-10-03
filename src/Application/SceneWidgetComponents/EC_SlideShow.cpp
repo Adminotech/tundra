@@ -47,7 +47,7 @@ EC_SlideShow::EC_SlideShow(Scene *scene) :
     INIT_ATTRIBUTE_VALUE(interactive, "Interactive", false),
     INIT_ATTRIBUTE_VALUE(illuminating, "Illuminating", true),
     isServer_(false),
-    currentTextureRef_("")
+    actionMenu(0)
 {
     static AttributeMetadata zeroIndexMetadata;
     static AttributeMetadata slideIndexMetadata;
@@ -254,7 +254,8 @@ void EC_SlideShow::GoToEnd()
 
 QMenu *EC_SlideShow::GetContextMenu()
 {
-    QMenu *actionMenu = new QMenu(0);
+    SAFE_DELETE_LATER(actionMenu);
+    actionMenu = new QMenu;
     actionMenu->setAttribute(Qt::WA_DeleteOnClose, true);
     actionMenu->addAction(QIcon("./data/ui/images/browser/forward.png"), "Next Slide", this, SLOT(NextSlide()));
     actionMenu->addAction(QIcon("./data/ui/images/browser/back.png"), "Previous Slide", this, SLOT(PreviousSlide()));

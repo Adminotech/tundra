@@ -208,21 +208,20 @@ namespace MumbleNetwork
 
     struct MumbleUserState
     {
-        MumbleUserState()
+        MumbleUserState() :
+            hasId(false),
+            hasChannelId(false),
+            hasName(false),
+            hasComment(false),
+            hasHash(false),
+            hasSelfMute(false),
+            hasSelfDeaf(false),
+            id(0),
+            channelId(0),
+            selfMuted(false),
+            selfDeaf (false),
+            isMe(false)
         {
-            hasId = false;
-            hasChannelId = false;
-            hasName = false;
-            hasComment = false;
-            hasHash = false;
-            hasSelfMute = false;
-            hasSelfDeaf = false;
-            
-            id = 0;
-            channelId =0;
-            selfMuted = false;
-            selfDeaf = false;
-            isMe = false;
         }
 
         void Merge(const MumbleUserState &other)
@@ -282,12 +281,12 @@ namespace MumbleNetwork
 
     struct VoicePacketInfo
     {
-        VoicePacketInfo(std::vector<QByteArray> encodedFrames_) 
+        VoicePacketInfo(const std::vector<QByteArray> &encodedFrames_) :
+            isLoopBack(false),
+            isPositional(false),
+            encodedFrames(encodedFrames_),
+            pos(float3::zero)
         {
-            isLoopBack = false;
-            isPositional = false;
-            encodedFrames = encodedFrames_;
-            pos = float3::zero;
         }
 
         bool isLoopBack;
@@ -299,16 +298,16 @@ namespace MumbleNetwork
 
     struct TCPInfo
     {
-        TCPInfo() { Reset(); }
-        void Reset() { messageLength = -1; }
+        TCPInfo() : messageLength(-1) {}
+        void Reset() { *this = TCPInfo(); }
 
         int messageLength;
     };
 
     struct UDPInfo
     {
-        UDPInfo() { Reset(); }
-        void Reset() { }
+        UDPInfo() : port(0) { }
+        void Reset() { *this = UDPInfo(); }
 
         QHostAddress host;
         ushort port;
@@ -316,8 +315,8 @@ namespace MumbleNetwork
 
     struct ConnectionInfo
     {
-        ConnectionInfo() { Reset(); }
-        void Reset() { sessionId = 0; }
+        ConnectionInfo() : sessionId(0), port(0) {}
+        void Reset() { *this = ConnectionInfo(); }
 
         QString address;
         QString username;

@@ -62,7 +62,6 @@ void AudioSignalLabel::GenerateAudioSignalImage()
         min_max_values.first = 32767;
         min_max_values.second = -32768;
 
-        short* sample_ptr;
         float sampleNum = 0;
         int image_width_index = 0;
         int steps_per_sample = bitsPerSample_ / 8;
@@ -70,7 +69,7 @@ void AudioSignalLabel::GenerateAudioSignalImage()
         UNREFERENCED_PARAM(half_image_height);
         for(uint i = 0; i < audioData_.size(); i += steps_per_sample)
         {
-            sample_ptr = (short*)&audioData_[i];
+            short* sample_ptr = (short*)&audioData_[i];
             if(min_max_values.first > *sample_ptr)
                 min_max_values.first = *sample_ptr;
             if(min_max_values.second < *sample_ptr)
@@ -108,7 +107,6 @@ void AudioSignalLabel::GenerateAudioSignalImage()
         painter.setPen(QColor(0,255,0));
         QPoint previous_point(0,0);
 
-        short* sample_ptr;
         float sampleNum = 0;
         int image_width_index = 0;
         int steps_per_sample = bitsPerSample_ / 8;
@@ -116,7 +114,7 @@ void AudioSignalLabel::GenerateAudioSignalImage()
         UNREFERENCED_PARAM(half_image_height);
         for(uint i = 0; i < audioData_.size(); i += steps_per_sample)
         {
-            sample_ptr = (short*)&audioData_[i];
+            short* sample_ptr = (short*)&audioData_[i];
 
             while(sampleNum < 1.0f)
             {

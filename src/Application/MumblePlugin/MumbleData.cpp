@@ -87,7 +87,10 @@ MumbleUser::MumbleUser(MumblePlugin *owner) :
     pos(float3::zero),
     isSpeaking(false),
     isPositional(false),
-    isMuted(false)
+    isMuted(false),
+    isSelfMuted(false),
+    isSelfDeaf(false),
+    isMe(false)
 {
 }
 

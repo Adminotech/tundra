@@ -61,15 +61,15 @@ void ServerThread::run()
     } 
     catch (const std::exception & e) 
     {
-        LogError("Exception while running websocket server: " + QString(e.what()));
+        LogError("Exception while running WebSocket server: " + QString(e.what()));
     } 
-    catch (websocketpp::lib::error_code e) 
+    catch (const websocketpp::lib::error_code &e) 
     {
-        LogError("Exception while running websocket server: " + QString::fromStdString(e.message()));
+        LogError("Exception while running WebSocket server: " + QString::fromStdString(e.message()));
     } 
     catch (...) 
     {
-        LogError("Exception while running websocket server: other exception");
+        LogError("Exception while running WebSocket server: other exception");
     }
 }
 

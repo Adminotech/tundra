@@ -89,59 +89,21 @@ namespace MumbleAudio
         TransmitVoiceActivity
     };
 
-    class AudioSettings : public QObject
+    struct AudioSettings
     {
-    Q_OBJECT
-
-    public:
-        AudioSettings()
+        AudioSettings() :
+            quality(QualityBalanced),
+            transmitMode(TransmitVoiceActivity),
+            suppression(-30),
+            amplification(19000),
+            VADmin(0.35f),
+            VADmax(0.65f),
+            innerRange(30),
+            outerRange(75),
+            allowSendingPositional(true),
+            allowReceivingPositional(true),
+            echoCancellation(true)
         {
-            // Default settings
-            quality = QualityBalanced;
-            transmitMode = TransmitVoiceActivity;
-            suppression = -30;
-            amplification = 19000;
-            VADmin = 0.35f;
-            VADmax = 0.65f;
-            innerRange = 30;
-            outerRange = 75;
-            allowSendingPositional = true;
-            allowReceivingPositional = true;
-            echoCancellation = true;
-            recordingDevice = "";
-        }
-
-        AudioSettings(const MumbleAudio::AudioSettings &other)
-        {
-            quality = other.quality;
-            transmitMode = other.transmitMode;
-            suppression = other.suppression;
-            amplification = other.amplification;
-            VADmin = other.VADmin;
-            VADmax = other.VADmax;
-            innerRange = other.innerRange;
-            outerRange = other.outerRange;
-            allowSendingPositional = other.allowSendingPositional;
-            allowReceivingPositional = other.allowReceivingPositional;
-            echoCancellation = other.echoCancellation;
-            recordingDevice = other.recordingDevice;
-        }
-
-        MumbleAudio::AudioSettings &operator=(const MumbleAudio::AudioSettings &other)
-        {
-            quality = other.quality;
-            transmitMode = other.transmitMode;
-            suppression = other.suppression;
-            amplification = other.amplification;
-            VADmin = other.VADmin;
-            VADmax = other.VADmax;
-            innerRange = other.innerRange;
-            outerRange = other.outerRange;
-            allowSendingPositional = other.allowSendingPositional;
-            allowReceivingPositional = other.allowReceivingPositional;
-            echoCancellation = other.echoCancellation;
-            recordingDevice = other.recordingDevice;
-            return *this;
         }
 
         AudioQuality quality;

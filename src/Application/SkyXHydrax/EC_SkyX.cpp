@@ -43,7 +43,6 @@ struct EC_SkyX::Impl
         moonPosition(0.0f),
         moonDirection(0.0f)
     {
-        controller = new SkyX::BasicController(true);
     }
 
     ~Impl()
@@ -263,6 +262,7 @@ void EC_SkyX::Create()
         Remove();
 
         impl = new Impl;
+        impl->controller = new SkyX::BasicController(true);
         impl->skyX = new SkyX::SkyX(w->OgreSceneManager(), impl->controller);
         impl->skyX->create();
 

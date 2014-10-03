@@ -2093,10 +2093,10 @@ void TimeProfilerWindow::RefreshOgreSceneComplexityPage()
     // Count total/scene texture byte sizes and amount of total pixels
     size_t scene_tex_size = 0;
     size_t total_tex_size = 0;
-    size_t other_tex_size = 0;
+    //size_t other_tex_size = 0; /**< @todo Do we want to report this and other_tex_pixels? */
     size_t scene_tex_pixels = 0;
     size_t total_tex_pixels = 0;
-    size_t other_tex_pixels = 0;
+    //size_t other_tex_pixels = 0;
     std::set<Ogre::Texture*>::iterator ti = scene_textures.begin();
     while(ti != scene_textures.end())
     {
@@ -2111,13 +2111,13 @@ void TimeProfilerWindow::RefreshOgreSceneComplexityPage()
         total_tex_pixels += (*ti)->getWidth() * (*ti)->getHeight();
         ++ti;
     }
-    ti = other_textures.begin();
-    while(ti != other_textures.end())
-    {
-        other_tex_size += (*ti)->getSize();
-        other_tex_pixels += (*ti)->getWidth() * (*ti)->getHeight();
-        ++ti;
-    }
+    //ti = other_textures.begin();
+    //while(ti != other_textures.end())
+    //{
+    //    other_tex_size += (*ti)->getSize();
+    //    other_tex_pixels += (*ti)->getWidth() * (*ti)->getHeight();
+    //    ++ti;
+    //}
     
     // Sort textures into categories
     uint scene_tex_categories[5];
@@ -2166,8 +2166,8 @@ void TimeProfilerWindow::RefreshOgreSceneComplexityPage()
         total_tex_pixels = 1;
     if (!scene_tex_pixels)
         scene_tex_pixels = 1;
-    if (!other_tex_pixels)
-        other_tex_pixels = 1;
+    //if (!other_tex_pixels)
+    //    other_tex_pixels = 1;
     
     text << "<b>Ogre Textures</b>" << "<br>";
     text << QString("  %1").arg("# of loaded textures ", -45).toStdString() << all_textures.size() << "<br>";

@@ -16,15 +16,14 @@
 
 namespace MumbleAudio
 {
-    AudioWizard::AudioWizard(Framework *framework, AudioSettings settings) : 
+    AudioWizard::AudioWizard(Framework *framework, const AudioSettings &settings) : 
         framework_(framework),
         peakTicks(0),
         peakMax(0),
-        detectorWidget_(0)
+        detectorWidget_(0),
+        originalSettings(settings),
+        currentSettings(settings)
     {
-        originalSettings = settings;
-        currentSettings = settings;
-
         activePixmap = QPixmap(":img/voice-active.png");
         inactivePixmap = QPixmap(":img/voice-inactive.png");
 
@@ -107,15 +106,15 @@ namespace MumbleAudio
         QString tooltipProc;
         QString tooltipPos;
 
-        tooltipTr  = "<strong>Continuous trasmission</strong> mode sends voice out all the time. Doing this has the drawback that it spends more bandwith for other users,";
+        tooltipTr  = "<strong>Continuous transmission</strong> mode sends voice out all the time. Doing this has the drawback that it spends more bandwidth for other users,";
         tooltipTr += "hence it is not recommended. If you can't get voice activity detection to work well enough you can fall back to this mode.<br /><br />";
         tooltipTr += "<strong>Voice activity</strong> detection can detect when you are speaking and only then send out audio. This saves processing and bandwidth on you ";
         tooltipTr += "and other clients. Activate the mode and adjust the two sliders so that when you speak normally it detects the speech. When the meter goes to green it";
-        tooltipTr += "starts sending audio and will send untill the meter goes to red for a certain period.";
+        tooltipTr += "starts sending audio and will send until the meter goes to red for a certain period.";
         groupBoxTransmission->setToolTip(tooltipTr);
 
-        tooltipProc  = "<strong>Noise suppression</strong> is used to remove noice from the recorded microphone audio. <br /><br />";
-        tooltipProc += "<strong>Amplification</strong> can automatically increase volume when speking quietly and automatically decrese volume when loud spikes are detected.<br /><br />";
+        tooltipProc  = "<strong>Noise suppression</strong> is used to remove noise from the recorded microphone audio. <br /><br />";
+        tooltipProc += "<strong>Amplification</strong> can automatically increase volume when speaking quietly and automatically decrease volume when loud spikes are detected.<br /><br />";
         tooltipProc += "Remember to always set the mic volume reasonably high from your operating system and then adjust additional amplification if it is needed.";
         groupBoxProcessing->setToolTip(tooltipProc);
 

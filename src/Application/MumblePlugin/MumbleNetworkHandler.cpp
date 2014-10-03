@@ -190,7 +190,7 @@ void MumbleNetworkHandler::timerEvent(QTimerEvent * /*event*/)
             const QByteArray &tcpData = (*iterTCP).data;
             if (tcp->write(tcpData) == -1)
                 LogError(LC + "Failed to send main thread initialized TCP message.");
-            iterTCP++;
+            ++iterTCP;
         }
         pedingTCP.clear();
     }

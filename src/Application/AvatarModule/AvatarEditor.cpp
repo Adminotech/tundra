@@ -81,9 +81,6 @@ void AvatarEditor::RebuildEditView()
         return;
 
     QHBoxLayout *v_box = 0;
-    QPushButton *button = 0;
-    QLabel *label = 0;
-    QScrollBar* slider = 0;
     int total_height;
 
     // Materials
@@ -119,6 +116,7 @@ void AvatarEditor::RebuildEditView()
 
     QVBoxLayout *attachments_layout = dynamic_cast<QVBoxLayout*>(panel_attachments->layout());
 
+    QLabel *label = 0;
     for(uint y = 0; y < attachments.size(); ++y)
     {
         // New horizontal layout
@@ -134,7 +132,7 @@ void AvatarEditor::RebuildEditView()
         label = new QLabel(attachment_name);
         label->setFixedWidth(200);
 
-        button = new QPushButton("Remove");
+        QPushButton *button = new QPushButton("Remove");
         button->setObjectName(QString::number(y)); // Attachment index
         button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
         connect(button, SIGNAL(clicked()), SLOT(RemoveAttachment()));
@@ -161,6 +159,7 @@ void AvatarEditor::RebuildEditView()
 
     // Modifiers
     // If no master modifiers, show the individual morph/bone controls
+    QScrollBar* slider = 0;
     int max_items = 0;
     const std::vector<MasterModifier>& master_modifiers = desc->masterModifiers_;
     if (!master_modifiers.size())

@@ -156,4 +156,5 @@ private:
 
     /// If we are on a server or client.
     bool isServer_;
+    QMenu *actionMenu;
 };

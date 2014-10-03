@@ -27,7 +27,7 @@ namespace MumbleAudio
 
     struct UserAudioState
     {
-        explicit UserAudioState();
+        UserAudioState();
         ~UserAudioState();
 
         uint lastSeq;
@@ -37,14 +37,17 @@ namespace MumbleAudio
         AudioFrameDeque playedFrames;
         SoundChannelPtr soundChannel;
         CeltCodec *codec;
+
+    private:
+        UserAudioState(const UserAudioState &); // N/A
+        UserAudioState &operator =(const UserAudioState &); // N/A
     };
 
     typedef std::map<uint, UserAudioState* > AudioStateMap;
 
     struct UserOutputAudioState
     {
-        explicit UserOutputAudioState();
-
+        UserOutputAudioState();
         bool isLoopBack;
         bool isPositional;
         float3 position;

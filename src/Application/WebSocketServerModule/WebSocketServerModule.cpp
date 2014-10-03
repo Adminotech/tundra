@@ -14,7 +14,8 @@
 
 WebSocketServerModule::WebSocketServerModule() :
     IModule("WebSocketServerModule"),
-    LC("[WebSocketServerModule]: ")
+    LC("[WebSocketServerModule]: "),
+    isServer_(false)
 {
 }
 

@@ -40,7 +40,9 @@ void DumpProfilerToLog(ProfilerNodeTree* node, int indent, int elapsedFrames);
 
 DebugStatsModule::DebugStatsModule() :
     IModule("DebugStats"),
-    profilerWindow_(0)
+    profilerWindow_(0),
+    profilerLogDumpElapsedFrames(0),
+    enableProfilerLogDump(false)
 {
 }
 
@@ -53,7 +55,7 @@ void DebugStatsModule::Initialize()
 {
     lastCallTime = GetCurrentClockTime();
     lastProfilerDumpTime = GetCurrentClockTime();
-    profilerLogDumpElapsedFrames = 0;
+
     enableProfilerLogDump = framework_->HasCommandLineParameter("--dumpProfiler");
 
     framework_->Console()->RegisterCommand("prof", "Shows the profiling window.",

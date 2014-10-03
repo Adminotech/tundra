@@ -39,7 +39,8 @@ Licensed under the MIT license:
 int OpenAssetConverter::msBoneCount = 0;
 
 OpenAssetImport::OpenAssetImport() :
-    IModule("OpenAssetImport")
+    IModule("OpenAssetImport"),
+    assetAPI(0)
 {
 }
 
@@ -74,7 +75,8 @@ OpenAssetConverter::OpenAssetConverter(Framework *fw) :
     assetAPI(fw->Asset()),
     meshCreated(false),
     texCount(0),
-    mAnimationSpeedModifier(1.0f)
+    mAnimationSpeedModifier(1.0f),
+    scene(0)
 {
 }
 
@@ -293,8 +295,7 @@ aiMatrix4x4 UpdateAnimationFunc(const aiScene * scene, aiNodeAnim * pchannel, Og
 
     // walking animation is found from element 0
     const aiAnimation* mAnim = scene->mAnimations[0];
-    double currentTime = val;
-    currentTime = fmod( (float)val * 1.f, (float)mAnim->mDuration);
+    double currentTime = fmod((float)val * 1.f, (float)mAnim->mDuration);
     ticks = fmod( (float)val * 1.f, (float)mAnim->mDuration);
 
     // calculate the transformations for each animation channel
@@ -699,7 +700,6 @@ void OpenAssetConverter::ParseAnimation (const aiScene* mScene, int index, aiAni
 
     for(int i = 0; i < (int)anim->mNumChannels; i++)
     {
-        Ogre::TransformKeyFrame* keyframe;
         aiNodeAnim* node_anim = anim->mChannels[i];
         Ogre::String boneName = Ogre::String(node_anim->mNodeName.data);
 
@@ -719,7 +719,7 @@ void OpenAssetConverter::ParseAnimation (const aiScene* mScene, int index, aiAni
                 float time;
                 UpdateAnimationFunc(scene, node_anim, g, time, mat);
                 mat.DecomposeNoScaling(rot, pos);
-                keyframe = track->createNodeKeyFrame(Ogre::Real(time));
+                Ogre::TransformKeyFrame* keyframe = track->createNodeKeyFrame(Ogre::Real(time));
 
                 Ogre::Vector3 trans(pos.x, pos.y, pos.z);
                 Ogre::Quaternion rotat(rot.w, rot.x, rot.y, rot.z);
@@ -950,21 +950,21 @@ Ogre::MaterialPtr OpenAssetConverter::CreateVertexColorMaterial()
 
 Ogre::MaterialPtr OpenAssetConverter::CreateMaterial(Ogre::String& matName, const aiMaterial* mat, const QString &meshFileDiskSource, const QString &meshFileName)
 {
-    std::ostringstream matname;
+//    std::ostringstream matname;
     Ogre::MaterialManager* ogreMaterialMgr =  Ogre::MaterialManager::getSingletonPtr();
     enum aiTextureType Type = aiTextureType_DIFFUSE;
     aiString path;
 //    aiTextureMapping mapping = aiTextureMapping_UV;       // the mapping (should be uv for now)
-    unsigned int uvindex = 0;                             // the texture uv index channel
+//    unsigned int uvindex = 0;                             // the texture uv index channel
 //    float blend = 1.0f;                                   // blend
 //    aiTextureOp op = aiTextureOp_Multiply;                // op
 //    aiTextureMapMode mapmode[2] =  { aiTextureMapMode_Wrap, aiTextureMapMode_Wrap };    // mapmode
-    std::ostringstream texname;
+//    std::ostringstream texname;
 
     aiString szPath;
 
     if (AI_SUCCESS == aiGetMaterialString(mat, AI_MATKEY_TEXTURE_DIFFUSE(0), &szPath))
-        LogDebug("CreateMaterial: Mesh '" + meshFileName + "' texture '" + QString(szPath.data) + "' for channel " + QString::number(uvindex));
+        LogDebug("CreateMaterial: Mesh '" + meshFileName + "' texture '" + QString(szPath.data) + "' for channel " + QString::number(0/*uvindex*/));
 
     Ogre::MaterialPtr ogreMaterial = ogreMaterialMgr->create(matName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, true);
 

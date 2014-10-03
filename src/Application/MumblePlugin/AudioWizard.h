@@ -65,7 +65,7 @@ namespace MumbleAudio
     Q_OBJECT
 
     public:
-        AudioWizard(Framework *framework, AudioSettings settings);
+        AudioWizard(Framework *framework, const AudioSettings &settings);
         ~AudioWizard();
 
     public slots:

@@ -185,7 +185,6 @@ namespace MumbleAudio
 
         int enabled = 1;
         int arg = 0;
-        float fArg = 0.0f;
 
         speex_preprocess_ctl(speexPreProcessor, SPEEX_PREPROCESS_SET_VAD, &enabled);
         speex_preprocess_ctl(speexPreProcessor, SPEEX_PREPROCESS_SET_AGC, &enabled);
@@ -208,7 +207,7 @@ namespace MumbleAudio
         arg = currentSettings.suppression;
         speex_preprocess_ctl(speexPreProcessor, SPEEX_PREPROCESS_SET_NOISE_SUPPRESS, &arg);
 
-        fArg = 0.0f;
+        float fArg = 0.0f;
         speex_preprocess_ctl(speexPreProcessor, SPEEX_PREPROCESS_SET_DEREVERB_DECAY, &fArg);
         speex_preprocess_ctl(speexPreProcessor, SPEEX_PREPROCESS_SET_DEREVERB_LEVEL, &fArg);
 
@@ -1022,16 +1021,16 @@ namespace MumbleAudio
     {
         // This function should be called in the main thread
         QMutexLocker lock(&mutexInput);
-        if (inputAudioStates.size() > 0)
+        if (!inputAudioStates.empty())
         {
-            for (AudioStateMap::iterator iter = inputAudioStates.begin(); iter != inputAudioStates.end(); ++iter)
-            {
-                UserAudioState *userAudioState = iter->second;
-                if (userAudioState)
-                    SAFE_DELETE(userAudioState);
-            }
-            inputAudioStates.clear();
+        for (AudioStateMap::iterator iter = inputAudioStates.begin(); iter != inputAudioStates.end(); ++iter)
+        {
+            UserAudioState *userAudioState = iter->second;
+            if (userAudioState)
+                SAFE_DELETE(userAudioState);
         }
+        inputAudioStates.clear();
+    }
     }
 
     void AudioProcessor::ClearInputAudio(uint userId)
@@ -1203,33 +1202,27 @@ namespace MumbleAudio
 
     /// UserAudioState
 
-    UserAudioState::UserAudioState()
+    UserAudioState::UserAudioState() :
+        codec(new CeltCodec()),
+        lastSeq(0),
+        isPositional(false),
+        pos(float3::zero)
     {
-        codec = new CeltCodec();
-
-        lastSeq = 0;
-        isPositional = false;
-        pos = float3::zero;
-
-        frames.clear();
-        playedFrames.clear();
-        soundChannel.reset();
     }
 
     UserAudioState::~UserAudioState()
     {
         SAFE_DELETE(codec);
-
         frames.clear();
         playedFrames.clear();
         soundChannel.reset();
     }
 
-    UserOutputAudioState::UserOutputAudioState()
+    UserOutputAudioState::UserOutputAudioState() :
+        isPositional(false),
+        isLoopBack(false),
+        position(float3::zero),
+        numberOfFrames(0)
     {
-        isPositional = false;
-        isLoopBack = false;
-        position = float3::zero;
-        numberOfFrames = 0;
     }
 }

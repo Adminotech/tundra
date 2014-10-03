@@ -102,7 +102,7 @@ private:
     void ParseAnimation (const aiScene* mScene, int index, aiAnimation* anim);
 
     const aiScene *scene;
-    int mLoaderParams;
+
     int texCount;
     Ogre::String mMaterialCode;
     Ogre::String mCustomAnimationName;
