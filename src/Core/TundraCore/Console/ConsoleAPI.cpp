@@ -172,7 +172,7 @@ void ConsoleAPI::Print(const QString &message)
 #elif defined(ANDROID)
         __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s\n", message.toStdString().c_str());
 #else
-        printf("%s\n", message);
+        printf("%s\n", message.toStdString().c_str());
 #endif
         if (logFileText)
         {
@@ -196,7 +196,7 @@ void ConsoleAPI::Print(const QString &message)
 #elif defined(ANDROID)
         __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s", message.toStdString().c_str());
 #else
-        printf("%s", message);
+        printf("%s", message.toStdString().c_str());
 #endif
         if (logFileText)
         {

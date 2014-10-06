@@ -27,8 +27,9 @@ void PrintLogMessage(u32 logChannel, const QString &str)
 
     // On Windows, highlight errors and warnings.
 #ifdef WIN32
-    if ((logChannel & LogChannelError) != 0) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_INTENSITY);
-    else if ((logChannel & LogChannelWarning) != 0) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+    HANDLE stdoutHandle = GetStdHandle(STD_OUTPUT_HANDLE); // in theory it would be nice to check that the handle is valid...
+    if ((logChannel & LogChannelError) != 0) SetConsoleTextAttribute(stdoutHandle, FOREGROUND_RED | FOREGROUND_INTENSITY);
+    else if ((logChannel & LogChannelWarning) != 0) SetConsoleTextAttribute(stdoutHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
 #endif
     // The console and stdout prints are equivalent.
     if (console)
@@ -39,17 +40,17 @@ void PrintLogMessage(u32 logChannel, const QString &str)
 #if defined(WIN32)
         const std::wstring wstr = QStringToWString(str);
         DWORD charsWritten;
-        WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr.c_str(), static_cast<DWORD>(wstr.length()), &charsWritten, 0);
+        WriteConsoleW(stdoutHandle, wstr.c_str(), static_cast<DWORD>(wstr.length()), &charsWritten, 0);
 #elif defined(ANDROID)
         __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s", str.toStdString().c_str());
 #else
-        printf("%s", str);
+        printf("%s", str.toStdString().c_str());
 #endif
     }
 
     // Restore the text color to normal.
 #ifdef WIN32
-    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    SetConsoleTextAttribute(stdoutHandle, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 #endif
 }
 
