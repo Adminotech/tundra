@@ -165,10 +165,14 @@ void ConsoleAPI::Print(const QString &message)
     ///\todo Temporary hack which appends line ending in case it's not there (output of console commands in headless mode)
     if (!message.endsWith("\n"))
     {
-#ifndef ANDROID
-        printf("%s\n", message.toStdString().c_str());
+#if defined(WIN32)
+        const std::wstring wstr = QStringToWString(message) + L"\n";
+        DWORD charsWritten;
+        WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr.c_str(), static_cast<DWORD>(wstr.length()), &charsWritten, 0);
+#elif defined(ANDROID)
+        __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s\n", message.toStdString().c_str());
 #else
-        __android_log_print(ANDROID_LOG_INFO, "Tundra", "%s\n", message.toStdString().c_str());
+        printf("%s\n", message);
 #endif
         if (logFileText)
         {
@@ -184,10 +188,15 @@ void ConsoleAPI::Print(const QString &message)
     }
     else
     {
-#ifndef ANDROID
-        printf("%s", message.toStdString().c_str());
+        /// @todo Duplicate code with LoggingFunctions.cpp
+#if defined(WIN32)
+        const std::wstring wstr = QStringToWString(message);
+        DWORD charsWritten;
+        WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr.c_str(), static_cast<DWORD>(wstr.length()), &charsWritten, 0);
+#elif defined(ANDROID)
+        __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s", message.toStdString().c_str());
 #else
-        __android_log_print(ANDROID_LOG_INFO, "Tundra", "%s", message.toStdString().c_str());
+        printf("%s", message);
 #endif
         if (logFileText)
         {

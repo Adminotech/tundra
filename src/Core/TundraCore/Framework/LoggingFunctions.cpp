@@ -1,8 +1,15 @@
+/**
+    For conditions of distribution and use, see copyright notice in LICENSE
+
+    @file   LoggingFunctions.cpp
+    @brief  Tundra logging utility functions. */
+
 #include "StableHeaders.h"
 
 #include "LoggingFunctions.h"
 #include "Framework.h"
 #include "ConsoleAPI.h"
+#include "Application.h"
 
 #include "Win.h"
 
@@ -10,7 +17,7 @@
 #include <android/log.h>
 #endif
 
-void PrintLogMessage(u32 logChannel, const char *str)
+void PrintLogMessage(u32 logChannel, const QString &str)
 {
     if (!IsLogChannelEnabled(logChannel))
         return;
@@ -26,13 +33,18 @@ void PrintLogMessage(u32 logChannel, const char *str)
     // The console and stdout prints are equivalent.
     if (console)
         console->Print(str);
-    else // The Console API is already dead for some reason, print directly to stdout to guarantee we don't lose any logging messags.
+    else // The Console API is already dead for some reason, print directly to stdout to guarantee we don't lose any logging messages.
     {
-        #ifndef ANDROID
-            printf("%s", str);
-        #else
-            __android_log_print(ANDROID_LOG_INFO, "Tundra", "%s", str);
-        #endif
+        /// @todo Duplicate code with ConsoleAPI.cpp
+#if defined(WIN32)
+        const std::wstring wstr = QStringToWString(str);
+        DWORD charsWritten;
+        WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr.c_str(), static_cast<DWORD>(wstr.length()), &charsWritten, 0);
+#elif defined(ANDROID)
+        __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s", str.toStdString().c_str());
+#else
+        printf("%s", str);
+#endif
     }
 
     // Restore the text color to normal.
