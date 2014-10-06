@@ -558,7 +558,7 @@ bool Scene::SaveSceneBinary(const QString& filename, bool serializeTemporary, bo
     // Filter the entities we accept
     const bool serializeChildren = true;
     EntityList serialized = RootLevelEntities();
-    for(EntityList::const_iterator iter = serialized.begin(); iter != serialized.end();)
+    for(EntityList::iterator iter = serialized.begin(); iter != serialized.end();)
     {
         if ((*iter)->ShouldBeSerialized(serializeTemporary, serializeLocal, serializeChildren))
              ++iter;

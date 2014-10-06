@@ -219,5 +219,5 @@ ArgumentTypePtr FunctionInvoker::CreateReturnValueArgument(const QObject *obj, c
         mo = mo->superClass();
     }
 
-    return 0;
+    return ArgumentTypePtr();
 }
