@@ -40,12 +40,12 @@
 
 __forceinline void *operator new(std::size_t size)
 {
-	return _malloc_dbg(size, _NORMAL_BLOCK, DEBUG_CPP_NAME, __LINE__);
+	return _malloc_dbg(size, _NORMAL_BLOCK, DEBUG_CPP_NAME, 1);
 }
 
 __forceinline void *operator new[](std::size_t size)
 {
-	return _malloc_dbg(size, _NORMAL_BLOCK, DEBUG_CPP_NAME ", op[]", __LINE__);
+	return _malloc_dbg(size, _NORMAL_BLOCK, DEBUG_CPP_NAME ", op[]", 1);
 }
 
 __forceinline void operator delete(void *ptr)
