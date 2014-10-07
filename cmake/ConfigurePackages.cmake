@@ -74,12 +74,10 @@ macro(configure_qjson)
     if (NOT MSVC)
         find_library (QJSON_LIBRARIES NAMES qjson HINTS ${QJSON_ROOT}/lib)
     else ()
-        # We could use /build directory for the lib too. But this would not allow us to change build modes on the fly.
-        # It's recommended to run the build modes deps script before building with it, but its still nicer to
-        # pass in a single link directory and have your build type subdirs below it, Visual Studio will do the right thing.
-        find_path (QJSON_LIBRARY_DIR NAMES qjson.lib HINTS ${QJSON_ROOT}/lib PATH_SUFFIXES Release RelWithDebInfo Debug)
-        RemoveLastElementFromPath(${QJSON_LIBRARY_DIR} QJSON_LIBRARY_DIRS)
-        set(QJSON_LIBRARIES qjson.lib)
+        # Windows finds the libs and uses absolute paths. Do not populate QJSON_LIBRARY_DIR.
+        find_library (QJSON_RELEASE_LIB NAMES qjson.lib HINTS ${QJSON_ROOT}/build/lib)
+        find_library (QJSON_DEBUG_LIB NAMES qjsond.lib HINTS ${QJSON_ROOT}/build/lib)
+        set(QJSON_LIBRARIES optimized ${QJSON_RELEASE_LIB} debug ${QJSON_DEBUG_LIB})
     endif ()
     sagase_configure_report(QJSON)
 endmacro(configure_qjson)

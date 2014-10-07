@@ -355,12 +355,17 @@ del /Q "%TUNDRA_BIN%\QtTest*.dll"
 IF NOT EXIST "%DEPS%\qjson\". (
     cecho {0D}Cloning QJson into "%DEPS%\qjson".{# #}{\n}
     cd "%DEPS%"
-    call git clone https://github.com/jonnenauha/qjson.git
+    :: ba273682a9d33a7b3090e74f4742b5f3bf6c9b02 is a random head commit
+    :: from the time this change was made. We dont want to clone actual head blindly.
+    :: This should be updated to a release > 0.8.1 when it is tagged.
+    call git clone https://github.com/flavio/qjson.git
+    cd qjson
+    call git checkout ba273682a9d33a7b3090e74f4742b5f3bf6c9b02
     IF NOT EXIST "%DEPS%\qjson\.git" GOTO :ERROR
 )
 
 :: Check if this configuration is built
-IF NOT EXIST "%DEPS%\qjson\lib\%BUILD_TYPE%\qjson.dll". (
+IF NOT EXIST "%DEPS%\qjson\src\%BUILD_TYPE%\qjson%POSTFIX_D%.dll". (
     cd "%DEPS%\qjson\"
     IF NOT EXIST qjson.sln. (
         cecho {0D}Running CMake for QJson.{# #}{\n}
@@ -378,7 +383,7 @@ cecho {0D}Deploying %BUILD_TYPE% QJson DLL to Tundra bin\ directory.{# #}{\n}
 cd "%DEPS%\qjson\"
 MSBuild INSTALL.%VCPROJ_FILE_EXT% /p:configuration=%BUILD_TYPE% /clp:ErrorsOnly /nologo /m:%NUMBER_OF_PROCESSORS%
 IF NOT %ERRORLEVEL%==0 GOTO :ERROR
-copy /Y "%DEPS%\qjson\build\bin\qjson.dll" "%TUNDRA_BIN%"
+copy /Y "%DEPS%\qjson\build\bin\qjson%POSTFIX_D%.dll" "%TUNDRA_BIN%"
 
 :: Bullet physics engine
 :: version 2.81 sp1, svn rev 2613
