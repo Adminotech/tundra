@@ -123,7 +123,7 @@ void ConsoleWidget::PrintToConsole(const QString &text)
 {
     if (textEdit)
     {
-        QString html = Qt::escape(text);
+        QString html = Qt::escape(QString::fromUtf8(text.toStdString().c_str()));
         DecorateString(html);
         textEdit->appendHtml(html);
     }
@@ -171,7 +171,7 @@ void ConsoleWidget::HandleInput()
     if (framework->IsHeadless() || !lineEdit)
         return;
 
-    QString cmd = lineEdit->text();
+    QString cmd = lineEdit->text().toUtf8();
     framework->Console()->ExecuteCommand(cmd);
     lineEdit->clear();
     commandStub.clear();
