@@ -10,8 +10,24 @@
 
 #include <QString>
 
+/// @cond PRIVATE
+
 /// @note This class and its implementation is taken from the Ogre samples
-/** @cond PRIVATE */
+class GlowMaterialListener : public Ogre::MaterialManager::Listener
+{  
+public:
+    GlowMaterialListener();
+    virtual ~GlowMaterialListener();
+
+    void Initialize();
+
+    Ogre::Technique *handleSchemeNotFound(unsigned short, const Ogre::String& schemeName, Ogre::Material*mat, unsigned short, const Ogre::Renderable*);
+
+protected:
+    Ogre::MaterialPtr blackMat_;
+};
+
+/// @note This class and its implementation is taken from the Ogre samples
 class HDRListener: public Ogre::CompositorInstance::Listener
 {
 public:
@@ -52,7 +68,8 @@ protected:
     float mBloomTexOffsetsHorz[15][4];
     float mBloomTexOffsetsVert[15][4];
 };
-/** @endcond PRIVATE */
+
+/// @endcond PRIVATE
 
 /// Handles the post-processing effects
 class OGRE_MODULE_API OgreCompositionHandler
@@ -125,6 +142,9 @@ private:
 
     /// Framelistener for gaussian blur
     GaussianListener gaussian_listener_;
+
+    /// Framelisneter for glow.
+    GlowMaterialListener material_listener_;
     
     /// Stores priorities for compositors. Compositor name is used for the key to make sure each compositor only has one priority.
     std::map<std::string, int> priorities_;

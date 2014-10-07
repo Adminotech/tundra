@@ -14,29 +14,8 @@
 
 #include "MemoryLeakCheck.h"
 
-///@note This class and its implementation is taken from the Ogre samples
-class GlowMaterialListener : public Ogre::MaterialManager::Listener
-{
-protected:
-    Ogre::MaterialPtr blackMat_;
-    
-public:
-    GlowMaterialListener()
-    {
-        blackMat_ = Ogre::MaterialManager::getSingleton().create("GlowBlack", "Internal");
-        blackMat_->getTechnique(0)->getPass(0)->setDiffuse(0,0,0,0);
-        blackMat_->getTechnique(0)->getPass(0)->setSpecular(0,0,0,0);
-        blackMat_->getTechnique(0)->getPass(0)->setAmbient(0,0,0);
-        blackMat_->getTechnique(0)->getPass(0)->setSelfIllumination(0,0,0);
-    }
-
-    Ogre::Technique *handleSchemeNotFound(unsigned short, const Ogre::String& schemeName, Ogre::Material*mat, unsigned short, const Ogre::Renderable*)
-    {
-        return blackMat_->getTechnique(0);
-    }
-};
-
-OgreCompositionHandler::OgreCompositionHandler() : viewport_(0)
+OgreCompositionHandler::OgreCompositionHandler() :
+    viewport_(0)
 {
 }
 
@@ -47,9 +26,10 @@ OgreCompositionHandler::~OgreCompositionHandler()
 void OgreCompositionHandler::SetViewport(Ogre::Viewport *vp)
 {
     viewport_ = vp;
-    
+
     // Add material listener for glow postprocess now, as MaterialManager is now guaranteed to exist
-    Ogre::MaterialManager::getSingleton().addListener(new GlowMaterialListener(), "glow");
+    material_listener_.Initialize();
+    Ogre::MaterialManager::getSingleton().addListener(&material_listener_, "glow");
 }
 
 void OgreCompositionHandler::RemoveCompositorFromViewport(const std::string &compositor, Ogre::Viewport *vp)
@@ -277,6 +257,30 @@ void OgreCompositionHandler::SetMaterialParameters(const Ogre::MaterialPtr &mate
             }
         }
     }
+}
+
+// GlowMaterialListener
+
+GlowMaterialListener::GlowMaterialListener()
+{
+}
+
+GlowMaterialListener::~GlowMaterialListener()
+{
+}
+
+void GlowMaterialListener::Initialize()
+{
+    blackMat_ = Ogre::MaterialManager::getSingleton().create("GlowBlack", "Internal");
+    blackMat_->getTechnique(0)->getPass(0)->setDiffuse(0,0,0,0);
+    blackMat_->getTechnique(0)->getPass(0)->setSpecular(0,0,0,0);
+    blackMat_->getTechnique(0)->getPass(0)->setAmbient(0,0,0);
+    blackMat_->getTechnique(0)->getPass(0)->setSelfIllumination(0,0,0);
+}
+
+Ogre::Technique *GlowMaterialListener::handleSchemeNotFound(unsigned short, const Ogre::String& schemeName, Ogre::Material*mat, unsigned short, const Ogre::Renderable*)
+{
+    return blackMat_->getTechnique(0);
 }
 
 // HDRListener
