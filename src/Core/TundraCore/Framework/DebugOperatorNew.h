@@ -14,7 +14,17 @@
 
 #pragma once
 
-#if defined(_MSC_VER) && defined(_DEBUG) && defined(MEMORY_LEAK_CHECK)
+#if defined(_DEBUG) && defined(_MSC_VER)
+
+#if defined(MEMORY_LEAK_CHECK_VLD)
+// VLD works by linking to a DLL via a #pragma inside this include.
+// If enabled, you must manually copy the runtime to /bin. Runtime can be found
+// from default install dir: C:\Program Files (x86)\Visual Leak Detector\bin\{Win32|Win64}
+// Copy all files from this folder to /bin.
+#include <vld.h>
+#endif // MEMORY_LEAK_CHECK_VLD
+
+#if defined(MEMORY_LEAK_CHECK)
 #include <utility>
 #include <malloc.h>
 #include <stdlib.h>
@@ -48,4 +58,6 @@ __forceinline void operator delete[](void *ptr)
     _free_dbg(ptr, _NORMAL_BLOCK);
 }
 
-#endif // ~_MSC_VER
+#endif // MEMORY_LEAK_CHECK
+
+#endif // _DEBUG && _MSC_VER
