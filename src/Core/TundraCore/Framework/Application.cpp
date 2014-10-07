@@ -909,6 +909,7 @@ int TUNDRACORE_API run(int argc, char **argv)
 #endif
         {
             Application app(argc, argv);
+            QTextCodec::setCodecForCStrings(QTextCodec::codecForName("UTF-8"));
             Framework fw(argc, argv, &app);
             app.Initialize(&fw);
             fw.Go();
