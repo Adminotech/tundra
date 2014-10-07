@@ -878,8 +878,8 @@ int FilterMemoryLeaks(int reportType, char* message, int* retVal)
 
 void DumpMemoryLeaks()
 {
-    // Uncomment the next line to only print allocations that came through our debug allocation functions
-    //_CrtSetReportHook(FilterMemoryLeaks);
+    // Comment the next line to not filter anything out from the mem leak log.
+    _CrtSetReportHook(FilterMemoryLeaks);
     _CrtDumpMemoryLeaks();
 }
 #endif
@@ -894,7 +894,7 @@ int TUNDRACORE_API run(int argc, char **argv)
     int tmpDbgFlag = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG) | _CRTDBG_LEAK_CHECK_DF;
     _CrtSetDbgFlag(tmpDbgFlag);
 
-    HANDLE hLogFile = CreateFileW(L"fullmemoryleaklog.txt", GENERIC_WRITE, 
+    HANDLE hLogFile = CreateFileW(L"tundra-memory-leak-log.txt", GENERIC_WRITE, 
       FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 #endif
 
