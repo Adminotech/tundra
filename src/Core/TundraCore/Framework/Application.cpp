@@ -54,9 +54,17 @@
 #include "UiMainWindow.h"
 #endif
 
-#if defined(_MSC_VER) && defined(MEMORY_LEAK_CHECK)
+#if defined(_MSC_VER) && defined(MEMORY_LEAK_CHECK) && defined(_DEBUG)
 // for reporting memory leaks upon debug exit
 #include <crtdbg.h>
+#endif
+
+#if defined(_MSC_VER) && defined(MEMORY_LEAK_CHECK_VLD) && defined(_DEBUG)
+// VLD works by linking to a DLL via a #pragma inside this include.
+// If enabled, you must manually copy the runtime to /bin. Runtime can be found
+// from default install dir: C:\Program Files (x86)\Visual Leak Detector\bin\{Win32|Win64}
+// Copy all files from this folder to /bin.
+#include <vld.h>
 #endif
 
 #if defined(__linux__)

@@ -15,22 +15,46 @@
 
 ## Various flags/defines that configure your build
 
-# Do we want to build TundraCore as a shared or static library.
-set(TUNDRACORE_SHARED 1)
-# Configure if you want to build only the SDK, meaning projects from src/Application will be omitted
+option (TUNDRACORE_SHARED
+    "Do we want to build TundraCore as a shared or static library." ON
+)
 # TODO BUILD_SDK_ONLY seems not be very useful as many core Tundra functionalities reside in the Application folder,
 # JavascriptModule f.ex.; consider removing this option for good.
-set(BUILD_SDK_ONLY 0)
+option (BUILD_SDK_ONLY
+    "Configure if you want to build only the SDK, meaning projects from src/Application will be omitted." OFF
+)
 # Do we want to deploy only the binaries (contents of bin) when running the INSTALL project."
 # If FALSE, all binaries (bin), static libraries (lib) and headers (include) are deployed.
-option(INSTALL_BINARIES_ONLY "Do we want to deploy only the binaries (contents of bin) when running the INSTALL project." TRUE)
+option (INSTALL_BINARIES_ONLY
+    "Do we want to deploy only the binaries (contents of bin) when running the INSTALL project." ON
+)
 # Do we want to deploy the example scenes (bin/scenes) when running the INSTALL project.
-option(INSTALL_EXAMPLE_SCENES "Do we want to deploy the example scenes (bin/scenes) when running the INSTALL project." TRUE)
+option (INSTALL_EXAMPLE_SCENES
+    "Do we want to deploy the example scenes (bin/scenes) when running the INSTALL project." ON
+)
 # Do we want to enable usage of language translations. Currently bitrot/deprecated and off by default.
-option(ENABLE_TRANSLATIONS "Do we want to enable usage of language translations. Currently bitrot/deprecated and off by default." OFF)
+option (ENABLE_TRANSLATIONS
+    "Do we want to enable usage of language translations. Currently bitrot/deprecated and off by default." OFF
+)
 # Enables certain build optimizations on the release builds, f.ex. disables math correctness checks and error prints.
 # On Windows also enables some of the more aggressive linker optimizations. Do not enable if you are planning to retain reusable symbol information.
-option(ENABLE_BUILD_OPTIMIZATIONS "Enables certain build optimizations on the release builds." OFF)
+option (ENABLE_BUILD_OPTIMIZATIONS
+    "Enables certain build optimizations on the release builds." OFF
+)
+option (ENABLE_PROFILING
+    "Enables Tundras built-in profiler." ON
+)
+option (ENABLE_JS_PROFILING
+    "Enables JavaScriptModule QScriptEngine profiling." OFF
+)
+option (ENABLE_MEMORY_LEAK_CHECKS
+    "Windows only: Enables memory leak checking and log dump at exit. Implemented by Tundra. Enabled only in Debug build." OFF
+)
+# NOTE: Not recommended to enable at the same time with above ENABLE_MEMORY_LEAK_CHECKS
+option (ENABLE_MEMORY_LEAK_CHECKS_VLD
+    "Windows only: Enables automatic inclusion of http://vld.codeplex.com utility. You must copy the runtime to /bin manually. Enabled only in Debug build." OFF
+)
+
 # 3rd party dependencies:
 if (NOT ANDROID)
     set(ENABLE_HYDRAX 1)            # Configure the use of Hydrax, http://www.ogre3d.org/tikiwiki/Hydrax
@@ -67,14 +91,10 @@ if (NOT MSVC)
     set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 endif()
 
+# Defines
 if (ENABLE_OPEN_ASSET_IMPORT)
     add_definitions(-DASSIMP_ENABLED)
 endif()
-
-set (ENABLE_PROFILING 1)            # Enable the following flag to add compile with support for a built-in execution time profiler.
-set (ENABLE_JS_PROFILING 0)         # Enable js profiling?
-set (ENABLE_MEMORY_LEAK_CHECKS 0)   # If the following flag is defined, memory leak checking is enabled in all modules when building on MSVC.
-
 if (TUNDRACORE_SHARED)
     add_definitions(-DTUNDRACORE_SHARED)
 endif()
@@ -85,7 +105,8 @@ if (ENABLE_JS_PROFILING)
     add_definitions (-DENABLE_JS_PROFILING)
 endif()
 if (ENABLE_BUILD_OPTIMIZATIONS)
-    add_definitions (-DOPTIMIZED_RELEASE) # Disable MathGeoLib assume() prints in an optimized build
+    # Disable MathGeoLib assume() prints in an optimized build
+    add_definitions (-DOPTIMIZED_RELEASE)
 endif ()
 if (ENABLE_TRANSLATIONS)
     add_definitions (-DENABLE_TRANSLATIONS)
@@ -94,6 +115,9 @@ endif()
 if (MSVC)
     if (ENABLE_MEMORY_LEAK_CHECKS)
         add_definitions(-DMEMORY_LEAK_CHECK)
+    endif()
+    if (ENABLE_MEMORY_LEAK_CHECKS_VLD)
+        add_definitions(-DMEMORY_LEAK_CHECK_VLD)
     endif()
 
     # Common flags for all configurations: build with multiple processes and increase PCH size in order to overcome occasional errors.
