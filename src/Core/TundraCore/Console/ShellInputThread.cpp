@@ -45,8 +45,8 @@ void ShellInputThread::ReadShellInput()
     /// @todo This will block the QEventLoop of this thread. Find a non blocking replacement to std::getline and poll it.
     for(;;)
     {
-        std::string commandLine;
-        std::getline(std::cin, commandLine);
+        __CommandLine__ = "";
+        std::getline(std::cin, __CommandLine__);
         
         if (std::cin.eof()) exiting_ = true;
         if (exiting_) break;
@@ -57,10 +57,10 @@ void ShellInputThread::ReadShellInput()
             std::cin.clear(); 
             continue;
         }
-        if (!commandLine.empty())
+        if (!__CommandLine__.empty())
         {
             QMutexLocker lock(&inputQueueLock);
-            inputQueue.push_back(commandLine);
+            inputQueue.push_back(std::string(__CommandLine__));
         }
     }
 }

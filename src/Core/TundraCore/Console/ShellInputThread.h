@@ -36,5 +36,8 @@ private:
 
     QMutex inputQueueLock;
     std::vector<std::string> inputQueue;
+
+    /// @note Do NOT use this except in threaded ReadShellInput.
+    std::string __CommandLine__;
 };
 /** @endcond */
