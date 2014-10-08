@@ -75,8 +75,22 @@ macro(configure_qjson)
         find_library (QJSON_LIBRARIES NAMES qjson HINTS ${QJSON_ROOT}/lib)
     else ()
         # Windows finds the libs and uses absolute paths. Do not populate QJSON_LIBRARY_DIR.
-        find_library (QJSON_RELEASE_LIB NAMES qjson.lib HINTS ${QJSON_ROOT}/build/lib)
-        find_library (QJSON_DEBUG_LIB NAMES qjsond.lib HINTS ${QJSON_ROOT}/build/lib)
+        find_library (QJSON_RELEASE_LIB NAMES qjson.lib HINTS ${QJSON_ROOT}/build/lib NO_DEFAULT_PATH)
+        find_library (QJSON_DEBUG_LIB NAMES qjsond.lib HINTS ${QJSON_ROOT}/build/lib NO_DEFAULT_PATH)
+
+        # Release/RelWithDebInfo or Debug needs to be found. find_library marks a NOT-FOUND automatically
+        # that will not let cmake complete. For our use case its completely acceptable to only build eg.
+        # Debug deps and build Tundra with Debug. When you switch to Release/RelWithDebInfo you'll see
+        # linker error against qjson_release_not_built.lib that should tell you to build them.
+        # Kind of a hack but find_library is a nice utility otherwise.
+        if (QJSON_RELEASE_LIB OR QJSON_DEBUG_LIB)
+            if (NOT QJSON_RELEASE_LIB)
+                set (QJSON_RELEASE_LIB "qjson_release_not_built.lib")
+            endif()
+            if (NOT QJSON_DEBUG_LIB)
+                set (QJSON_DEBUG_LIB "qjson_debug_not_built.lib")
+            endif()
+        endif()
         set(QJSON_LIBRARIES optimized ${QJSON_RELEASE_LIB} debug ${QJSON_DEBUG_LIB})
     endif ()
     sagase_configure_report(QJSON)
