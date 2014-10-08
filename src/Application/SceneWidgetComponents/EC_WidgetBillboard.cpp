@@ -85,6 +85,8 @@ EC_WidgetBillboard::~EC_WidgetBillboard()
     if (textureAsset_.get() && framework->Asset()->GetAsset(textureAsset_->Name()).get())
         framework->Asset()->ForgetAsset(textureAsset_, false);
     textureAsset_.reset();
+
+    SAFE_DELETE(refListener_);
 }
 
 // Public slots

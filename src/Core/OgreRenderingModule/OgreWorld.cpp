@@ -215,6 +215,11 @@ OgreWorld::~OgreWorld()
         sceneManager_->getRootSceneNode()->detachObject(debugLinesNoDepth_);
         SAFE_DELETE(debugLinesNoDepth_);
     }
+    if (mStencilQueueListener)
+    {
+        sceneManager_->removeRenderQueueListener(mStencilQueueListener);
+        SAFE_DELETE(mStencilQueueListener);
+    }
     
     // Remove all compositors.
     /// \todo This does not work with a proper multiscene approach
