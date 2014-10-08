@@ -174,6 +174,7 @@ private:
     QPointer<QWidget> viewportWidget; ///< Viewport for the graphics scene.
     QList<QGraphicsProxyWidget *> widgets; ///< Internal list of proxy widgets in scene.
     QList<QGraphicsProxyWidget *> fullScreenWidgets; ///< List of full screen widgets.
+    QList<QPointer<QWidget> > guardedWidgetPtrs; ///< Monitoring created QObject based ptrs.
 
     QMenu *languageMenu;
     QPair<QString, QList<QTranslator *> > currentInstalledTranslators;

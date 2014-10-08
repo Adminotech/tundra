@@ -169,6 +169,34 @@ UiAPI::UiAPI(Framework *owner_) :
 UiAPI::~UiAPI()
 {
     Reset();
+
+    /** Now that UiAPI is being destroyed all modules have been unloaded
+        and all widgets created via LoadFromFile should have been freed.
+        However when created from scripts many times this is not the case.
+        Free the ptrs here and dump ptr info to std out (not to log/ui console). 
+
+        @note QWidgets created in script, eg. 'new QLabel()', wont show up here.
+        nor in mem leak reporting. Apparently Qt marks the ownership of the ptr
+        to QtScript and they are freed when the engine is loaded. This is not
+        the case for LoadFromFile as the QWidget is allocated in C++ land,
+        the engine simply cannot know it needs to be freed.
+
+        @todo To allow widgets to cleanly delete their created widgets from .ui
+        file, there must be a boolean in RemoveWidgetFromScene if the widget
+        should be freed by c++ code. The script authors of below printed
+        ptrs can then fix their code and tell UiAPI to free the widgets! */
+    int numFreed = 0;
+    foreach(const QPointer<QWidget> &ptr, guardedWidgetPtrs)
+    {
+        if (!ptr.isNull())
+        {
+            numFreed++;
+            qDebug() << "QWidget created with UiAPI::LoadFromFile() was no freed:" << ptr;
+            delete ptr.data();
+        }
+    }
+    if (numFreed > 0)
+        qDebug() << "Freed" << numFreed << "QWidget ptrs from" << guardedWidgetPtrs.size() << "monitored ptrs";
 }
 
 void UiAPI::Reset()
@@ -390,6 +418,8 @@ QWidget *UiAPI::LoadFromFile(const QString &filePath, bool addToScene, QWidget *
         LogError("UiAPI::LoadFromFile: Failed to load widget from file \"" + resolvedRef + "\"!");
         return 0;
     }
+
+    guardedWidgetPtrs << QPointer<QWidget>(widget);
 
     if (addToScene && widget)
     {
