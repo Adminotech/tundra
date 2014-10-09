@@ -68,3 +68,4 @@ public:
     Q_PROPERTY(QString group READ getgroup WRITE setgroup);
     DEFINE_QPROPERTY_ATTRIBUTE(QString, group);
 };
+COMPONENT_TYPEDEFS(Name);

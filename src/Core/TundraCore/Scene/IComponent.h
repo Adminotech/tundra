@@ -20,11 +20,11 @@ class QDomElement;
 
 class Framework;
 
-/// Define component shared and weak pointers, e.g. PlaceablePtr and PlaceableWeakPtr for a Placeable component.
+/// Define component shared and weak pointers, e.g. PlaceablePtr and PlaceableWeakPtr for a EC_Placeable component.
 /** This define should be placed after the class definition, but inside the Tundra namespace */
 #define COMPONENT_TYPEDEFS(componentTypeName)                                           \
-typedef shared_ptr<componentTypeName> componentTypeName ## Ptr;                          \
-typedef weak_ptr<componentTypeName> componentTypeName ## WeakPtr;
+typedef shared_ptr<EC_ ## componentTypeName> componentTypeName ## Ptr;                  \
+typedef weak_ptr<EC_ ## componentTypeName> componentTypeName ## WeakPtr;
 
 /// Specifies unique type name and unique type ID of this component.
 /** Warning: This #define alters the current visibility specifier in the class file. */

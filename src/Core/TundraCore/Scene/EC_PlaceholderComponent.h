@@ -55,3 +55,4 @@ private:
     QString typeName;
     u32 typeId;
 };
+COMPONENT_TYPEDEFS(PlaceholderComponent);

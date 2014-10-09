@@ -88,7 +88,7 @@ public slots:
         This factory is not extensible. If attribute was already created the method will return it's pointer.
 
         @note If multiple clients, or the client and the server, add attributes at the same time, unresolvable
-        scene replication conflits will occur. The exception is filling attributes immediately after creation
+        scene replication conflicts will occur. The exception is filling attributes immediately after creation
         (before the component is replicated for the first time), which is supported. Prefer to either create
         all attributes at creation, or to only add new attributes on the server. 
         
@@ -145,3 +145,4 @@ private:
     /// Convert attribute index without holes (used by client) into actual attribute index. Returns below zero if not found. Requires a linear search.
     int GetInternalAttributeIndex(int index) const;
 };
+COMPONENT_TYPEDEFS(DynamicComponent);

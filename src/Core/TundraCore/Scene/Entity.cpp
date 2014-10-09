@@ -602,39 +602,39 @@ EntityPtr Entity::Clone(bool local, bool temporary, const QString &cloneName, At
 
 void Entity::SetName(const QString &name)
 {
-    shared_ptr<EC_Name> comp = GetOrCreateComponent<EC_Name>();
+    NamePtr comp = GetOrCreateComponent<EC_Name>();
     assert(comp);
     comp->name.Set(name, AttributeChange::Default);
 }
 
 QString Entity::Name() const
 {
-    shared_ptr<EC_Name> name = Component<EC_Name>();
+    NamePtr name = Component<EC_Name>();
     return name ? name->name.Get() : "";
 }
 
 void Entity::SetDescription(const QString &desc)
 {
-    shared_ptr<EC_Name> comp = GetOrCreateComponent<EC_Name>();
+    NamePtr comp = GetOrCreateComponent<EC_Name>();
     assert(comp);
     comp->description.Set(desc, AttributeChange::Default);
 }
 
 QString Entity::Description() const
 {
-    shared_ptr<EC_Name> name = Component<EC_Name>();
+    NamePtr name = Component<EC_Name>();
     return name ? name->description.Get() : "";
 }
 
 void Entity::SetGroup(const QString &groupName)
 {
-    shared_ptr<EC_Name> comp = GetOrCreateComponent<EC_Name>();
+    NamePtr comp = GetOrCreateComponent<EC_Name>();
     comp->group.Set(groupName, AttributeChange::Default);
 }
 
 QString Entity::Group() const
 {
-    shared_ptr<EC_Name> comp = Component<EC_Name>();
+    NamePtr comp = Component<EC_Name>();
     return comp ? comp->group.Get() : "";
 }
 
