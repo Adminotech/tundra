@@ -158,3 +158,4 @@ private:
     bool isServer_;
     QMenu *actionMenu;
 };
+COMPONENT_TYPEDEFS(SlideShow);

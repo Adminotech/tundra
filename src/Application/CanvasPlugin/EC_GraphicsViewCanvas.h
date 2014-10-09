@@ -125,3 +125,4 @@ private:
 
     std::map<std::string, OgreMaterialAssetPtr> defaultMaterialAssets;
 };
+COMPONENT_TYPEDEFS(GraphicsViewCanvas);

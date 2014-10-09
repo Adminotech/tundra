@@ -279,3 +279,4 @@ private:
 
     AssetRefListener materialAsset;
 };
+COMPONENT_TYPEDEFS(HoveringText);

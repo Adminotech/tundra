@@ -78,3 +78,4 @@ private:
     std::string material_name_;
     //void ScheduleRender();
 };
+COMPONENT_TYPEDEFS(RttTarget);

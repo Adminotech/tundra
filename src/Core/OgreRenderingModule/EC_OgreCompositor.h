@@ -99,3 +99,4 @@ private:
     QString previousRef; ///< Stored compositor ref for internal use
     int previousPriority; ///< Stored previous priority for internal use
 };
+COMPONENT_TYPEDEFS(OgreCompositor);

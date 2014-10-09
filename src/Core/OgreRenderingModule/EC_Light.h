@@ -175,3 +175,4 @@ private:
     Ogre::Light* light_;
     bool attached_; ///< Attached to placeable -flag (Ogre crappiness)
 };
+COMPONENT_TYPEDEFS(Light);

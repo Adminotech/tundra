@@ -159,3 +159,4 @@ private:
 
     Ogre::Camera *FindOgreCamera(Entity *cameraEntity) const;
 };
+COMPONENT_TYPEDEFS(SkyX);

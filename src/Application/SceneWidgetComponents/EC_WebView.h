@@ -297,3 +297,4 @@ private:
     /// multiple web views in a entity. This is used to perform cleanup when this component is destroyed.
     QString sceneCanvasName_;
 };
+COMPONENT_TYPEDEFS(WebView);

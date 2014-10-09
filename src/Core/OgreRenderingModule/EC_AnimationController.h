@@ -314,3 +314,4 @@ private:
     /// Bone blend mask of low-priority animations
     Ogre::AnimationState::BoneBlendMask lowpriority_mask_;
 };
+COMPONENT_TYPEDEFS(AnimationController);

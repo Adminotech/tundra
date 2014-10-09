@@ -429,3 +429,4 @@ private:
     /// Ogre world for referring to the Ogre scene manager
     OgreWorldWeakPtr world_;
 };
+COMPONENT_TYPEDEFS(Terrain);

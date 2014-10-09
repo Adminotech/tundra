@@ -116,3 +116,4 @@ private:
     QImage buffer_;
     bool mesh_hooked_;
 };
+COMPONENT_TYPEDEFS(WidgetCanvas);

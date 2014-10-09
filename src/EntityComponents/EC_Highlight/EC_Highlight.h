@@ -127,3 +127,4 @@ private:
     /// Delayed reapply already pending -flag
     bool reapplyPending_;
 };
+COMPONENT_TYPEDEFS(Highlight);

@@ -197,3 +197,4 @@ private slots:
         @param e Mouse event. */
     void HandleMouseEvent(MouseEvent *e);
 };
+COMPONENT_TYPEDEFS(InputMapper);

@@ -103,4 +103,4 @@ private:
     /// Ref listener for the input material asset
     AssetRefListenerPtr materialAsset;
 };
-
+COMPONENT_TYPEDEFS(Material);

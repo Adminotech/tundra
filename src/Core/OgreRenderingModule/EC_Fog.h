@@ -81,3 +81,4 @@ private slots:
 private:
     OgreWorldWeakPtr world;
 };
+COMPONENT_TYPEDEFS(Fog);

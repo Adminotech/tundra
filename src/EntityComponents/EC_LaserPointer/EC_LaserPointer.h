@@ -98,3 +98,4 @@ private slots:
 
     bool IsItemUnderMouse() const;
 };
+COMPONENT_TYPEDEFS(LaserPointer);

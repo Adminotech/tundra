@@ -92,3 +92,4 @@ private slots:
     /// Change update mode (periodic, or every frame)
     void SetUpdateMode();
 };
+COMPONENT_TYPEDEFS(ProximityTrigger);

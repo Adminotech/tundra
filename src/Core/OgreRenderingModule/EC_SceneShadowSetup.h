@@ -81,3 +81,4 @@ private:
     /// Ogre world
     OgreWorldWeakPtr world_;
 };
+COMPONENT_TYPEDEFS(SceneShadowSetup);

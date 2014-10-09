@@ -21,7 +21,7 @@
 void ApplyBoneModifier(Entity* entity, const BoneModifier& modifier, float value);
 void ResetBones(Entity* entity);
 Ogre::Bone* GetAvatarBone(Entity* entity, const std::string& bone_name);
-void HideVertices(Ogre::Entity*, std::set<uint> vertices_to_hide);
+void HideVertices(Ogre::Entity*, const std::set<uint> &vertices_to_hide);
 void GetInitialDerivedBonePosition(Ogre::Node* bone, Ogre::Vector3& position);
 
 // Regrettable magic value
@@ -102,7 +102,7 @@ void EC_Avatar::SetupAppearance()
     
     Entity* entity = ParentEntity();
     AvatarDescAssetPtr desc = AvatarDesc();
-    if ((!desc) || (!entity))
+    if (!desc || !entity)
         return;
     
     EC_Mesh* mesh = entity->GetComponent<EC_Mesh>().get();
@@ -123,7 +123,7 @@ void EC_Avatar::SetupDynamicAppearance()
 {
     Entity* entity = ParentEntity();
     AvatarDescAssetPtr desc = AvatarDesc();
-    if ((!desc) || (!entity))
+    if (!desc || !entity)
         return;
     
     EC_Mesh* mesh = entity->GetComponent<EC_Mesh>().get();
@@ -154,7 +154,7 @@ void EC_Avatar::AdjustHeightOffset()
 {
     Entity* entity = ParentEntity();
     AvatarDescAssetPtr desc = AvatarDesc();
-    if ((!desc) || (!entity))
+    if (!desc || !entity)
         return;
     EC_Mesh* mesh = entity->GetComponent<EC_Mesh>().get();
     if (!mesh)
@@ -205,7 +205,7 @@ void EC_Avatar::SetupMeshAndMaterials()
 {
     Entity* entity = ParentEntity();
     AvatarDescAssetPtr desc = AvatarDesc();
-    if ((!desc) || (!entity))
+    if (!desc || !entity)
         return;
     EC_Mesh* mesh = entity->GetComponent<EC_Mesh>().get();
     if (!mesh)
@@ -252,7 +252,7 @@ void EC_Avatar::SetupAttachments()
 {
     Entity* entity = ParentEntity();
     AvatarDescAssetPtr desc = AvatarDesc();
-    if ((!desc) || (!entity))
+    if (!desc || !entity)
         return;
     EC_Mesh* mesh = entity->GetComponent<EC_Mesh>().get();
     if (!mesh)
@@ -333,7 +333,7 @@ void ResetBones(Entity* entity)
     // See that we actually have a skeleton
     Ogre::SkeletonInstance* skeleton = ogreEntity->getSkeleton();
     Ogre::Skeleton* orig_skeleton = ogreEntity->getMesh()->getSkeleton().get();
-    if ((!skeleton) || (!orig_skeleton))
+    if (!skeleton || !orig_skeleton)
         return;
     
     if (skeleton->getNumBones() != orig_skeleton->getNumBones())
@@ -363,7 +363,7 @@ void ApplyBoneModifier(Entity* entity, const BoneModifier& modifier, float value
     // See that we actually have a skeleton
     Ogre::SkeletonInstance* skeleton = ogreEntity->getSkeleton();
     Ogre::Skeleton* orig_skeleton = ogreEntity->getMesh()->getSkeleton().get();
-    if ((!skeleton) || (!orig_skeleton))
+    if (!skeleton || !orig_skeleton)
         return;
     
     if (!skeleton->hasBone(modifier.bone_name_.toStdString()) || !orig_skeleton->hasBone(modifier.bone_name_.toStdString()))
@@ -518,7 +518,7 @@ Ogre::Bone* GetAvatarBone(Entity* entity, const std::string& bone_name)
     return skeleton->getBone(bone_name);
 }
 
-void HideVertices(Ogre::Entity* entity, std::set<uint> vertices_to_hide)
+void HideVertices(Ogre::Entity* entity, const std::set<uint> &vertices_to_hide)
 {
     if (!entity)
         return;

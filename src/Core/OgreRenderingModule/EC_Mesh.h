@@ -531,3 +531,4 @@ private:
     /// Tracking pending failed material applies.
     QList<uint> pendingFailedMaterials_;
 };
+COMPONENT_TYPEDEFS(Mesh);

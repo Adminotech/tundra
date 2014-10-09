@@ -105,3 +105,4 @@ private:
     /// Asset ref listener for the particle asset
     AssetRefListenerPtr particleAsset_;
 };
+COMPONENT_TYPEDEFS(ParticleSystem);

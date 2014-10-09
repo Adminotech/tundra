@@ -146,3 +146,4 @@ private:
     ComponentPtr FindPlaceable() const;
     SoundChannelPtr soundChannel;
 };
+COMPONENT_TYPEDEFS(Sound);

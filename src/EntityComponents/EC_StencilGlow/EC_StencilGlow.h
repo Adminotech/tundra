@@ -69,3 +69,4 @@ private:
 
     bool isEnabled;
 };
+COMPONENT_TYPEDEFS(StencilGlow);

@@ -80,3 +80,4 @@ private:
     /// Cached placeable pointer
     weak_ptr<EC_Placeable> placeable_;
 };
+COMPONENT_TYPEDEFS(PhysicsMotor);

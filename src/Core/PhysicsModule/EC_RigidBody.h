@@ -386,3 +386,4 @@ private:
     struct Impl;
     Impl *impl;
 };
+COMPONENT_TYPEDEFS(RigidBody);

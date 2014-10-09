@@ -155,3 +155,4 @@ private slots:
 
     void OnFrameUpdate(float dt);
 };
+COMPONENT_TYPEDEFS(TransformGizmo);

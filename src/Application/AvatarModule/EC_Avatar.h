@@ -93,5 +93,7 @@ private:
     /// Ref listener for the avatar asset
     AssetRefListenerPtr avatarAssetListener_;
     /// Last set avatar asset
+    /// @todo Can be removed as unnecessary, avatarAssetListener_ already has this.
     weak_ptr<AvatarDescAsset> avatarAsset_;
 };
+COMPONENT_TYPEDEFS(Avatar);

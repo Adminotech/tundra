@@ -158,3 +158,4 @@ private:
     /// Asset ref listener for the material
     AssetRefListenerPtr materialAsset_;
 };
+COMPONENT_TYPEDEFS(Billboard);

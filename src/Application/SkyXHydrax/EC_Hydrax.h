@@ -109,3 +109,4 @@ private slots:
 
     void ConfigLoadSucceeded(AssetPtr asset);
 };
+COMPONENT_TYPEDEFS(Hydrax);

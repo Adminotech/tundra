@@ -375,3 +375,4 @@ private:
     friend class CustomTagPoint;
 };
 Q_DECLARE_METATYPE(EC_Placeable*)
+COMPONENT_TYPEDEFS(Placeable);

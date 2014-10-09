@@ -125,3 +125,4 @@ private:
     /// draw distance
     float draw_distance_;
 };
+COMPONENT_TYPEDEFS(OgreCustomObject);

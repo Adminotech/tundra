@@ -290,3 +290,4 @@ private:
     std::string renderTextureName_;
 };
 Q_DECLARE_METATYPE(EC_Camera*)
+COMPONENT_TYPEDEFS(Camera);

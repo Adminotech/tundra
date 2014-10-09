@@ -179,3 +179,4 @@ private:
     /// IsServer flag, for checking run mode
     bool isServer_;
 };
+COMPONENT_TYPEDEFS(Script);

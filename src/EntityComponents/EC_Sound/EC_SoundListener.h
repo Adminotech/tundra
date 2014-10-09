@@ -81,3 +81,4 @@ private slots:
     /// Registers the action this EC provides to the parent entity, when it's set.
     void RegisterActions();
 };
+COMPONENT_TYPEDEFS(SoundListener);

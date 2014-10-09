@@ -170,3 +170,4 @@ private:
         this volume or if it left the volume during last physics update. */
     EntitiesWithinVolumeMap entities_;
 };
+COMPONENT_TYPEDEFS(VolumeTrigger);

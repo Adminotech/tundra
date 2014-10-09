@@ -233,3 +233,4 @@ private:
     AssetRefListenerPtr materialAsset;
     QString currentMaterial; ///< Ogre resource name for the currently used material.
 };
+COMPONENT_TYPEDEFS(WaterPlane);

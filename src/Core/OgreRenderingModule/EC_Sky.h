@@ -89,3 +89,4 @@ private slots:
     /// @deprecated This will be removed when textureRefs attribute is removed.
     void OnTextureAssetLoaded(AssetPtr tex);
 };
+COMPONENT_TYPEDEFS(Sky);

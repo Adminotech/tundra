@@ -79,3 +79,4 @@ private:
     Ogre::Entity* mirror_plane_entity_;
     Ogre::MovablePlane* mirror_plane_;
 };
+COMPONENT_TYPEDEFS(PlanarMirror);

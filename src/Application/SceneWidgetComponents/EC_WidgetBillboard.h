@@ -158,3 +158,4 @@ private:
     // Renderer ptr.
     OgreRenderer::RendererPtr renderer_;    
 };
+COMPONENT_TYPEDEFS(WidgetBillboard);

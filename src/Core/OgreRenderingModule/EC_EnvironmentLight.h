@@ -81,3 +81,4 @@ private:
     OgreWorldWeakPtr ogreWorld;
     Ogre::Light* sunlight;
 };
+COMPONENT_TYPEDEFS(EnvironmentLight);

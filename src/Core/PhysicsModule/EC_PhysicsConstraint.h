@@ -161,3 +161,4 @@ private:
     /// Constraint pointer
     btTypedConstraint *constraint_;
 };
+COMPONENT_TYPEDEFS(PhysicsConstraint);
