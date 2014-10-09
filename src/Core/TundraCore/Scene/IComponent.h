@@ -20,6 +20,12 @@ class QDomElement;
 
 class Framework;
 
+/// Define component shared and weak pointers, e.g. PlaceablePtr and PlaceableWeakPtr for a Placeable component.
+/** This define should be placed after the class definition, but inside the Tundra namespace */
+#define COMPONENT_TYPEDEFS(componentTypeName)                                           \
+typedef shared_ptr<componentTypeName> componentTypeName ## Ptr;                          \
+typedef weak_ptr<componentTypeName> componentTypeName ## WeakPtr;
+
 /// Specifies unique type name and unique type ID of this component.
 /** Warning: This #define alters the current visibility specifier in the class file. */
 #define COMPONENT_NAME(componentTypeName, componentTypeId)                              \
@@ -51,10 +57,28 @@ private: // Return the class visibility specifier to the strictest form so that 
     type get##attribute() const { return (type)attribute.Get(); } \
     void set##attribute(type value) { attribute.Set((type)value, AttributeChange::Default); }
 
-/// Macro for constructing an attribute in the component's constructor initializer list. "id" is the property/variable name, "name" is the human-readable name used in editing.
+/** @def INIT_ATTRIBUTE(id, name)
+    Macro for constructing an attribute in the component's constructor initializer list.
+    "id" is the property/variable name, "name" is the human-readable name used in editing. */
+/** @def INIT_ATTRIBUTE_VALUE(id, name, value)
+     Macro for constructing an attribute in the component's constructor initializer list.
+     "id" is the property/variable name, "name" is the human-readable name used in editing, "value" is initial value. */
+
+#ifdef _MSC_VER // using 'this' in initializer list which is technically UB but safe in our case.
+#define INIT_ATTRIBUTE(id, name) \
+    __pragma(warning(push)) \
+    __pragma(warning(disable:4355)) \
+    id(this, #id, name) \
+    __pragma(warning(pop))
+#define INIT_ATTRIBUTE_VALUE(id, name, value) \
+    __pragma(warning(push)) \
+    __pragma(warning(disable:4355)) \
+    id(this, #id, name, value) \
+    __pragma(warning(pop))
+#else
 #define INIT_ATTRIBUTE(id, name) id(this, #id, name)
-/// Macro for constructing an attribute in the component's constructor initializer list. "id" is the property/variable name, "name" is the human-readable name used in editing, "value" is initial value.
 #define INIT_ATTRIBUTE_VALUE(id, name, value) id(this, #id, name, value)
+#endif
 
 /// The common interface for all components, which are the building blocks the scene entities are formed of.
 /** Inherit your own components from this class. Never directly allocate new components using operator new,
