@@ -45,6 +45,10 @@ UndoManager::~UndoManager()
     if (redoMenu_ && !redoMenu_->parent())
         SAFE_DELETE(redoMenu_);
 
+    for (std::list<QAction*>::iterator actionIter = actions_.begin(); actionIter != actions_.end(); ++actionIter)
+        delete (*actionIter);
+    actions_.clear();
+
     SAFE_DELETE(undoViewAction_);
     SAFE_DELETE(tracker_);
 }
