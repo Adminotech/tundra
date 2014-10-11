@@ -349,7 +349,6 @@ del /Q "%TUNDRA_BIN%\QtHelp*.dll"
 del /Q "%TUNDRA_BIN%\QtScriptTools*.dll"
 del /Q "%TUNDRA_BIN%\QtSql*.dll"
 del /Q "%TUNDRA_BIN%\QtSvg*.dll"
-del /Q "%TUNDRA_BIN%\QtTest*.dll"
 
 :: QJson
 IF NOT EXIST "%DEPS%\qjson\". (

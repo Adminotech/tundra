@@ -47,7 +47,7 @@ macro (init_target NAME)
         set (TARGET_DIR ${PROJECT_BINARY_DIR}/bin/${TARGET_OUTPUT})
         if (MSVC)
             # export symbols, copy needs to be added via copy_target
-            add_definitions (-DMODULE_EXPORTS)
+            add_definitions (-DMODULE_EXPORTS)            
         endif ()
     endif ()
 endmacro (init_target)
@@ -360,4 +360,40 @@ macro (update_qm_files TRANSLATION_FILES)
 		get_filename_component(name ${file} NAME_WE)
 		execute_process(COMMAND ${QT_LRELEASE_EXECUTABLE} -silent ${file} -qm ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/${name}.qm)
 	endforeach()
+endmacro()
+
+# Create test executable with CTest and optionally QTest.
+macro (create_test testname testsrcs testheaders)
+    # Init target with provided name, eg. "Scene" > TundraTestScene
+    init_target(TundraTest${testname} "./")
+    
+    # Remove defines that might break the build.
+    # This fixes situations where create_test is called inside a
+    # module CMakeLists.txt. Unfortunately rarely modules use MODULE_EXPORTS
+    # in the *Api.h. If they define their own macro eg. TUNDRA_CORE_EXPORTS
+    # the build will fail and you need to invoke create_test from root CMakeBuildConfig.txt
+    remove_definitions (-DMODULE_EXPORTS)
+
+    # Qt MOC for headers, we are assuming Qt based classes for QTest.
+    QT4_WRAP_CPP (${testname}_MOC_SRCS ${testheaders})
+
+    # All tests by default link to TundraCore.
+    # TODO We need a way to provide additional include/link stuff, or split this function into
+    # manual calls of init_target -> build_test -> final_target once tests get more advanced.
+    UseTundraCore()
+    use_core_modules(TundraCore Math)
+
+    build_executable (${TARGET_NAME} ${testsrcs} ${testheaders} ${${testname}_MOC_SRCS})
+    target_link_libraries (${TARGET_NAME} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTTEST_LIBRARY})
+
+    link_modules(TundraCore)
+
+    final_target()
+
+    # Override whatever final_target did without modifying PROJECT_TYPE.
+    # We want these nicely groupped inside 'Test' folder in IDEs.
+    set_target_properties (${TARGET_NAME} PROPERTIES FOLDER "Tests")
+
+    # Let cmake/ctest know of the test executable
+    add_test (NAME ${testname} COMMAND ${TARGET_NAME} WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 endmacro()
