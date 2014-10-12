@@ -42,14 +42,7 @@ EC_Billboard::EC_Billboard(Scene* scene) :
     INIT_ATTRIBUTE_VALUE(height, "Size Y", 1.0f),
     INIT_ATTRIBUTE_VALUE(rotation, "Rotation", 0.0f),
     INIT_ATTRIBUTE_VALUE(show, "Show billboard", true)
-{
-    if (scene)
-        world_ = scene->GetWorld<OgreWorld>();
-
-    materialAsset_ = MAKE_SHARED(AssetRefListener);
-    connect(materialAsset_.get(), SIGNAL(Loaded(AssetPtr)), this, SLOT(OnMaterialAssetLoaded(AssetPtr)), Qt::UniqueConnection);
-    connect(materialAsset_.get(), SIGNAL(TransferFailed(IAssetTransfer*, QString)), this, SLOT(OnMaterialAssetFailed(IAssetTransfer*, QString)), Qt::UniqueConnection);
-    
+{   
     connect(this, SIGNAL(ParentEntitySet()), SLOT(OnParentEntitySet()));
 }
 
@@ -60,6 +53,15 @@ EC_Billboard::~EC_Billboard()
 
 void EC_Billboard::OnParentEntitySet()
 {
+    if (!ViewEnabled())
+        return;
+
+    world_ = ParentScene()->Subsystem<OgreWorld>();
+
+    materialAsset_ = MAKE_SHARED(AssetRefListener);
+    connect(materialAsset_.get(), SIGNAL(Loaded(AssetPtr)), this, SLOT(OnMaterialAssetLoaded(AssetPtr)), Qt::UniqueConnection);
+    connect(materialAsset_.get(), SIGNAL(TransferFailed(IAssetTransfer*, QString)), this, SLOT(OnMaterialAssetFailed(IAssetTransfer*, QString)), Qt::UniqueConnection);
+
     Entity* parent = ParentEntity();
     if (!parent)
         return;
@@ -94,6 +96,7 @@ void EC_Billboard::CreateBillboard()
 {
     if (!ViewEnabled())
         return;
+
     OgreWorldPtr world = world_.lock();
     if (!world)
         return;
@@ -157,7 +160,6 @@ void EC_Billboard::DestroyBillboard()
     }
 }
 
-
 void EC_Billboard::Show()
 {
     AttachBillboard();
@@ -193,6 +195,7 @@ void EC_Billboard::AttributesChanged()
 {
     if (!ViewEnabled())
         return;
+
     if (position.ValueChanged() || width.ValueChanged()  || height.ValueChanged() || rotation.ValueChanged())
     {
         if (billboard_)
