@@ -219,6 +219,10 @@ AddProject(Application AssetInterestPlugin)    # Options to only keep assets bel
 AddProject(Application CanvasPlugin)            # Component that draws a graphics scene with any number of widgets into a mesh and provides 3D mouse input.
 AddProject(Application ArchivePlugin)          # Provides archived asset bundle capabilities. Enables example sub asset referencing into eg. zip files.
 
+# Tests
+
+add_subdirectory(src/Core/TundraCore/Tests)
+
 # Meshmoon
 
 if (EXISTS src/admino-plugins)
