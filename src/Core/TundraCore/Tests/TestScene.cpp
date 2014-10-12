@@ -67,6 +67,11 @@ namespace TundraTest
                 }
 
                 test_.ProcessEvents();
+
+                // Do this outside the benchmark to not skew the metrics.
+                test_.scene->RemoveAllEntities();
+
+                test_.ProcessEvents();
             }
         }
     }
@@ -176,20 +181,24 @@ namespace TundraTest
                     qDebug() << qPrintable(QString("  Replicated = %1 Temporary = %2")
                         .arg(TruthyString(replicated), -6).arg(TruthyString(temporary), -6));
 
-                    EntityPtr parent = test_.scene->CreateEntity(0, QStringList(), AttributeChange::Default,
-                        replicated, replicated, temporary);
-
-                    /** @note This benchmarking is enabled and will be very slow for certain rendering related component.
-                        The output should be analyzed and the component construction optimized if it takes a long time.
-                        Note that we are operating in headless mode, so many rendering related components are probably
-                        doing some heavy unneccesary work (eg. creating meshes, textures, materials, 
-                        billboards etc.) when rendering will never be done. */
+                    /* @note This benchmarking is enabled and will be very slow for certain rendering related component.
+                       The output should be analyzed and the component construction optimized if it takes a long time.
+                       Note that we are operating in headless mode, so many rendering related components are probably
+                       doing some heavy unneccesary work (eg. creating meshes, textures, materials, 
+                       billboards etc.) when rendering will never be done. */
                     QBENCHMARK
                     {
+                        /* @note Creating and removing the parent entity inside the benchmark will skew it a bit.
+                           But if we share a entity for all the benchmark iterations it will get impossibly slow
+                           if the component does queries (eg. for Placeable) to the parent entity, as it might 
+                           have thousands of components. */ 
+                        EntityPtr parent = test_.scene->CreateEntity(0, QStringList(), AttributeChange::Default,
+                        replicated, replicated, temporary);
+
                         QString iteration = QString::number(__iteration_controller.i); // from QBENCHMARK
 
-                        if (__iteration_controller.i > 0 && __iteration_controller.i % 100 == 0)
-                            qDebug() << "    Iteration" << __iteration_controller.i;
+                        //if (__iteration_controller.i > 0 && __iteration_controller.i % 100 == 0)
+                        //    qDebug() << "    Iteration" << __iteration_controller.i;
 
                         ComponentPtr byName = parent->CreateComponent(componentTypeName, "ByName_" + iteration);
 
@@ -214,6 +223,10 @@ namespace TundraTest
 
                         QCOMPARE(byId->TypeId(), componentTypeId);
                         QCOMPARE(byId->TypeName(), componentTypeName);
+
+                        entity_id_t parentId = parent->Id();
+                        parent.reset();
+                        test_.scene->RemoveEntity(parentId);
                     }
 
                     test_.ProcessEvents();
