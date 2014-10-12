@@ -31,7 +31,14 @@ public:
     ~Framework();
 
     /// Entry point for the framework.
+    /** @note This will block until application exists. You can use PreGo()
+        and PostGo() to init/uninit framework and module state without 
+        QApplication::exec() being invoked. This is mostly meant to be used with tests,
+        you cant do anything sensible outside of tests without running Qt:s event loop. */
     void Go();
+
+    void PreGo();  ///< @see Go.
+    void PostGo(); ///< @see Go.
 
     /// Runs through a single frame of logic update and rendering.
     void ProcessOneFrame();

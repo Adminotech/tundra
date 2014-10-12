@@ -438,6 +438,16 @@ void Framework::Go()
     if (exitSignal)
         return;
     
+    PreGo();
+
+    // Run our QApplication subclass.
+    application->Go();
+
+    PostGo();
+}
+
+void Framework::PreGo()
+{
     srand(time(0));
 
 #ifdef ANDROID
@@ -463,10 +473,10 @@ void Framework::Go()
         LogDebug("Initializing module " + modules[i]->Name());
         modules[i]->Initialize();
     }
+}
 
-    // Run our QApplication subclass.
-    application->Go();
-
+void Framework::PostGo()
+{
     // Qt main loop execution has ended, we are exiting.
     exitSignal = true;
 

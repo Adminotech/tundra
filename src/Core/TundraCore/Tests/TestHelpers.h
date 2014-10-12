@@ -11,12 +11,36 @@
 #include <QObject>
 #include <QString>
 #include <QList>
+#include <QDebug>
 
 namespace TundraTest
 {
+    /** Static common QCOMPARE variables. It is understadably very strict about types,
+        so to make tests more compact and easy to read these should be used. */
+    static QString EmptyQString = QString("");
+    static size_t ZeroSizeT = 0;
+
+    /// Returns a list of true and false values.
+    static QList<bool> TrueAndFalse()
+    {
+        QList<bool> modes;
+        modes << true << false;
+        return modes;
+    }
+
+    static QString TruthyString(bool truthy)
+    {
+        return truthy ? "true" : "false";
+    }
+
+    /// Typedefs for TestFramework
     typedef shared_ptr<Application> ApplicationPtr;
     typedef shared_ptr<Framework> FrameworkPtr;
 
+    /** Unit test framework
+        Helps out initialization and releasing framework/application ptrs correctly after the test.
+        @note Put this object in your class (stack variable) and call Initialize once in your
+        tests entry point: initTestCase(). */
     struct TestFramework
     {
         ApplicationPtr application;
@@ -24,20 +48,45 @@ namespace TundraTest
         ScenePtr scene;
 
         std::vector<const char*> arguments;
+        std::string config;
 
-        void Initialize(bool createScene = true, bool server = false, bool headless = true, const QString &config = "")
+        ~TestFramework()
         {
+            qDebug() << "TestFramework::~TestFramework()";
+
+            /* PostGo is the counterpart of PreGo in Initialize. It will unload
+               all plugins and uninitialize APIs, preparing Framework for shutdown. */
+            if (framework.get())
+            {
+                framework->PostGo();
+                ProcessEvents();
+            }
+
+            // Explicit releasing order
+            framework.reset();
+            application.reset();
+
+            arguments.clear();
+            config.clear();
+        }
+
+        /// Call this function once in your initTestCase() function.
+        void Initialize(bool createScene = true, bool server = false, bool headless = true, const QString &_config = "")
+        {
+            qDebug() << qPrintable(QString("TestFramework::Initialize(bool createScene = %1, bool server = %2, bool headless = %3, const QString &config = \"%4\")")
+                .arg(TruthyString(createScene)).arg(TruthyString(server)).arg(TruthyString(headless)).arg(_config));
+
             arguments.push_back("Tundra.exe");
 
             if (server)
                 arguments.push_back("--server");
             if (headless)
                 arguments.push_back("--headless");
-            if (!config.isEmpty())
+            if (!_config.isEmpty())
             {
-                std::string stdConfig = config.toStdString();
+                config = _config.toStdString();
                 arguments.push_back("--config");
-                arguments.push_back(stdConfig.c_str());
+                arguments.push_back(config.c_str());
             }
 
             int argc = (int)arguments.size();
@@ -45,17 +94,24 @@ namespace TundraTest
 
             application = MAKE_SHARED(Application, argc, argv);
             framework = MAKE_SHARED(Framework, argc, argv, application.get());
+
+            /* PreGo will invoke identical behaviour as Framework::Go but without
+               blocking with QApplication::exec(). Loading and initializing all APIs and modules. */
+            application->Initialize(framework.get());
+            framework->PreGo();
+
             if (createScene)
                 scene = framework->Scene()->CreateScene("TestScene", false, server);
+
+            /* Spin once cycle of QApplication even loop now to fire off startup signals etc.
+               For example for the SubSystems to be in place via the SceneCreated signal handlers. */
+            ProcessEvents();
+        }
+
+        /// Call this function whenever you need Qt events, eg. signals, to be processed.
+        void ProcessEvents()
+        {
+            QApplication::processEvents();
         }
     };
-
-    static QString EmptyQString = QString("");
-
-    static QList<bool> TrueAndFalse()
-    {
-        QList<bool> modes;
-        modes << true << false;
-        return modes;
-    }
 }
