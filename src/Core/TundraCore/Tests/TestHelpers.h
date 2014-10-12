@@ -82,12 +82,8 @@ namespace TundraTest
                 arguments.push_back("--server");
             if (headless)
                 arguments.push_back("--headless");
-            if (!_config.isEmpty())
-            {
-                config = _config.toStdString();
-                arguments.push_back("--config");
-                arguments.push_back(config.c_str());
-            }
+
+            SetConfig(_config);
 
             int argc = (int)arguments.size();
             char **argv = (char**)&arguments[0];
@@ -117,6 +113,24 @@ namespace TundraTest
 
             // Update Application > Framework > Core APIs > IModules > IRenderer
             application->UpdateFrame();
+        }
+
+        // Set the --config value to be used in Framework
+        bool SetConfig(const QString _config)
+        {
+            if (!_config.isEmpty())
+            {
+                if (config.empty())
+                {
+                    config = _config.toStdString();
+                    arguments.push_back("--config");
+                    arguments.push_back(config.c_str());
+                    return true;
+                }
+                else
+                    qWarning() << "TestFramework::SetConfig: Config already set to" << QString::fromStdString(config);
+            }
+            return false;
         }
     };
 }
