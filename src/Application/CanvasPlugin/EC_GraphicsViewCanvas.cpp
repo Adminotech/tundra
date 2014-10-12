@@ -49,6 +49,21 @@ EC_GraphicsViewCanvas::EC_GraphicsViewCanvas(Scene *scene) :
     paintTarget(0),
     isActivated(false)
 {
+    connect(this, SIGNAL(ParentEntitySet()), this, SLOT(UpdateSignals()));
+}
+
+EC_GraphicsViewCanvas::~EC_GraphicsViewCanvas()
+{
+    defaultMaterialAssets.clear();
+    SAFE_DELETE(graphicsScene);
+    SAFE_DELETE(graphicsView);
+}
+
+void EC_GraphicsViewCanvas::UpdateSignals()
+{
+    if (framework->IsHeadless())
+        return;
+
     graphicsView = new QGraphicsView();
     graphicsScene = new QGraphicsScene();
     graphicsView->setScene(graphicsScene);
@@ -64,32 +79,17 @@ EC_GraphicsViewCanvas::EC_GraphicsViewCanvas(Scene *scene) :
     graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     graphicsView->setLineWidth(0);
 
-    connect(this, SIGNAL(ParentEntitySet()), this, SLOT(UpdateSignals()));
-}
-
-EC_GraphicsViewCanvas::~EC_GraphicsViewCanvas()
-{
-    defaultMaterialAssets.clear();
-    SAFE_DELETE(graphicsScene);
-    SAFE_DELETE(graphicsView);
-}
-
-void EC_GraphicsViewCanvas::UpdateSignals()
-{
     if (!inputContext)
     {
         inputContext = GetFramework()->Input()->RegisterInputContext("EC_GraphicsViewCanvas", 1000);
         connect(inputContext.get(), SIGNAL(MouseEventReceived(MouseEvent*)), this, SLOT(OnMouseEventReceived(MouseEvent*)));
         connect(inputContext.get(), SIGNAL(KeyEventReceived(KeyEvent*)), this, SLOT(OnKeyEventReceived(KeyEvent*)));
 
-        if (!framework->IsHeadless())
-        {
-            UiGraphicsView *gv = framework->Ui()->GraphicsView();
-            connect(gv, SIGNAL(DragEnterEvent(QDragEnterEvent *, QGraphicsItem *)), SLOT(OnDragEnterEvent(QDragEnterEvent *)), Qt::UniqueConnection);
-            connect(gv, SIGNAL(DragLeaveEvent(QDragLeaveEvent *)), SLOT(OnDragLeaveEvent(QDragLeaveEvent *)), Qt::UniqueConnection);
-            connect(gv, SIGNAL(DragMoveEvent(QDragMoveEvent *, QGraphicsItem *)), SLOT(OnDragMoveEvent(QDragMoveEvent *)), Qt::UniqueConnection);
-            connect(gv, SIGNAL(DropEvent(QDropEvent *, QGraphicsItem *)), SLOT(OnDropEvent(QDropEvent *)), Qt::UniqueConnection);
-        }
+        UiGraphicsView *gv = framework->Ui()->GraphicsView();
+        connect(gv, SIGNAL(DragEnterEvent(QDragEnterEvent *, QGraphicsItem *)), SLOT(OnDragEnterEvent(QDragEnterEvent *)), Qt::UniqueConnection);
+        connect(gv, SIGNAL(DragLeaveEvent(QDragLeaveEvent *)), SLOT(OnDragLeaveEvent(QDragLeaveEvent *)), Qt::UniqueConnection);
+        connect(gv, SIGNAL(DragMoveEvent(QDragMoveEvent *, QGraphicsItem *)), SLOT(OnDragMoveEvent(QDragMoveEvent *)), Qt::UniqueConnection);
+        connect(gv, SIGNAL(DropEvent(QDropEvent *, QGraphicsItem *)), SLOT(OnDropEvent(QDropEvent *)), Qt::UniqueConnection);
     }
 
     Entity* parent = ParentEntity();
@@ -127,9 +127,12 @@ void EC_GraphicsViewCanvas::AttributesChanged()
     }
     if (width.ValueChanged() || height.ValueChanged())
     {
-        graphicsView->resize(width.Get(), height.Get());
-        paintTarget->target = QImage(width.Get(), height.Get(), QImage::Format_ARGB32);
-        paintTarget->target.fill(0);
+        if (graphicsView)
+        {
+            graphicsView->resize(width.Get(), height.Get());
+            paintTarget->target = QImage(width.Get(), height.Get(), QImage::Format_ARGB32);
+            paintTarget->target.fill(0);
+        }
     }
 }
 
@@ -227,7 +230,7 @@ void EC_GraphicsViewCanvas::OnMouseEventReceived(MouseEvent *mouseEvent)
 
 void EC_GraphicsViewCanvas::OnKeyEventReceived(KeyEvent *keyEvent)
 {
-    if (!graphicsScene->hasFocus())
+    if (!graphicsScene || !graphicsScene->hasFocus())
         return;
 
     QPoint mousePos;
@@ -452,6 +455,11 @@ void EC_GraphicsViewCanvas::OnMaterialChanged(uint materialIndex, const QString 
 void EC_GraphicsViewCanvas::UpdateTexture()
 {
     PROFILE(EC_GraphicsViewCanvas_UpdateTexture);
+
+    /* QPainter will just report errors if headless as there is no backing paint engine.
+       There is no need to update the texture as there is no rendering. */
+    if (framework->IsHeadless())
+        return;
 
     if (!paintTarget || (paintTarget->target.width() == 0 || paintTarget->target.height() == 0))
         return;
