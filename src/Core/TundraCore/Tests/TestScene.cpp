@@ -38,9 +38,9 @@ namespace TundraTest
 
     void Scene::Create_Entity()
     {
-        foreach(bool replicated, TrueAndFalse())
+        foreach(const bool replicated, TrueAndFalse())
         {
-            foreach(bool temporary, TrueAndFalse())
+            foreach(const bool temporary, TrueAndFalse())
             {
                 qDebug() << qPrintable(QString("Replicated = %1 Temporary = %2")
                     .arg(TruthyString(replicated), -6).arg(TruthyString(temporary), -6));
@@ -174,9 +174,9 @@ namespace TundraTest
             qDebug() << qPrintable(QString("%1 %2")
                 .arg(componentTypeName).arg(componentTypeId));
 
-            foreach(bool replicated, TrueAndFalse())
+            foreach(const bool replicated, TrueAndFalse())
             {
-                foreach(bool temporary, TrueAndFalse())
+                foreach(const bool temporary, TrueAndFalse())
                 {
                     qDebug() << qPrintable(QString("  Replicated = %1 Temporary = %2")
                         .arg(TruthyString(replicated), -6).arg(TruthyString(temporary), -6));
@@ -193,14 +193,14 @@ namespace TundraTest
                            if the component does queries (eg. for Placeable) to the parent entity, as it might 
                            have thousands of components. */ 
                         EntityPtr parent = test_.scene->CreateEntity(0, QStringList(), AttributeChange::Default,
-                        replicated, replicated, temporary);
+                            replicated, replicated, temporary);
 
                         QString iteration = QString::number(__iteration_controller.i); // from QBENCHMARK
 
                         //if (__iteration_controller.i > 0 && __iteration_controller.i % 100 == 0)
                         //    qDebug() << "    Iteration" << __iteration_controller.i;
 
-                        ComponentPtr byName = parent->CreateComponent(componentTypeName, "ByName_" + iteration);
+                        ComponentPtr byName = parent->CreateComponent(componentTypeName, "ByName_" + iteration, AttributeChange::Default, replicated);
 
                         QVERIFY(byName);
                         QVERIFY(byName->ParentScene());
@@ -212,7 +212,15 @@ namespace TundraTest
                         QCOMPARE(byName->TypeId(), componentTypeId);
                         QCOMPARE(byName->TypeName(), componentTypeName);
 
-                        ComponentPtr byId = parent->CreateComponent(componentTypeId, "ById_" + iteration);
+                        // SoundListener forces replication to false in ctor, bug?
+                        if (componentTypeName.compare("EC_SoundListener") != 0)
+                        {
+                            QCOMPARE(byName->IsReplicated(), replicated);
+                            QCOMPARE(byName->IsUnacked(), replicated); // replicated == server needs to ack entity
+                        }
+                        QCOMPARE(byName->IsTemporary(), temporary);
+
+                        ComponentPtr byId = parent->CreateComponent(componentTypeId, "ById_" + iteration, AttributeChange::Default, replicated);
 
                         QVERIFY(byId);
                         QVERIFY(byId->ParentScene());
@@ -224,9 +232,15 @@ namespace TundraTest
                         QCOMPARE(byId->TypeId(), componentTypeId);
                         QCOMPARE(byId->TypeName(), componentTypeName);
 
-                        entity_id_t parentId = parent->Id();
-                        parent.reset();
-                        test_.scene->RemoveEntity(parentId);
+                        // SoundListener forces replication to false in ctor, bug?
+                        if (componentTypeName.compare("EC_SoundListener") != 0)
+                        {
+                            QCOMPARE(byId->IsReplicated(), replicated);
+                            QCOMPARE(byId->IsUnacked(), replicated); // replicated == server needs to ack entity
+                        }
+                        QCOMPARE(byId->IsTemporary(), temporary);
+
+                        test_.scene->RemoveEntity(parent->Id());
                     }
 
                     test_.ProcessEvents();
