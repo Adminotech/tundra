@@ -377,16 +377,17 @@ macro (create_test testname testsrcs testheaders)
     # Qt MOC for headers, we are assuming Qt based classes for QTest.
     QT4_WRAP_CPP (${testname}_MOC_SRCS ${testheaders})
 
-    # All tests by default link to TundraCore.
     # TODO We need a way to provide additional include/link stuff, or split this function into
     # manual calls of init_target -> build_test -> final_target once tests get more advanced.
     UseTundraCore()
     use_core_modules(TundraCore Math)
+    use_package_knet()
 
     build_executable (${TARGET_NAME} ${testsrcs} ${testheaders} ${${testname}_MOC_SRCS})
     target_link_libraries (${TARGET_NAME} ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTTEST_LIBRARY})
 
-    link_modules(TundraCore)
+    link_modules(TundraCore Math)
+    link_package_knet()
 
     final_target()
 
