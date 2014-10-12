@@ -111,7 +111,12 @@ namespace TundraTest
         /// Call this function whenever you need Qt events, eg. signals, to be processed.
         void ProcessEvents()
         {
+            /* First process all events. UpdateFrame() does this with a 1 msec max
+               time to spend which is something we don't want to enforce here. */
             QApplication::processEvents();
+
+            // Update Application > Framework > Core APIs > IModules > IRenderer
+            application->UpdateFrame();
         }
     };
 }
