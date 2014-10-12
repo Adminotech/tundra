@@ -937,11 +937,11 @@ void EC_Terrain::GenerateFromSceneEntity(QString entityName)
     if (!entity)
         return;
 
-    EC_Placeable *position = entity->GetComponent<EC_Placeable>().get();
+    EC_Placeable *position = entity->Component<EC_Placeable>().get();
     if (!position)
         return;
 
-    EC_Mesh *mesh = entity->GetComponent<EC_Mesh>().get();
+    EC_Mesh *mesh = entity->Component<EC_Mesh>().get();
     if (!mesh)
         return;
 
@@ -1135,11 +1135,16 @@ void EC_Terrain::UpdateRootNodeTransform()
 
 void EC_Terrain::AttachTerrainRootNode()
 {
-    if (!rootNode)
-        CreateRootNode();
-
     if (world_.expired()) 
         return;
+
+    if (!rootNode)
+    {
+        // CreateRootNode calls this function once the root node has been created.
+        CreateRootNode();
+        return;
+    }
+
     Ogre::SceneManager *sceneMgr = world_.lock()->OgreSceneManager();
 
     // Detach the terrain root node from any previous EC_Placeable scenenode.
@@ -1147,7 +1152,7 @@ void EC_Terrain::AttachTerrainRootNode()
         rootNode->getParentSceneNode()->removeChild(rootNode);
 
     // If this entity has an EC_Placeable, make sure it is the parent of this terrain component.
-    shared_ptr<EC_Placeable> pos = ParentEntity()->GetComponent<EC_Placeable>();
+    shared_ptr<EC_Placeable> pos = (ParentEntity() ? ParentEntity()->Component<EC_Placeable>() : shared_ptr<EC_Placeable>());
     if (pos)
     {
         Ogre::SceneNode *parent = pos->GetSceneNode();
@@ -1438,7 +1443,7 @@ void EC_Terrain::RegenerateDirtyTerrainPatches()
     Entity *parentEntity = ParentEntity();
     if (!parentEntity)
         return;
-    EC_Placeable *position = parentEntity->GetComponent<EC_Placeable>().get();
+    EC_Placeable *position = parentEntity->Component<EC_Placeable>().get();
     if (!GetFramework()->IsHeadless() && (!position || position->visible.Get())) // Only need to create GPU resources if the placeable itself is visible.
     {
         for(uint y = 0; y < patchHeight; ++y)
