@@ -100,6 +100,8 @@ void HttpAssetProvider::Update(f64 /*frametime*/)
 AssetTransferPtr HttpAssetProvider::RequestAsset(QString assetRef, QString assetType)
 {
     PROFILE(HttpAssetProvider_RequestAsset);
+    if (!networkAccessManager)
+        return AssetTransferPtr();
 
     if (!enableRequestsOutsideStorages)
     {
@@ -187,6 +189,9 @@ bool HttpAssetProvider::AbortTransfer(IAssetTransfer *transfer)
 
 AssetUploadTransferPtr HttpAssetProvider::UploadAssetFromFileInMemory(const u8 *data, size_t numBytes, AssetStoragePtr destination, const QString &assetName)
 {
+    if (!networkAccessManager)
+        return AssetUploadTransferPtr();
+
     QString dstUrl = destination->GetFullAssetURL(assetName);
     QNetworkRequest request;
     request.setUrl(QUrl(dstUrl));
@@ -208,6 +213,9 @@ AssetUploadTransferPtr HttpAssetProvider::UploadAssetFromFileInMemory(const u8 *
 
 void HttpAssetProvider::DeleteAssetFromStorage(QString assetRef)
 {
+    if (!networkAccessManager)
+        return;
+
     assetRef = assetRef.trimmed();
     if (!IsValidRef(assetRef))
     {
@@ -293,6 +301,8 @@ void HttpAssetProvider::OnHttpTransferFinished(QNetworkReply *reply)
 {
     // QNetworkAccessManager requires us to delete the QNetworkReply, or it will leak.
     reply->deleteLater();
+    if (!networkAccessManager)
+        return;
 
     int httpStatusCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
     const QString replyUrl = reply->url().toString();
