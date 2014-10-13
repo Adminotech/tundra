@@ -37,6 +37,12 @@ public:
     void Initialize();
     void Update(f64 frametime);
     void Uninitialize();
+
+    /// Forget cache bullet shapes.
+    /** Code that loads into the cache with calling GetTriangleMeshFromOgreMesh and GetConvexHullSetFromOgreMesh is
+        responsible to call this function when it has reseted its own shared ptr, to ensure if your code was the last
+        use of this particular Mesh, the shapes memory will get released. */
+    int ForgetUnusedCacheShapes();
    
     /// Get a Bullet triangle mesh corresponding to an Ogre mesh.
     /** If already has been generated, returns the previously created one */

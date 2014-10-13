@@ -200,6 +200,10 @@ void PhysicsModule::RemovePhysicsWorld(Scene *scene)
         scene->setProperty(PhysicsWorld::PropertyName(), QVariant());
         physicsWorlds_.erase(scene);
     }
+
+    // At this point all Entities have been destroyed. There should be nothing in the cache
+    // if there are no bugs in EC_RigidBody. Either way make sure to cleanup cached shape memory.
+    ForgetUnusedCacheShapes();
 }
 
 void PhysicsModule::SetRunPhysics(bool enable)
@@ -213,6 +217,45 @@ void PhysicsModule::OnScriptEngineCreated(QScriptEngine* engine)
     qScriptRegisterQObjectMetaType<PhysicsModule*>(engine);
     qScriptRegisterQObjectMetaType<PhysicsWorld*>(engine);
     qScriptRegisterQObjectMetaType<PhysicsRaycastResult*>(engine);
+}
+
+int PhysicsModule::ForgetUnusedCacheShapes()
+{
+    /* This function check shared ptrs where use count == 1, meaning our cache map is the only
+       this keeping the ptr alive. These will be forgotten. */
+    int forgotten = 0;
+
+    for (TriangleMeshMap::iterator iter = triangleMeshes_.begin(), end = triangleMeshes_.end();
+        iter != end;)
+    {
+        shared_ptr<btTriangleMesh> &ptr = iter->second;
+        if (ptr.use_count() == 1)
+        {
+            TriangleMeshMap::iterator eraseIter = iter;
+            iter++;
+            triangleMeshes_.erase(eraseIter);
+            forgotten++;
+        }
+        else
+            iter++;
+    }
+
+    for (ConvexHullSetMap::iterator iter = convexHullSets_.begin(), end = convexHullSets_.end();
+        iter != end;)
+    {
+        shared_ptr<ConvexHullSet> &ptr = iter->second;
+        if (ptr.use_count() == 1)
+        {
+            ConvexHullSetMap::iterator eraseIter = iter;
+            iter++;
+            convexHullSets_.erase(eraseIter);
+            forgotten++;
+        }
+        else
+            iter++;
+    }
+
+    return forgotten;
 }
 
 shared_ptr<btTriangleMesh> PhysicsModule::GetTriangleMeshFromOgreMesh(Ogre::Mesh* mesh)

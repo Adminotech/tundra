@@ -244,6 +244,10 @@ EC_RigidBody::EC_RigidBody(Scene* scene) :
 
 EC_RigidBody::~EC_RigidBody()
 {
+    // Explicitly reset here, RemoveCollisionShape() wont do it if shape type matches.
+    impl->triangleMesh.reset();
+    impl->convexHullSet.reset();
+
     RemoveBody();
     RemoveCollisionShape();
     if (impl->world)
@@ -508,11 +512,19 @@ void EC_RigidBody::RemoveCollisionShape()
     }
     SAFE_DELETE(impl->childShape);
     SAFE_DELETE(impl->heightField);
+
+    if (shapeType.Get() != TriMesh)
+        impl->triangleMesh.reset();
+    if (shapeType.Get() != ConvexHull)
+        impl->convexHullSet.reset();
+
+    if (impl->owner)
+        impl->owner->ForgetUnusedCacheShapes();
 }
 
 void EC_RigidBody::CreateBody()
 {
-    if (!impl->world || !ParentEntity() || impl->body)
+    if (!impl->world || impl->body || !ParentEntity())
         return;
     
     CheckForPlaceableAndTerrain();
@@ -604,6 +616,7 @@ void EC_RigidBody::OnCollisionMeshAssetLoaded(AssetPtr asset)
             impl->triangleMesh = impl->owner->GetTriangleMeshFromOgreMesh(mesh);
             CreateCollisionShape();
         }
+
         if (shapeType.Get() == ConvexHull)
         {
             impl->convexHullSet = impl->owner->GetConvexHullSetFromOgreMesh(mesh);
