@@ -33,10 +33,8 @@
 #include "IAssetBundle.h"
 #include "ConfigAPI.h"
 #include "TreeWidgetUtils.h"
-#ifdef EC_Script_ENABLED
 #include "IScriptInstance.h"
 #include "EC_Script.h"
-#endif
 
 #include <utility>
 
@@ -316,7 +314,6 @@ void TimeProfilerWindow::RefreshScriptsPage()
     if (!visibility_ || ui_.tabWidget->currentIndex() != 4)
         return;
     
-#ifdef EC_Script_ENABLED
     QTime t;
     t.start();
     
@@ -465,9 +462,6 @@ void TimeProfilerWindow::RefreshScriptsPage()
     ui_.labelScriptsInfo->setText(QString("<span style=\"color:rgb(120,120,120);\">Information gathered in " + (elapsed <= 0 ? "<1" : QString::number(elapsed)) + " msec</span>"));
         
     QTimer::singleShot(1000, this, SLOT(RefreshScriptsPage()));
-#else
-    ui_.labelScriptsInfo->setText("EC_Script not enabled in the build, cannot show information.");
-#endif
 }
 
 void TimeProfilerWindow::ChangeLoggerThreshold()
