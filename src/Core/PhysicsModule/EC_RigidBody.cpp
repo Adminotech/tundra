@@ -27,7 +27,6 @@
 #include <LinearMath/btMotionState.h>
 #include <BulletCollision/CollisionShapes/btScaledBvhTriangleMeshShape.h>
 #include <BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h>
-#include <BulletCollision/CollisionShapes/btScaledBvhTriangleMeshShape.h>
 #include <set>
 
 #include <OgreSceneNode.h>
@@ -434,7 +433,8 @@ void EC_RigidBody::CheckForPlaceableAndTerrain()
         if (placeable)
         {
             impl->placeable = placeable;
-            connect(placeable.get(), SIGNAL(AttributeChanged(IAttribute*, AttributeChange::Type)), this, SLOT(PlaceableUpdated(IAttribute*)));
+            connect(placeable.get(), SIGNAL(AttributeChanged(IAttribute*, AttributeChange::Type)), this, SLOT(PlaceableUpdated(IAttribute*)), Qt::UniqueConnection);      
+            connect(placeable.get(), SIGNAL(ParentChainTransformsChanged()), this, SLOT(PlaceableParentChainTransformsUpdated()), Qt::UniqueConnection);
         }
     }
     if (!impl->terrain.lock())
@@ -443,8 +443,8 @@ void EC_RigidBody::CheckForPlaceableAndTerrain()
         if (terrain)
         {
             impl->terrain = terrain;
-            connect(terrain.get(), SIGNAL(TerrainRegenerated()), this, SLOT(OnTerrainRegenerated()));
-            connect(terrain.get(), SIGNAL(AttributeChanged(IAttribute*, AttributeChange::Type)), this, SLOT(TerrainUpdated(IAttribute*)));
+            connect(terrain.get(), SIGNAL(TerrainRegenerated()), this, SLOT(OnTerrainRegenerated()), Qt::UniqueConnection);
+            connect(terrain.get(), SIGNAL(AttributeChanged(IAttribute*, AttributeChange::Type)), this, SLOT(TerrainUpdated(IAttribute*)), Qt::UniqueConnection);
         }
     }
 }
@@ -641,8 +641,10 @@ void EC_RigidBody::AttributesChanged()
         return;
     
     if (mass.ValueChanged() || collisionLayer.ValueChanged() || collisionMask.ValueChanged())
-        // Readd body to the world in case static/dynamic classification changed, or if collision mask changed
+    {
+        // Read body to the world in case static/dynamic classification changed, or if collision mask changed
         ReaddBody();
+    }
     
     if (friction.ValueChanged())
         impl->body->setFriction(friction.Get());
@@ -685,9 +687,12 @@ void EC_RigidBody::AttributesChanged()
             RequestMesh();
     }
     
+    /// @bug On component init ReadBody is called twice (inside this function), shoul be avoided?
     if (phantom.ValueChanged() || kinematic.ValueChanged())
+    {
         // Readd body to the world in case phantom or kinematic classification changed
         ReaddBody();
+    }
     
     if (drawDebug.ValueChanged())
     {
@@ -752,15 +757,32 @@ void EC_RigidBody::PlaceableUpdated(IAttribute* attribute)
     }
 }
 
+void EC_RigidBody::PlaceableParentChainTransformsUpdated()
+{
+    // Important: when changing both transform and parent, always set parentref first, then transform
+    // Otherwise the physics simulation may interpret things wrong and the object ends up
+    // in an unintended location
+    UpdatePosRotFromPlaceable();
+    UpdateScale();
+
+    // Since we programmatically changed the orientation of the object outside the simulation, we must recompute the 
+    // inertia tensor matrix of the object manually (it's dependent on the world space orientation of the object)
+    impl->body->updateInertiaTensor();
+}
+
 void EC_RigidBody::OnAboutToUpdate()
 {
     PROFILE(EC_RigidBody_OnAboutToUpdate);
     
     // If the placeable is parented, we forcibly update world transform from it before each simulation step
     // However, we do not update scale, as that is expensive
+    
+    /** @todo This code can be removed as above PlaceableParentChainTransformsUpdated now handles this?
+
     EC_Placeable* placeable = impl->placeable.lock().get();
     if (placeable && !placeable->parentRef.Get().IsEmpty() && placeable->IsAttached())
         UpdatePosRotFromPlaceable();
+    */
 }
 
 void EC_RigidBody::SetRotation(const float3& rotation)
@@ -923,28 +945,32 @@ void EC_RigidBody::RequestMesh()
 
 void EC_RigidBody::UpdateScale()
 {
-   PROFILE(EC_RigidBody_UpdateScale);
-    
-   float3 sizeVec = size.Get();
-    // Sanitize the size
-    if (sizeVec.x < 0)
-        sizeVec.x = 0;
-    if (sizeVec.y < 0)
-        sizeVec.y = 0;
-    if (sizeVec.z < 0)
-        sizeVec.z = 0;
-    
+    PROFILE(EC_RigidBody_UpdateScale);
+
     // If placeable exists, set local scaling from its scale
     EC_Placeable* placeable = impl->placeable.lock().get();
     if (placeable && impl->shape)
     {
-        // Note: for now, world scale is purposefully NOT used, because it would be problematic to change the scale when a parenting change occurs
-        const float3& scale = placeable->transform.Get().scale;
+        const ShapeType shape = static_cast<ShapeType>(shapeType.Get());
+        const float3 &sizeVec = size.Get();
+        const float3 scale = placeable->WorldScale();
+
         // Trianglemesh or convexhull does not have scaling of its own in the shape, so multiply with the size
-        if (shapeType.Get() != TriMesh && shapeType.Get() != ConvexHull)
-            impl->shape->setLocalScaling(btVector3(scale.x, scale.y, scale.z));
-        else
-            impl->shape->setLocalScaling(btVector3(sizeVec.x * scale.x, sizeVec.y * scale.y, sizeVec.z * scale.z));
+        btVector3 finalScale = (shape != TriMesh && shape != ConvexHull ?
+            btVector3(scale.x, scale.y, scale.z) : btVector3(sizeVec.x * scale.x, sizeVec.y * scale.y, sizeVec.z * scale.z));
+
+        /* Bullet has asserts for zero scale in debug mode. These wont trigger in Release
+           builds but they sure do indicate we should not be passing zero scale into it.
+           @note This is the same logic Placeable enforces before passing scale to ogre,
+           but Transform attributes scale can still be zero or negative. */
+        if (finalScale.x() < 0)
+            finalScale.setX(0);
+        if (finalScale.y() < 0)
+            finalScale.setY(0);
+        if (finalScale.z() < 0)
+            finalScale.setZ(0);
+
+        impl->shape->setLocalScaling(finalScale);
     }
 }
 

@@ -329,6 +329,9 @@ private slots:
     
     /// Called when attributes of the placeable have changed
     void PlaceableUpdated(IAttribute *attribute);
+
+    /// Called when placeables parent chain transforms changed
+    void PlaceableParentChainTransformsUpdated();
     
     /// Called when attributes of the terrain have changed
     void TerrainUpdated(IAttribute *attribute);
