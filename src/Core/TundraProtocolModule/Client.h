@@ -60,9 +60,8 @@ public:
     LoginPropertyMap &LoginProperties() { return properties; }
 
     /// Returns the underlying kNet MessageConnection object that represents this connection.
-    /** This function may return null in the case the connection is not active.
-        @todo Rename to Connection */
-    kNet::MessageConnection* GetConnection();
+    /** This function may return null in the case the connection is not active. */
+    kNet::MessageConnection* MessageConnection();
 
     /// Returns the "virtual" user connection object representing the server. This object will exist always, but its MessageConnection is null when not connected.
     UserConnectionPtr ServerUserConnection() const;
@@ -70,6 +69,8 @@ public:
     /// Logout immediately and delete the client scene content
     /** @param fail Pass in true if the logout was due to connection/login failure. False, if the connection was aborted deliberately by the client. */
     void DoLogout(bool fail = false);
+
+    kNet::MessageConnection* GetConnection() { return MessageConnection(); }
 
 public slots:
     /// Connects and logs in.

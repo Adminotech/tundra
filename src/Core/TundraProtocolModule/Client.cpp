@@ -373,9 +373,9 @@ void Client::GetCameraOrientation()
         connection->FreeMessage(msg);
 }
 
-kNet::MessageConnection* Client::GetConnection()
+kNet::MessageConnection* Client::MessageConnection()
 {
-    return owner_->GetKristalliModule()->GetMessageConnection();
+    return owner_->GetKristalliModule()->MessageConnection();
 }
 
 UserConnectionPtr Client::ServerUserConnection() const
@@ -404,7 +404,8 @@ void Client::OnConnectionAttemptFailed()
     DoLogout(true);
 }
 
-void Client::HandleKristalliMessage(MessageConnection* source, packet_id_t packetId, message_id_t messageId, const char* data, size_t numBytes)
+void Client::HandleKristalliMessage(kNet::MessageConnection* source, kNet::packet_id_t packetId,
+        kNet::message_id_t messageId, const char* data, size_t numBytes)
 {
     if (source != GetConnection())
     {
@@ -444,7 +445,7 @@ void Client::HandleKristalliMessage(MessageConnection* source, packet_id_t packe
     serverUserConnection_->EmitNetworkMessageReceived(packetId, messageId, data, numBytes);
 }
 
-void Client:: HandleCameraOrientationRequest(MessageConnection* /*source*/, const MsgCameraOrientationRequest& msg)
+void Client:: HandleCameraOrientationRequest(kNet::MessageConnection* /*source*/, const MsgCameraOrientationRequest& msg)
 {
     sendCameraUpdates_ = msg.enableCameraUpdates;
 
@@ -467,7 +468,7 @@ void Client:: HandleCameraOrientationRequest(MessageConnection* /*source*/, cons
     }
 }
 
-void Client::HandleLoginReply(MessageConnection* /*source*/, const char *data, size_t numBytes)
+void Client::HandleLoginReply(kNet::MessageConnection* /*source*/, const char *data, size_t numBytes)
 {
     DataDeserializer dd(data, numBytes);
     MsgLoginReply msg;
@@ -524,11 +525,11 @@ void Client::HandleLoginReply(MessageConnection* /*source*/, const char *data, s
     }
 }
 
-void Client::HandleClientJoined(MessageConnection* /*source*/, const MsgClientJoined& /*msg*/)
+void Client::HandleClientJoined(kNet::MessageConnection* /*source*/, const MsgClientJoined& /*msg*/)
 {
 }
 
-void Client::HandleClientLeft(MessageConnection* /*source*/, const MsgClientLeft& /*msg*/)
+void Client::HandleClientLeft(kNet::MessageConnection* /*source*/, const MsgClientLeft& /*msg*/)
 {
 }
 

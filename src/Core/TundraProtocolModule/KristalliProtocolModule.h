@@ -54,19 +54,19 @@ public:
     bool Connected() const;
 
     /// Return message connection, for use by other modules (null if no connection made)
-    kNet::MessageConnection *GetMessageConnection() { return serverConnection.ptr(); }
-    
+    kNet::MessageConnection *MessageConnection() { return serverConnection.ptr(); }
+
     /// Return server, for use by other modules (null if not running)
-    kNet::NetworkServer* GetServer() const { return server; }
-    
-    kNet::Network *GetNetwork() { return &network; }
+    kNet::NetworkServer* NetworkServer() const { return server; }
+
+    kNet::Network *Network() { return &network; }
 
     /// Return whether we are a server
     bool IsServer() const { return server != 0; }
     
     /// Returns all user connections for a server
-    UserConnectionList& GetUserConnections() { return connections; }
-    
+    UserConnectionList& UserConnections() { return connections; }
+
     /// Gets user by message connection. Returns null if no such connection
     UserConnectionPtr GetUserConnection(kNet::MessageConnection* source) const;
     UserConnectionPtr GetUserConnection(u32 id) const; /**< @overload @param id Connection ID. */
@@ -76,6 +76,11 @@ public:
 
     /// Allocate a connection ID for new connection
     u32 AllocateNewConnectionID() const;
+
+    kNet::MessageConnection *GetMessageConnection() { return MessageConnection(); }
+    kNet::NetworkServer* GetServer() const { return NetworkServer(); }
+    kNet::Network *GetNetwork() { return Network(); }
+    UserConnectionList& GetUserConnections() { return UserConnections(); }
 
 public slots:
     void OpenKNetLogWindow();

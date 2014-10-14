@@ -21,8 +21,6 @@
 
 #include "MemoryLeakCheck.h"
 
-using namespace kNet;
-
 namespace
 {
 
@@ -146,8 +144,8 @@ void KristalliProtocolModule::Initialize()
     QStringList cmdLineParams = framework_->CommandLineParameters("--protocol");
     if (cmdLineParams.size() > 0)
     {
-        kNet::SocketTransportLayer transportLayer = StringToSocketTransportLayer(cmdLineParams.first().trimmed().toStdString().c_str());
-        if (transportLayer != InvalidTransportLayer)
+        kNet::SocketTransportLayer transportLayer = kNet::StringToSocketTransportLayer(cmdLineParams.first().trimmed().toStdString().c_str());
+        if (transportLayer != kNet::InvalidTransportLayer)
             defaultTransport = transportLayer;
     }
 #ifdef KNET_USE_QT
@@ -165,7 +163,7 @@ void KristalliProtocolModule::OpenKNetLogWindow()
 #ifdef KNET_USE_QT
     if (!networkDialog)
     {
-        networkDialog = new NetworkDialog(0, &network);
+        networkDialog = new kNet::NetworkDialog(0, &network);
         networkDialog->setAttribute(Qt::WA_DeleteOnClose);
     }
     networkDialog->show();
@@ -203,14 +201,14 @@ void KristalliProtocolModule::Update(f64 /*frametime*/)
         // In Tundra, we *never* keep half-open server->client connections alive. 
         // (the usual case would be to wait for a file transfer to complete, but Tundra messaging mechanism doesn't use that).
         // So, bidirectionally close all half-open connections.
-        NetworkServer::ConnectionMap connections = server->GetConnections();
-        for(NetworkServer::ConnectionMap::iterator iter = connections.begin(); iter != connections.end(); ++iter)
+        kNet::NetworkServer::ConnectionMap connections = server->GetConnections();
+        for(kNet::NetworkServer::ConnectionMap::iterator iter = connections.begin(); iter != connections.end(); ++iter)
             if (!iter->second->IsReadOpen() && iter->second->IsWriteOpen())
                 iter->second->Disconnect(0);
     }
     
-    if ((!serverConnection || serverConnection->GetConnectionState() == ConnectionClosed ||
-        serverConnection->GetConnectionState() == ConnectionPending) && serverIp.length() != 0)
+    if ((!serverConnection || serverConnection->GetConnectionState() == kNet::ConnectionClosed ||
+        serverConnection->GetConnectionState() == kNet::ConnectionPending) && serverIp.length() != 0)
     {
         const int cReconnectTimeout = 5 * 1000.f;
         if (reconnectTimer.Test())
@@ -234,11 +232,11 @@ void KristalliProtocolModule::Update(f64 /*frametime*/)
     }
 
     // If connection was made, enable a larger number of reconnection attempts in case it gets lost
-    if (serverConnection && serverConnection->GetConnectionState() == ConnectionOK)
+    if (serverConnection && serverConnection->GetConnectionState() == kNet::ConnectionOK)
         reconnectAttempts = cReconnectAttempts;
 }
 
-void KristalliProtocolModule::Connect(const char *ip, unsigned short port, SocketTransportLayer transport)
+void KristalliProtocolModule::Connect(const char *ip, unsigned short port, kNet::SocketTransportLayer transport)
 {
     if (Connected() && serverConnection->RemoteEndPoint().IPToString() != serverIp)
         Disconnect();
@@ -283,7 +281,7 @@ void KristalliProtocolModule::Disconnect()
         serverConnection->Disconnect();
 }
 
-bool KristalliProtocolModule::StartServer(unsigned short port, SocketTransportLayer transport)
+bool KristalliProtocolModule::StartServer(unsigned short port, kNet::SocketTransportLayer transport)
 {
     StopServer();
     
@@ -347,7 +345,7 @@ void KristalliProtocolModule::NewConnectionEstablished(kNet::MessageConnection *
     emit ClientConnectedEvent(connection.get());
 }
 
-void KristalliProtocolModule::ClientDisconnected(MessageConnection *source)
+void KristalliProtocolModule::ClientDisconnected(kNet::MessageConnection *source)
 {
     // Delete from connection list if it was a known user
     for(UserConnectionList::iterator iter = connections.begin(); iter != connections.end(); ++iter)
@@ -401,7 +399,7 @@ u32 KristalliProtocolModule::AllocateNewConnectionID() const
     return newID;
 }
 
-UserConnectionPtr KristalliProtocolModule::GetUserConnection(MessageConnection* source) const
+UserConnectionPtr KristalliProtocolModule::GetUserConnection(kNet::MessageConnection* source) const
 {
     for(UserConnectionList::const_iterator iter = connections.begin(); iter != connections.end(); ++iter)
         if ((*iter)->ConnectionType() == "knet" && static_pointer_cast<KNetUserConnection>(*iter)->connection == source)
