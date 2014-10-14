@@ -44,30 +44,14 @@ AssetModule::~AssetModule()
 
 void AssetModule::Load()
 {
-    shared_ptr<HttpAssetProvider> http = MAKE_SHARED(HttpAssetProvider, Fw());
-    Fw()->Asset()->RegisterAssetProvider(http);
-
-    shared_ptr<LocalAssetProvider> local = MAKE_SHARED(LocalAssetProvider, Fw());
-    Fw()->Asset()->RegisterAssetProvider(local);
-
-    QString systemAssetDir = Application::InstallationDirectory() + "data/assets";
-    AssetStoragePtr storage = local->AddStorageDirectory(systemAssetDir, "System", true, false);
-//    AssetStoragePtr storage = local->AddStorageDirectory(systemAssetDir, "System", true, QFileInfo(systemAssetDir).isWritable());
-    storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
+    Fw()->Asset()->RegisterAssetProvider(MAKE_SHARED(HttpAssetProvider, Fw()));
 }
 
 void AssetModule::Initialize()
 {
-    shared_ptr<LocalAssetProvider> local = Fw()->Asset()->AssetProvider<LocalAssetProvider>();
-
-    /// @todo This belongs to JavascriptModule.
-    QString jsAssetDir = Application::InstallationDirectory() + "jsmodules";
-    AssetStoragePtr storage = local->AddStorageDirectory(jsAssetDir, "Javascript", true, false);
-    storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
-
-    /// @todo This belongs to OgreRenderingModule.
-    QString ogreAssetDir = Application::InstallationDirectory() + "media";
-    storage = local->AddStorageDirectory(ogreAssetDir, "Ogre Media", true, false);
+    QString systemAssetDir = Application::InstallationDirectory() + "data/assets";
+    AssetStoragePtr storage = Fw()->Asset()->AssetProvider<LocalAssetProvider>()->AddStorageDirectory(systemAssetDir, "System", true, false);
+//    AssetStoragePtr storage = local->AddStorageDirectory(systemAssetDir, "System", true, QFileInfo(systemAssetDir).isWritable());
     storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
 
     Fw()->RegisterDynamicObject("assetModule", this);
@@ -77,7 +61,8 @@ void AssetModule::Initialize()
         this, SLOT(ConsoleRequestAsset(const QString &, const QString &)));
 
     Fw()->Console()->RegisterCommand(
-        "addAssetStorage", "Usage: addAssetStorage(storageString), f.ex.: addAssetStorage(name=MyAssets;type=HttpAssetStorage;src=http://www.myserver.com/;default;)", 
+        "addAssetStorage", "Usage: addAssetStorage(storageString), f.ex.: "
+        "addAssetStorage(name=MyAssets;type=HttpAssetStorage;src=http://www.myserver.com/;default;)",
         this, SLOT(AddAssetStorage(const QString &)));
 
     Fw()->Console()->RegisterCommand(
@@ -159,12 +144,12 @@ void AssetModule::ConsoleRefreshHttpStorages()
 
 void AssetModule::ConsoleRequestAsset(const QString &assetRef, const QString &assetType)
 {
-    AssetTransferPtr transfer = Fw()->Asset()->RequestAsset(assetRef, assetType, true);
+    Fw()->Asset()->RequestAsset(assetRef, assetType, true);
 }
 
 void AssetModule::AddAssetStorage(const QString &storageString)
 {
-    AssetStoragePtr storage = Fw()->Asset()->DeserializeAssetStorageFromString(storageString, false);
+    Fw()->Asset()->DeserializeAssetStorageFromString(storageString, false);
 }
 
 void AssetModule::ListAssetStorages()
@@ -335,10 +320,8 @@ void AssetModule::HandleAssetDiscovery(kNet::MessageConnection* source, MsgAsset
         return;
     
     // If we are server, the message had to come from a client, and we replicate it to everyone except the sender
-    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
-    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
-    if (tundra->IsServer())
-        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
+    if (Fw()->Module<TundraLogicModule>()->IsServer())
+        foreach(UserConnectionPtr userConn, Fw()->Module<KristalliProtocolModule>()->UserConnections())
         {
             KNetUserConnection* kNetConn = dynamic_cast<KNetUserConnection*>(userConn.get());
             if (kNetConn->connection != source)
@@ -358,10 +341,8 @@ void AssetModule::HandleAssetDeleted(kNet::MessageConnection* source, MsgAssetDe
         return;
     
     // If we are server, the message had to come from a client, and we replicate it to everyone except the sender
-    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
-    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
-    if (tundra->IsServer())
-        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
+    if (Fw()->Module<TundraLogicModule>()->IsServer())
+        foreach(UserConnectionPtr userConn, Fw()->Module<KristalliProtocolModule>()->UserConnections())
         {
             KNetUserConnection* kNetConn = dynamic_cast<KNetUserConnection*>(userConn.get());
             if (kNetConn->connection != source)
@@ -377,22 +358,18 @@ void AssetModule::OnAssetUploaded(const QString& assetRef)
     // Check whether the asset upload needs to be replicated
     if (!ShouldReplicateAssetDiscovery(assetRef))
         return;
-    
-    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
-    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
 
+    /// \todo Would preferably need the asset type as well for the msg.
     MsgAssetDiscovery msg;
     msg.assetRef = StringToBuffer(assetRef.toStdString()); /// @bug Convert to UTF-8 instead!
-    /// \todo Would preferably need the assettype as well
-    
-    // If we are server, send to everyone
-    if (tundra->IsServer())
+
+    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
+    if (tundra->IsServer()) // We are server, send to everyone
     {
-        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
+        foreach(UserConnectionPtr userConn, Fw()->Module<KristalliProtocolModule>()->UserConnections())
             userConn->Send(msg);
     }
-    // If we are client, send to server
-    else
+    else // We are client, send to server
     {
         kNet::MessageConnection* connection = tundra->GetClient()->MessageConnection();
         if (connection)
@@ -405,16 +382,14 @@ void AssetModule::OnAssetDeleted(const QString& assetRef)
     // Check whether the asset delete needs to be replicated
     if (!ShouldReplicateAssetDiscovery(assetRef))
         return;
-    
-    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
-    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
 
     MsgAssetDeleted msg;
     msg.assetRef = StringToBuffer(assetRef.toStdString()); /// @bug Convert to UTF-8 instead!
 
+    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
     if (tundra->IsServer()) // We are server, send to everyone
     {
-        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
+        foreach(UserConnectionPtr userConn, Fw()->Module<KristalliProtocolModule>()->UserConnections())
             userConn->Send(msg);
     }
     else // We are client, send to server

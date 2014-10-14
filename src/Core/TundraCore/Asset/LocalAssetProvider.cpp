@@ -6,7 +6,6 @@
 #include "Win.h"
 #include "LocalAssetProvider.h"
 #include "LocalAssetStorage.h"
-#include "AssetModule.h"
 #include "IAssetUploadTransfer.h"
 #include "IAssetTransfer.h"
 #include "AssetAPI.h"

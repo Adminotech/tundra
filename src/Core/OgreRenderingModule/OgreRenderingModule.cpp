@@ -31,6 +31,8 @@
 #include "Entity.h"
 #include "Scene/Scene.h"
 #include "AssetAPI.h"
+#include "LocalAssetProvider.h"
+#include "LocalAssetStorage.h"
 #include "GenericAssetFactory.h"
 #include "NullAssetFactory.h"
 #include "Profiler.h"
@@ -174,6 +176,10 @@ void OgreRenderingModule::Load()
 
 void OgreRenderingModule::Initialize()
 {
+    const QString ogreAssetDir = Application::InstallationDirectory() + "media";
+    LocalAssetStoragePtr storage = Fw()->Asset()->AssetProvider<LocalAssetProvider>()->AddStorageDirectory(ogreAssetDir, "Ogre Media", true, false);
+    storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
+
     renderer = MAKE_SHARED(OgreRenderer::Renderer, framework_);
     assert(renderer);
     assert(!renderer->IsInitialized());

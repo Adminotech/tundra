@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "AssetModuleApi.h"
+#include "TundraCoreApi.h"
 #include "IAssetStorage.h"
 #include "CoreStringUtils.h"
 
@@ -12,7 +12,7 @@ class QFileSystemWatcher;
 class AssetAPI;
 
 /// Represents a single (possibly recursive) directory on the local file system.
-class ASSET_MODULE_API LocalAssetStorage : public IAssetStorage
+class TUNDRACORE_API LocalAssetStorage : public IAssetStorage
 {
     Q_OBJECT
 

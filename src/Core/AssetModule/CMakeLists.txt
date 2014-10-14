@@ -6,8 +6,7 @@ MocFolder()
 # Define source files
 file(GLOB CPP_FILES *.cpp)
 file(GLOB H_FILES *.h)
-file(GLOB H_MOC_FILES AssetCache.h LocalAssetStorage.h LocalAssetProvider.h
-    HttpAssetProvider.h HttpAssetStorage.h HttpAssetTransfer.h AssetModule.h)
+file(GLOB H_MOC_FILES AssetModule.h HttpAssetProvider.h HttpAssetStorage.h HttpAssetTransfer.h)
 
 set (SOURCE_FILES ${CPP_FILES} ${H_FILES})
 

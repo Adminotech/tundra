@@ -17,6 +17,8 @@
 #include "SceneAPI.h"
 #include "Entity.h"
 #include "AssetAPI.h"
+#include "LocalAssetProvider.h"
+#include "LocalAssetStorage.h"
 #include "GenericAssetFactory.h"
 #include "EC_Script.h"
 #include "ScriptAsset.h"
@@ -81,6 +83,10 @@ void JavascriptModule::Load()
 
 void JavascriptModule::Initialize()
 {
+    QString jsAssetDir = Application::InstallationDirectory() + "jsmodules";
+    AssetStoragePtr storage = Fw()->Asset()->AssetProvider<LocalAssetProvider>()->AddStorageDirectory(jsAssetDir, "Javascript", true, false);
+    storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
+
     connect(Fw()->Scene(), SIGNAL(SceneCreated(Scene *, AttributeChange::Type)), SLOT(OnSceneCreated(Scene *)));
 
     framework_->Console()->RegisterCommand(

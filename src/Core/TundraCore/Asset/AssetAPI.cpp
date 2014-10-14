@@ -16,6 +16,8 @@
 #include "GenericAssetFactory.h"
 #include "NullAssetFactory.h"
 #include "AssetCache.h"
+#include "LocalAssetProvider.h"
+#include "LocalAssetStorage.h"
 
 #include "Framework.h"
 #include "LoggingFunctions.h"
@@ -38,6 +40,9 @@ AssetAPI::AssetAPI(Framework *framework, bool headless) :
     assetCache(0),
     diskSourceChangeWatcher(0)
 {
+    LocalAssetProviderPtr local = MAKE_SHARED(LocalAssetProvider, fw);
+    RegisterAssetProvider(local);
+
     // The Asset API always understands at least this single built-in asset type "Binary".
     // You can use this type to request asset data as binary, without generating any kind of in-memory representation or loading for it.
     // Your module/component can then parse the content in a custom way.

@@ -10,10 +10,10 @@ MocFolder()
 # Define source files
 file(GLOB CPP_FILES *.cpp)
 file(GLOB H_FILES *.h)
-file(GLOB MOC_FILES
-    Asset/AssetAPI.h Asset/IAsset.h Asset/IAssetTransfer.h Asset/IAssetUploadTransfer.h
-    Asset/IAssetStorage.h Asset/AssetRefListener.h Asset/BinaryAsset.h Asset/AssetCache.h
-    Asset/IAssetTypeFactory.h Asset/NullAssetFactory.h Asset/IAssetBundle.h Asset/IAssetBundleTypeFactory.h
+file(GLOB MOC_FILES # TODO Might be easier to add *.h and then remove couple...
+    Asset/AssetAPI.h Asset/IAsset.h Asset/IAssetTransfer.h Asset/IAssetUploadTransfer.h Asset/IAssetStorage.h
+    Asset/AssetRefListener.h Asset/BinaryAsset.h Asset/AssetCache.h Asset/IAssetTypeFactory.h Asset/NullAssetFactory.h
+    Asset/IAssetBundle.h Asset/IAssetBundleTypeFactory.h Asset/LocalAssetProvider.h Asset/LocalAssetStorage.h
     Audio/AudioAPI.h Audio/AudioAsset.h Audio/SoundChannel.h Audio/SoundSettings.h
     Console/ConsoleAPI.h Console/ConsoleWidget.h Console/ShellInputThread.h
     Framework/Framework.h Framework/Application.h Framework/FrameAPI.h Framework/ConsoleAPI.h

@@ -2,18 +2,14 @@
 
 #pragma once
 
-#include "AssetModuleApi.h"
+#include "TundraCoreApi.h"
 #include "IAssetProvider.h"
 #include "AssetFwd.h"
 
 #include <QSet>
 
-class LocalAssetStorage;
-
-typedef shared_ptr<LocalAssetStorage> LocalAssetStoragePtr;
-
 /// Provides access to files on the local file system using the 'local://' URL specifier.
-class ASSET_MODULE_API LocalAssetProvider : public QObject, public IAssetProvider, public enable_shared_from_this<LocalAssetProvider>
+class TUNDRACORE_API LocalAssetProvider : public QObject, public IAssetProvider, public enable_shared_from_this<LocalAssetProvider>
 {
     Q_OBJECT
 

@@ -44,6 +44,7 @@ typedef std::map<QString, AssetBundlePtr, QStringLessThanNoCase> AssetBundleMap;
 typedef std::map<QString, AssetBundleMonitorPtr, QStringLessThanNoCase> AssetBundleMonitorMap;
 
 /// Implements asset download and upload functionality.
+/** Registers LocalAssetProvider and BinaryAssetFactory by default. */
 class TUNDRACORE_API AssetAPI : public QObject
 {
     Q_OBJECT

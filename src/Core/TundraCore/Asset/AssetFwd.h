@@ -52,6 +52,11 @@ class Framework;
 class BinaryAsset;
 typedef shared_ptr<BinaryAsset> BinaryAssetPtr;
 
+class LocalAssetProvider;
+typedef shared_ptr<LocalAssetProvider> LocalAssetProviderPtr;
+class LocalAssetStorage;
+typedef shared_ptr<LocalAssetStorage> LocalAssetStoragePtr;
+
 Q_DECLARE_METATYPE(AssetPtr)
 Q_DECLARE_METATYPE(AssetUploadTransferPtr)
 Q_DECLARE_METATYPE(AssetStoragePtr)
