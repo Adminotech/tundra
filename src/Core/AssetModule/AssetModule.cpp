@@ -42,103 +42,110 @@ AssetModule::~AssetModule()
 {
 }
 
-void AssetModule::Initialize()
+void AssetModule::Load()
 {
-    shared_ptr<HttpAssetProvider> http = MAKE_SHARED(HttpAssetProvider, framework_);
-    framework_->Asset()->RegisterAssetProvider(http);
-    
-    shared_ptr<LocalAssetProvider> local = MAKE_SHARED(LocalAssetProvider, framework_);
-    framework_->Asset()->RegisterAssetProvider(local);
-    
+    shared_ptr<HttpAssetProvider> http = MAKE_SHARED(HttpAssetProvider, Fw());
+    Fw()->Asset()->RegisterAssetProvider(http);
+
+    shared_ptr<LocalAssetProvider> local = MAKE_SHARED(LocalAssetProvider, Fw());
+    Fw()->Asset()->RegisterAssetProvider(local);
+
     QString systemAssetDir = Application::InstallationDirectory() + "data/assets";
     AssetStoragePtr storage = local->AddStorageDirectory(systemAssetDir, "System", true, false);
 //    AssetStoragePtr storage = local->AddStorageDirectory(systemAssetDir, "System", true, QFileInfo(systemAssetDir).isWritable());
     storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
+}
 
+void AssetModule::Initialize()
+{
+    shared_ptr<LocalAssetProvider> local = Fw()->Asset()->AssetProvider<LocalAssetProvider>();
+
+    /// @todo This belongs to JavascriptModule.
     QString jsAssetDir = Application::InstallationDirectory() + "jsmodules";
-    storage = local->AddStorageDirectory(jsAssetDir, "Javascript", true, false);
+    AssetStoragePtr storage = local->AddStorageDirectory(jsAssetDir, "Javascript", true, false);
     storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
 
+    /// @todo This belongs to OgreRenderingModule.
     QString ogreAssetDir = Application::InstallationDirectory() + "media";
     storage = local->AddStorageDirectory(ogreAssetDir, "Ogre Media", true, false);
     storage->SetReplicated(false); // If we are a server, don't pass this storage to the client.
 
-    framework_->RegisterDynamicObject("assetModule", this);
+    Fw()->RegisterDynamicObject("assetModule", this);
 
-    framework_->Console()->RegisterCommand(
+    Fw()->Console()->RegisterCommand(
         "requestAsset", "Request asset from server. Usage: requestAsset(assetRef, assetType)",
         this, SLOT(ConsoleRequestAsset(const QString &, const QString &)));
 
-    framework_->Console()->RegisterCommand(
+    Fw()->Console()->RegisterCommand(
         "addAssetStorage", "Usage: addAssetStorage(storageString), f.ex.: addAssetStorage(name=MyAssets;type=HttpAssetStorage;src=http://www.myserver.com/;default;)", 
         this, SLOT(AddAssetStorage(const QString &)));
 
-    framework_->Console()->RegisterCommand(
+    Fw()->Console()->RegisterCommand(
         "listAssetStorages", "Serializes all currently registered asset storages to the console output log.", 
         this, SLOT(ListAssetStorages()));
 
-    framework_->Console()->RegisterCommand(
+    Fw()->Console()->RegisterCommand(
         "refreshHttpStorages", "Refreshes known assetrefs for all http asset storages", 
         this, SLOT(ConsoleRefreshHttpStorages()));
 
-    framework_->Console()->RegisterCommand(
+    Fw()->Console()->RegisterCommand(
         "dumpAssetTransfers", "Dumps debugging information of current asset transfers to console", 
         this, SLOT(ConsoleDumpAssetTransfers()));
 
-    framework_->Console()->RegisterCommand(
+    Fw()->Console()->RegisterCommand(
         "dumpAssets", "Lists all assets known to the Asset API", 
         this, SLOT(ConsoleDumpAssets()));
     
     ProcessCommandLineOptions();
 
-    TundraLogic::Server *server = framework_->GetModule<TundraLogic::TundraLogicModule>()->GetServer().get();
+    TundraLogic::Server *server = Fw()->Module<TundraLogicModule>()->GetServer().get();
     connect(server, SIGNAL(UserConnected(u32, UserConnection *, UserConnectedResponseData *)), this,
         SLOT(ServerNewUserConnected(u32, UserConnection *, UserConnectedResponseData *)));
 
-    TundraLogic::Client *client = framework_->GetModule<TundraLogic::TundraLogicModule>()->GetClient().get();
+    TundraLogic::Client *client = Fw()->Module<TundraLogicModule>()->GetClient().get();
     connect(client, SIGNAL(Connected(UserConnectedResponseData *)), this, SLOT(ClientConnectedToServer(UserConnectedResponseData *)));
     connect(client, SIGNAL(Disconnected()), this, SLOT(ClientDisconnectedFromServer()));
 
-    KristalliProtocolModule *kristalli = framework_->GetModule<KristalliProtocolModule>();
+    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
     connect(kristalli, SIGNAL(NetworkMessageReceived(kNet::MessageConnection *, kNet::packet_id_t, kNet::message_id_t, const char *, size_t)), 
         this, SLOT(HandleKristalliMessage(kNet::MessageConnection*, kNet::packet_id_t, kNet::message_id_t, const char*, size_t)), Qt::UniqueConnection);
 
     // Connect to asset uploads & deletions from storage to be able to broadcast asset discovery & deletion messages
-    connect(framework_->Asset(), SIGNAL(AssetUploaded(const QString &)), this, SLOT(OnAssetUploaded(const QString &)));
-    connect(framework_->Asset(), SIGNAL(AssetDeletedFromStorage(const QString&)), this, SLOT(OnAssetDeleted(const QString&)));
+    connect(Fw()->Asset(), SIGNAL(AssetUploaded(const QString &)), this, SLOT(OnAssetUploaded(const QString &)));
+    connect(Fw()->Asset(), SIGNAL(AssetDeletedFromStorage(const QString&)), this, SLOT(OnAssetDeleted(const QString&)));
 }
 
 void AssetModule::ProcessCommandLineOptions()
 {
-    bool hasFile = framework_->HasCommandLineParameter("--file");
-    bool hasStorage = framework_->HasCommandLineParameter("--storage");
-    QStringList files = framework_->CommandLineParameters("--file");
-    QStringList storages = framework_->CommandLineParameters("--storage");
+    const bool hasFile = Fw()->HasCommandLineParameter("--file");
+    const bool hasStorage = Fw()->HasCommandLineParameter("--storage");
+    const QStringList files = Fw()->CommandLineParameters("--file");
+    const QStringList storages = Fw()->CommandLineParameters("--storage");
     if (hasFile && files.isEmpty())
         LogError("AssetModule: --file specified without a value.");
     if (hasStorage && storages.isEmpty())
         LogError("AssetModule: --storage specified without a value.");
     foreach(const QString &file, files)
     {
-        AssetStoragePtr storage = framework_->Asset()->DeserializeAssetStorageFromString(file.trimmed(), false);
-        framework_->Asset()->SetDefaultAssetStorage(storage);
+        AssetStoragePtr storage = Fw()->Asset()->DeserializeAssetStorageFromString(file.trimmed(), false);
+        Fw()->Asset()->SetDefaultAssetStorage(storage);
     }
     foreach(const QString &storageName, storages)
     {
-        AssetStoragePtr storage = framework_->Asset()->DeserializeAssetStorageFromString(storageName.trimmed(), false);
+        AssetStoragePtr storage = Fw()->Asset()->DeserializeAssetStorageFromString(storageName.trimmed(), false);
         if (files.isEmpty()) // If "--file" was not specified, then use "--storage" as the default. (If both are specified, "--file" takes precedence over "--storage").
-            framework_->Asset()->SetDefaultAssetStorage(storage);
+            Fw()->Asset()->SetDefaultAssetStorage(storage);
     }
-    if (framework_->HasCommandLineParameter("--defaultstorage"))
+    if (Fw()->HasCommandLineParameter("--defaultstorage"))
     {
-        QStringList defaultStorages = framework_->CommandLineParameters("--defaultstorage");
+        QStringList defaultStorages = Fw()->CommandLineParameters("--defaultstorage");
         if (defaultStorages.size() == 1)
         {
-            AssetStoragePtr defaultStorage = framework_->Asset()->GetAssetStorageByName(defaultStorages[0]);
+            AssetStoragePtr defaultStorage = Fw()->Asset()->AssetStorageByName(defaultStorages[0]);
             if (!defaultStorage)
                 LogError("Cannot set storage \"" + defaultStorages[0] + "\" as the default storage, since it doesn't exist!");
             else
-                framework_->Asset()->SetDefaultAssetStorage(defaultStorage);
+                Fw()->Asset()->SetDefaultAssetStorage(defaultStorage);
         }
         else
             LogError("Parameter --defaultstorage may be specified exactly once, and must contain a single value!");
@@ -152,21 +159,21 @@ void AssetModule::ConsoleRefreshHttpStorages()
 
 void AssetModule::ConsoleRequestAsset(const QString &assetRef, const QString &assetType)
 {
-    AssetTransferPtr transfer = framework_->Asset()->RequestAsset(assetRef, assetType, true);
+    AssetTransferPtr transfer = Fw()->Asset()->RequestAsset(assetRef, assetType, true);
 }
 
 void AssetModule::AddAssetStorage(const QString &storageString)
 {
-    AssetStoragePtr storage = framework_->Asset()->DeserializeAssetStorageFromString(storageString, false);
+    AssetStoragePtr storage = Fw()->Asset()->DeserializeAssetStorageFromString(storageString, false);
 }
 
 void AssetModule::ListAssetStorages()
 {
     LogInfo("Registered storages: ");
-    foreach(const AssetStoragePtr &storage, framework_->Asset()->GetAssetStorages())
+    foreach(const AssetStoragePtr &storage, Fw()->Asset()->AssetStorages())
     {
         QString storageString = storage->SerializeToString();
-        if (framework_->Asset()->GetDefaultAssetStorage() == storage)
+        if (Fw()->Asset()->DefaultAssetStorage() == storage)
             storageString += ";default";
         LogInfo(storageString);
     }
@@ -174,17 +181,17 @@ void AssetModule::ListAssetStorages()
 
 void AssetModule::LoadAllLocalAssetsWithSuffix(const QString &suffix, const QString &assetType)
 {
-    foreach(const AssetStoragePtr &s, framework_->Asset()->GetAssetStorages())
+    foreach(const AssetStoragePtr &s, Fw()->Asset()->AssetStorages())
     {
         LocalAssetStorage *storage = dynamic_cast<LocalAssetStorage*>(s.get());
         if (storage)
-            storage->LoadAllAssetsOfType(framework_->Asset(), suffix, assetType);
+            storage->LoadAllAssetsOfType(Fw()->Asset(), suffix, assetType);
     }
 }
 
 void AssetModule::RefreshHttpStorages()
 {
-    foreach(const AssetStoragePtr &s, framework_->Asset()->GetAssetStorages())
+    foreach(const AssetStoragePtr &s, Fw()->Asset()->AssetStorages())
     {
         HttpAssetStorage *storage = dynamic_cast<HttpAssetStorage*>(s.get());
         if (storage)
@@ -208,7 +215,7 @@ void AssetModule::ServerNewUserConnected(u32 /*connectionID*/, UserConnection *c
     }
 
     // Serialize all storages to the client. If the client is from the same computer than the server, we can also serialize the LocalAssetStorages.
-    std::vector<AssetStoragePtr> storages = framework_->Asset()->GetAssetStorages();
+    std::vector<AssetStoragePtr> storages = Fw()->Asset()->AssetStorages();
     for(size_t i = 0; i < storages.size(); ++i)
     {
         bool isLocalStorage = (dynamic_cast<LocalAssetStorage*>(storages[i].get()) != 0);
@@ -221,7 +228,7 @@ void AssetModule::ServerNewUserConnected(u32 /*connectionID*/, UserConnection *c
     }
 
     // Specify which storage to use as default.
-    AssetStoragePtr defaultStorage = framework_->Asset()->GetDefaultAssetStorage();
+    AssetStoragePtr defaultStorage = Fw()->Asset()->DefaultAssetStorage();
     bool defaultStorageIsLocal = (dynamic_cast<LocalAssetStorage*>(defaultStorage.get()) != 0);
     if (defaultStorage && (!defaultStorageIsLocal || isLocalhostConnection))
     {
@@ -245,7 +252,7 @@ void AssetModule::DetermineStorageTrustStatus(AssetStoragePtr storage)
 {
     // If the --trustserverstorages command line parameter is set, we trust each storage exactly the way the server does.
     ///\todo Make the a end-user option at runtime/connection time to specify per-server instance whether --trustserverstorages is in effect.
-    if (!framework_->HasCommandLineParameter("--trustserverstorages"))
+    if (!Fw()->HasCommandLineParameter("--trustserverstorages"))
     {
         ///\todo Read from ConfigAPI whether to set false/ask/true here.
         ///\todo If the trust state is 'ask', show a *non-modal* notification -> config dialog if the user wants to trust content from this source.
@@ -265,7 +272,7 @@ void AssetModule::ClientConnectedToServer(UserConnectedResponseData *responseDat
             QString storageData = storage.attribute("data");
             bool connectedToRemoteServer = true; // If false, we connected to localhost.
             ///\todo Determine here whether we connected to localhost, and if so, set connectedToRemoteServer = false.
-            AssetStoragePtr assetStorage = framework_->Asset()->DeserializeAssetStorageFromString(storageData, connectedToRemoteServer);
+            AssetStoragePtr assetStorage = Fw()->Asset()->DeserializeAssetStorageFromString(storageData, connectedToRemoteServer);
 
             // Remember that this storage was received from the server, so we can later stop using it when we disconnect (and possibly reconnect to another server).
             if (assetStorage)
@@ -281,9 +288,9 @@ void AssetModule::ClientConnectedToServer(UserConnectedResponseData *responseDat
         if (!defaultStorage.isNull())
         {
             QString defaultStorageName = defaultStorage.attribute("name");
-            AssetStoragePtr defaultStoragePtr = framework_->Asset()->GetAssetStorageByName(defaultStorageName);
+            AssetStoragePtr defaultStoragePtr = Fw()->Asset()->AssetStorageByName(defaultStorageName);
             if (defaultStoragePtr)
-                framework_->Asset()->SetDefaultAssetStorage(defaultStoragePtr);
+                Fw()->Asset()->SetDefaultAssetStorage(defaultStoragePtr);
         }
     }
 }
@@ -294,7 +301,7 @@ void AssetModule::ClientDisconnectedFromServer()
     {
         AssetStoragePtr storage = storagesReceivedFromServer[i].lock();
         if (storage)
-            framework_->Asset()->RemoveAssetStorage(storage->Name());
+            Fw()->Asset()->RemoveAssetStorage(storage->Name());
     }
     storagesReceivedFromServer.clear();
 }
@@ -328,10 +335,10 @@ void AssetModule::HandleAssetDiscovery(kNet::MessageConnection* source, MsgAsset
         return;
     
     // If we are server, the message had to come from a client, and we replicate it to everyone except the sender
-    TundraLogic::TundraLogicModule* tundra = framework_->GetModule<TundraLogic::TundraLogicModule>();
-    KristalliProtocolModule *kristalli = framework_->GetModule<KristalliProtocolModule>();
+    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
+    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
     if (tundra->IsServer())
-        foreach(UserConnectionPtr userConn, kristalli->GetUserConnections())
+        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
         {
             KNetUserConnection* kNetConn = dynamic_cast<KNetUserConnection*>(userConn.get());
             if (kNetConn->connection != source)
@@ -339,7 +346,7 @@ void AssetModule::HandleAssetDiscovery(kNet::MessageConnection* source, MsgAsset
         }
 
     // Then let assetAPI handle locally
-    framework_->Asset()->HandleAssetDiscovery(assetRef, assetType);
+    Fw()->Asset()->HandleAssetDiscovery(assetRef, assetType);
 }
 
 void AssetModule::HandleAssetDeleted(kNet::MessageConnection* source, MsgAssetDeleted& msg)
@@ -351,10 +358,10 @@ void AssetModule::HandleAssetDeleted(kNet::MessageConnection* source, MsgAssetDe
         return;
     
     // If we are server, the message had to come from a client, and we replicate it to everyone except the sender
-    TundraLogic::TundraLogicModule* tundra = framework_->GetModule<TundraLogic::TundraLogicModule>();
-    KristalliProtocolModule *kristalli = framework_->GetModule<KristalliProtocolModule>();
+    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
+    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
     if (tundra->IsServer())
-        foreach(UserConnectionPtr userConn, kristalli->GetUserConnections())
+        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
         {
             KNetUserConnection* kNetConn = dynamic_cast<KNetUserConnection*>(userConn.get());
             if (kNetConn->connection != source)
@@ -362,7 +369,7 @@ void AssetModule::HandleAssetDeleted(kNet::MessageConnection* source, MsgAssetDe
         }
 
     // Then let assetAPI handle locally
-    framework_->Asset()->HandleAssetDeleted(assetRef);
+    Fw()->Asset()->HandleAssetDeleted(assetRef);
 }
 
 void AssetModule::OnAssetUploaded(const QString& assetRef)
@@ -371,8 +378,8 @@ void AssetModule::OnAssetUploaded(const QString& assetRef)
     if (!ShouldReplicateAssetDiscovery(assetRef))
         return;
     
-    TundraLogic::TundraLogicModule* tundra = framework_->GetModule<TundraLogic::TundraLogicModule>();
-    KristalliProtocolModule *kristalli = framework_->GetModule<KristalliProtocolModule>();
+    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
+    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
 
     MsgAssetDiscovery msg;
     msg.assetRef = StringToBuffer(assetRef.toStdString()); /// @bug Convert to UTF-8 instead!
@@ -381,13 +388,13 @@ void AssetModule::OnAssetUploaded(const QString& assetRef)
     // If we are server, send to everyone
     if (tundra->IsServer())
     {
-        foreach(UserConnectionPtr userConn, kristalli->GetUserConnections())
+        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
             userConn->Send(msg);
     }
     // If we are client, send to server
     else
     {
-        kNet::MessageConnection* connection = tundra->GetClient()->GetConnection();
+        kNet::MessageConnection* connection = tundra->GetClient()->MessageConnection();
         if (connection)
             connection->Send(msg);
     }
@@ -399,22 +406,20 @@ void AssetModule::OnAssetDeleted(const QString& assetRef)
     if (!ShouldReplicateAssetDiscovery(assetRef))
         return;
     
-    TundraLogic::TundraLogicModule* tundra = framework_->GetModule<TundraLogic::TundraLogicModule>();
-    KristalliProtocolModule *kristalli = framework_->GetModule<KristalliProtocolModule>();
+    TundraLogicModule* tundra = Fw()->Module<TundraLogicModule>();
+    KristalliProtocolModule *kristalli = Fw()->Module<KristalliProtocolModule>();
 
     MsgAssetDeleted msg;
     msg.assetRef = StringToBuffer(assetRef.toStdString()); /// @bug Convert to UTF-8 instead!
-    
-    // If we are server, send to everyone
-    if (tundra->IsServer())
+
+    if (tundra->IsServer()) // We are server, send to everyone
     {
-        foreach(UserConnectionPtr userConn, kristalli->GetUserConnections())
+        foreach(UserConnectionPtr userConn, kristalli->UserConnections())
             userConn->Send(msg);
     }
-    // If we are client, send to server
-    else
+    else // We are client, send to server
     {
-        kNet::MessageConnection* connection = tundra->GetClient()->GetConnection();
+        kNet::MessageConnection* connection = tundra->GetClient()->MessageConnection();
         if (connection)
             connection->Send(msg);
     }
@@ -422,12 +427,12 @@ void AssetModule::OnAssetDeleted(const QString& assetRef)
 
 void AssetModule::ConsoleDumpAssetTransfers()
 {
-    AssetAPI* asset = framework_->Asset();
+    AssetAPI* asset = Fw()->Asset();
     LogInfo("Current transfers:");
-    const AssetTransferMap& currentTransfers = asset->GetCurrentTransfers();
+    const AssetTransferMap& currentTransfers = asset->CurrentTransfers();
     for(AssetTransferMap::const_iterator i = currentTransfers.begin(); i != currentTransfers.end(); ++i)
     {
-        AssetPtr assetPtr = asset->GetAsset(i->first);
+        AssetPtr assetPtr = asset->FindAsset(i->first);
         unsigned numPendingDependencies = assetPtr ? asset->NumPendingDependencies(assetPtr) : 0;
         if (numPendingDependencies > 0)
         {
@@ -456,7 +461,7 @@ void AssetModule::ConsoleDumpAssetTransfers()
 void AssetModule::ConsoleDumpAssets()
 {
     LogInfo("Current assets:");
-    const AssetMap& assets = framework_->Asset()->GetAllAssets();
+    const AssetMap& assets = Fw()->Asset()->Assets();
     for(AssetMap::const_iterator i = assets.begin(); i != assets.end(); ++i)
     {
         QString name = i->first;
@@ -474,8 +479,8 @@ bool AssetModule::ShouldReplicateAssetDiscovery(const QString& assetRef)
         return false;
     else
     {
-        AssetPtr asset = framework_->Asset()->GetAsset(assetRef);
-        AssetStoragePtr storage = asset ? asset->GetAssetStorage() : AssetStoragePtr();
+        AssetPtr asset = Fw()->Asset()->FindAsset(assetRef);
+        AssetStoragePtr storage = asset ? asset->AssetStorage() : AssetStoragePtr();
         // If the storage exists, simply check that it's replicated and it is an HttpAssetStorage
         /// \todo Evaluate whether asset discovery should be/needs to be supported for other assetstorages
         if (storage && storage->IsReplicated() && dynamic_cast<HttpAssetStorage*>(storage.get()) != 0)
@@ -500,7 +505,6 @@ DEFINE_STATIC_PLUGIN_MAIN(AssetModule)
 #endif
 {
     Framework::SetInstance(fw); // Inside this DLL, remember the pointer to the global framework object.
-    IModule *module = new AssetModule();
-    fw->RegisterModule(module);
+    fw->RegisterModule(new AssetModule());
 }
 }

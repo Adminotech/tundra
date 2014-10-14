@@ -19,8 +19,6 @@ public:
     AssetModule();
     virtual ~AssetModule();
 
-    virtual void Initialize();
-
 public slots:
     void ConsoleRequestAsset(const QString &assetRef, const QString &assetType);
 
@@ -68,6 +66,9 @@ private slots:
     void OnAssetDeleted(const QString& assetRef);
     
 private:
+    void Load();
+    void Initialize();
+
     void ProcessCommandLineOptions();
 
     /// Check from an assetref whether it should be replicated when a modify or a delete to it is detected.
