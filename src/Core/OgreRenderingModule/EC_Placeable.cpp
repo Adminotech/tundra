@@ -333,7 +333,9 @@ void EC_Placeable::AttachNode()
                             EC_Placeable* parentPlaceable = parentEntity->GetComponent<EC_Placeable>().get();
                             parentPlaceable_ = parentPlaceable;
                             parentPlaceable_->ChildAttached(shared_from_this());
+
                             connect(parentPlaceable_, SIGNAL(TransformChanged()), this, SLOT(OnParentPlaceableTransformChanged()), Qt::UniqueConnection);
+                            connect(parentPlaceable_, SIGNAL(ParentChainTransformsChanged()), this, SLOT(OnParentChainTransformsChanged()), Qt::UniqueConnection);
 
                             parentBone_ = bone;
                             parentMesh_ = parentMesh;
@@ -381,6 +383,9 @@ void EC_Placeable::AttachNode()
                     
                     // Connect to destruction of the placeable to be able to detach gracefully
                     connect(parentPlaceable_, SIGNAL(AboutToBeDestroyed()), this, SLOT(OnParentPlaceableDestroyed()), Qt::UniqueConnection);
+                    connect(parentPlaceable_, SIGNAL(TransformChanged()), this, SLOT(OnParentChainTransformsChanged()), Qt::UniqueConnection);
+                    connect(parentPlaceable_, SIGNAL(ParentChainTransformsChanged()), this, SLOT(OnParentChainTransformsChanged()), Qt::UniqueConnection);
+
                     attached_ = true;
                     return;
                 }
@@ -425,7 +430,7 @@ void EC_Placeable::DetachNode()
     {
         Ogre::SceneManager* sceneMgr = world->OgreSceneManager();
         Ogre::SceneNode* root_node = sceneMgr->getRootSceneNode();
-        
+
         // Three possible cases
         // 1) attached to scene root node
         // 2) attached to another scene node
@@ -434,7 +439,9 @@ void EC_Placeable::DetachNode()
         {
             // Stop listening to parent placeable's transform changes for manual non-animating update
             disconnect(parentPlaceable_, SIGNAL(TransformChanged()), this, SLOT(OnParentPlaceableTransformChanged()));
+            disconnect(parentPlaceable_, SIGNAL(ParentChainTransformsChanged()), this, SLOT(OnParentChainTransformsChanged()));
             disconnect(parentMesh_, SIGNAL(MeshAboutToBeDestroyed()), this, SLOT(OnParentMeshDestroyed()));
+
             attachmentListener.RemoveAttachment(parentBone_, this);
             boneAttachmentNode_->removeChild(sceneNode_);
             parentBone_ = 0;
@@ -443,6 +450,9 @@ void EC_Placeable::DetachNode()
         else if (parentPlaceable_)
         {
             disconnect(parentPlaceable_, SIGNAL(AboutToBeDestroyed()), this, SLOT(OnParentPlaceableDestroyed()));
+            disconnect(parentPlaceable_, SIGNAL(TransformChanged()), this, SLOT(OnParentChainTransformsChanged()));
+            disconnect(parentPlaceable_, SIGNAL(ParentChainTransformsChanged()), this, SLOT(OnParentChainTransformsChanged()));
+
             parentPlaceable_->GetSceneNode()->removeChild(sceneNode_);
         }
         else
@@ -898,6 +908,14 @@ void EC_Placeable::OnParentPlaceableTransformChanged()
                 attachmentListener.ForceUpdate(parentBone_);
         }
     }
+
+    OnParentChainTransformsChanged();
+}
+
+void EC_Placeable::OnParentChainTransformsChanged()
+{
+    if (parentPlaceable_)
+        emit ParentChainTransformsChanged();
 }
 
 void EC_Placeable::OnEntityParentChanged()

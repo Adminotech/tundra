@@ -292,8 +292,13 @@ public slots:
 signals:
     /// Emitted when about to be destroyed
     void AboutToBeDestroyed();
+    
     /// Emitted when the Ogre scene node transform has been changed
     void TransformChanged();
+
+    /// Emitted when Transforms change in the parent Placeable chain.
+    /// Triggered all the way from the root level grandparent.
+    void ParentChainTransformsChanged();
 
 private slots:
     /// Registers the action this EC provides to the parent entity, when it's set.
@@ -316,6 +321,9 @@ private slots:
 
     /// Handle parent placeable's transform changing. Used when skeletally attached; handle manual position update when the parent skeletal mesh does not animate
     void OnParentPlaceableTransformChanged();
+
+    /// Handle parent placeable chain transforms changing. Attacher to parent placeables TransformChanged and ParentChainTransformsChanged signals.
+    void OnParentChainTransformsChanged();
 
     /// Handle the entity reparenting itself
     void OnEntityParentChanged();
