@@ -79,7 +79,7 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     };
 
     explicit Impl(PhysicsWorld *owner) :
-        debugDrawMaxMSecs(200),
+        debugDrawMaxMSecs(33),
         debugDrawExhausted(false),
         debugDrawModePreExhaust(0),
         debugDrawMode(0),
@@ -138,7 +138,7 @@ struct PhysicsWorld::Impl : public btIDebugDraw
         if (debugDrawExhausted)
         {
             debugDrawMode = debugDrawModePreExhaust;
-            /* As we will be doing rendering less often, 2fps when exhausted,
+            /* As we will be doing rendering less often, 1fps when exhausted,
                we can take a bit more time to do it. */
             debugDrawMaxMSecs = 300;
         }
