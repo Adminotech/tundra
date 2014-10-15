@@ -42,6 +42,7 @@ struct EC_RigidBody::Impl : public btMotionState
     Impl(EC_RigidBody *rb) :
         body(0),
         world(0),
+        owner(0),
         shape(0),
         childShape(0),
         heightField(0),
