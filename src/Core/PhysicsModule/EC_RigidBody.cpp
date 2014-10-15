@@ -632,6 +632,10 @@ void EC_RigidBody::AttributesChanged()
     if (impl->disconnected)
         return;
     
+    bool isShapeTriMeshOrConvexHull = (shapeType.Get() == TriMesh || shapeType.Get() == ConvexHull);
+    bool bodyRead = false;
+    bool meshRequested = false;
+
     // Create body now if does not exist yet
     if (!impl->body)
         CreateBody();
@@ -643,6 +647,7 @@ void EC_RigidBody::AttributesChanged()
     {
         // Read body to the world in case static/dynamic classification changed, or if collision mask changed
         ReaddBody();
+        bodyRead = true;
     }
     
     if (friction.ValueChanged())
@@ -668,30 +673,31 @@ void EC_RigidBody::AttributesChanged()
         if (shapeType.Get() != impl->cachedShapeType || size.Get() != impl->cachedSize)
         {
             // If shape does not involve mesh, can create it directly. Otherwise request the mesh
-            if (shapeType.Get() != TriMesh && shapeType.Get() != ConvexHull)
+            if (!isShapeTriMeshOrConvexHull)
             {
                 CreateCollisionShape();
                 impl->cachedShapeType = shapeType.Get();
                 impl->cachedSize = size.Get();
             }
-            else
+            // If shape type has changed from TrimMesh <--> ConvexHull refresh the mesh shape.
+            else if (shapeType.Get() != impl->cachedShapeType)
+            {
                 RequestMesh();
+                meshRequested = true;
+            }
+            // If size changed but no reload of mesh shape was done, update its scale.
+            else if (size.Get() != impl->cachedSize)
+                UpdateScale();
         }
     }
     
     // Request mesh if its id changes
-    if (collisionMeshRef.ValueChanged())
-    {
-        if (shapeType.Get() == TriMesh || shapeType.Get() == ConvexHull)
-            RequestMesh();
-    }
+    if (collisionMeshRef.ValueChanged() && isShapeTriMeshOrConvexHull && !meshRequested)
+        RequestMesh();
     
-    /// @bug On component init ReadBody is called twice (inside this function), shoul be avoided?
-    if (phantom.ValueChanged() || kinematic.ValueChanged())
-    {
-        // Readd body to the world in case phantom or kinematic classification changed
+    // Readd body to the world in case phantom or kinematic classification changed
+    if (!bodyRead && (phantom.ValueChanged() || kinematic.ValueChanged()))
         ReaddBody();
-    }
     
     if (drawDebug.ValueChanged())
     {
@@ -906,7 +912,7 @@ void EC_RigidBody::TerrainUpdated(IAttribute* attribute)
 }
 
 void EC_RigidBody::RequestMesh()
-{    
+{
     Entity *parent = ParentEntity();
 
     QString collisionMesh = collisionMeshRef.Get().ref.trimmed();
@@ -917,7 +923,6 @@ void EC_RigidBody::RequestMesh()
             return;
         collisionMesh = mesh->meshRef.Get().ref.trimmed();
     }
-
     if (!collisionMesh.isEmpty())
     {
         // Do not create shape right now, but request the mesh resource
