@@ -7,17 +7,24 @@
 #include "PhysicsModule.h"
 #include "PhysicsWorld.h"
 #include "PhysicsUtils.h"
+#include "EC_RigidBody.h"
+
+#include "LoggingFunctions.h"
 #include "Profiler.h"
+#include "HighPerfClock.h"
+
 #include "Scene/Scene.h"
 #include "OgreWorld.h"
-#include "EC_RigidBody.h"
-#include "LoggingFunctions.h"
+#include "Renderer.h"
+#include "EC_Camera.h"
+
 #include "Geometry/LineSegment.h"
 #include "Geometry/OBB.h"
+#include "Geometry/Frustum.h"
 #include "Math/float3x3.h"
 #include "Math/Quat.h"
+
 #include "Entity.h"
-#include "HighPerfClock.h"
 
 #include <LinearMath/btIDebugDraw.h>
 // Disable unreferenced formal parameter coming from Bullet
@@ -79,17 +86,7 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     };
 
     explicit Impl(PhysicsWorld *owner) :
-        debugDrawMaxMSecs(33),
-        debugDrawExhausted(false),
-        debugDrawModePreExhaust(0),
         debugDrawMode(0),
-        debugDrawCacheIndex_(0),
-#if _DEBUG
-        // >100k will start to hurt memory usage
-        debugDrawCacheMaxSize_(100000),
-#else
-        debugDrawCacheMaxSize_(1000000),
-#endif
         collisionConfiguration(0),
         collisionDispatcher(0),
         broadphase(0),
@@ -110,8 +107,6 @@ struct PhysicsWorld::Impl : public btIDebugDraw
 
     ~Impl()
     {
-        ReserveDebugDrawCache(-1);
-
         delete world;
         delete solver;
         delete broadphase;
@@ -122,28 +117,24 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     void PreDebugDraw()
     {
         PROFILE(PhysicsWorld_Impl_PreDebugDraw);
+        
+        debugDrawState.Starting();
 
-        debugDrawStartTime = GetCurrentClockTime();
-        debugDrawCacheIndex_ = 0;
-        debugDrawExhausted = false;
+        /* Usage commented out in drawLine(), see comment there
+        EC_Camera *camera = (cachedOgreWorld ? cachedOgreWorld->Renderer()->MainCameraComponent() : 0);
+        if (camera)
+            debugDrawState.frustum = camera->ToFrustum();
+        else
+            debugDrawState.frustum.type = InvalidFrustum; */
     }
 
     void PostDebugDraw()
     {
         PROFILE(PhysicsWorld_Impl_PostDebugDraw);
 
-        /* Restore pre exhaustion debug flags. Don't reset
-           debugDrawExhausted here as it can be used to evaluate
-           if cached debug draw should be used on the next frame. */
-        if (debugDrawExhausted)
-        {
-            debugDrawMode = debugDrawModePreExhaust;
-            /* As we will be doing rendering less often, 1fps when exhausted,
-               we can take a bit more time to do it. */
-            debugDrawMaxMSecs = 300;
-        }
-        else
-            debugDrawMaxMSecs = 33;
+        if (debugDrawState.exhausted)
+            debugDrawMode = debugDrawState.preExhaustionDrawMode;
+        debugDrawState.Completed();
     }
 
     void DrawCachedDebugLines()
@@ -152,61 +143,66 @@ struct PhysicsWorld::Impl : public btIDebugDraw
 
         if (!IsDebugGeometryEnabled() || !cachedOgreWorld)
             return;
-
-        for(int i=0; i<debugDrawCacheIndex_; ++i)
+        
+        for(int i=0, len=debugDrawState.lineCache.size(); i<debugDrawState.lineCacheIndex, i<len; ++i)
         {
-            const DebugDrawLineCacheItem *cacheLine = debugDrawCache_[i];
+            const DebugDrawLineCacheItem *cacheLine = debugDrawState.lineCache[i];
             cachedOgreWorld->DebugDrawLine(cacheLine->from, cacheLine->to, cacheLine->color);
         }
-    }
-
-    void ReserveDebugDrawCache(int num)
-    {
-        for(int i=0, len=debugDrawCache_.size(); i<len; ++i)
-            delete debugDrawCache_[i];
-        debugDrawCache_.clear();
-        debugDrawCacheIndex_ = 0;
-
-        for(int i=0; i<num; ++i)
-            debugDrawCache_.push_back(new DebugDrawLineCacheItem());
     }
 
     /// btIDebugDraw override
     virtual void drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
     {
-        if (debugDrawExhausted)
+        //PROFILE(PhysicsWorld_Impl_drawLine);
+
+        if (debugDrawState.exhausted)
             return;
         if (!IsDebugGeometryEnabled() || !cachedOgreWorld)
             return;
 
         // Incrementally make cache bigger up to debugDrawCacheMaxSize_.
-        bool cacheFull = (debugDrawCacheIndex_ >= debugDrawCache_.size());
-        if (cacheFull && debugDrawCache_.size() < debugDrawCacheMaxSize_)
+        bool cacheFull = debugDrawState.IsCacheFull();
+        if (cacheFull && !debugDrawState.CacheAtFullCapacity())
         {
-            for(int i=0; i<50000; ++i)
-                debugDrawCache_.push_back(new DebugDrawLineCacheItem());
-            cacheFull = false;
+            if (debugDrawState.IncrementCache(50000))
+                cacheFull = false;
         }
-
-        if (cacheFull || (GetCurrentClockTime() - debugDrawStartTime >= GetCurrentClockFreq() * debugDrawMaxMSecs / 1000))
+        if (cacheFull || debugDrawState.IsOverAllowedExecutionTime())
         {
             /* This mode is queried per object inside bullets debug draw, and is the only mechanism to halt the internals
                mid rendering. Once max rendering time has been reached, we want to tell bullet to stop calculating the lines.
                Even if we don't render them here, bullet will stil carry on via debugDrawMode if not changed here. */
-            debugDrawModePreExhaust = debugDrawMode;
+            debugDrawState.exhausted = (cacheFull ? DebugDrawState::E_CacheFull : DebugDrawState::E_ExecutionTime);
+            debugDrawState.preExhaustionDrawMode = debugDrawMode;
+
             debugDrawMode = btIDebugDraw::DBG_NoDebug;
-            debugDrawExhausted = true;
             return;
         }
 
-        DebugDrawLineCacheItem *cacheLine = debugDrawCache_[debugDrawCacheIndex_];
+        /* @todo If would be nice to filter out things that are not in camera frustum
+        if (debugDrawState.frustum.type != InvalidFrustum)
+        {
+            //PROFILE(PhysicsWorld_Impl_FrustumContains);
+
+            debugDrawState.testLine.a.Set(from.x(), from.y(), from.z());
+            debugDrawState.testLine.b.Set(to.x(), to.y(), to.z());
+
+            if (!debugDrawState.frustum.Contains(debugDrawState.testLine))
+                return;
+        }*/
+
+        /* If last frame was exhausted by the cache side, try rendering less often
+           does not work well yet, see the function.
+        if (debugDrawState.ShouldSkipLine())
+            return;*/
+
+        DebugDrawLineCacheItem *cacheLine = debugDrawState.Next();
         cacheLine->from.Set(from.x(), from.y(), from.z());
         cacheLine->to.Set(to.x(), to.y(), to.z());
         cacheLine->color.Set(color.x(), color.y(), color.z());
 
         cachedOgreWorld->DebugDrawLine(cacheLine->from, cacheLine->to, cacheLine->color);
-
-        debugDrawCacheIndex_++;
     }
 
     /// btIDebugDraw override
@@ -230,7 +226,7 @@ struct PhysicsWorld::Impl : public btIDebugDraw
         debugDrawMode = debugMode;
 
         // Create new cache. Start with 50k and ramp up from there (in drawLine) towards debugDrawCacheMaxSize_.
-        ReserveDebugDrawCache(IsDebugGeometryEnabled() ? 50000 : -1);
+        debugDrawState.ReserveCache(IsDebugGeometryEnabled() ? 50000 : -1);
     }
     
     /// btIDebugDraw override
@@ -254,14 +250,146 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     OgreWorld* cachedOgreWorld;
 
     /// Choking for debug rendering
-    tick_t debugDrawStartTime;
-    int debugDrawMaxMSecs;
-    int debugDrawModePreExhaust;
-    bool debugDrawExhausted;
+    struct DebugDrawState
+    {
+        enum Exhausted
+        {
+            E_NotExhausted = 0,
+            E_ExecutionTime,
+            E_CacheFull
+        };
 
-    QList<DebugDrawLineCacheItem*> debugDrawCache_;
-    int debugDrawCacheIndex_;
-    int debugDrawCacheMaxSize_;
+        tick_t timeStarted;
+        tick_t timeCompleted;
+
+        Exhausted exhausted;
+        Exhausted exhaustedLastUpdate;
+
+        int allowedExecutionMSecs;
+        int preExhaustionDrawMode;
+
+        QList<DebugDrawLineCacheItem*> lineCache;
+        int lineCacheIndex;
+        int lineCacheMaxSize;
+        int lineCacheSkipped;
+
+        Frustum frustum;
+        LineSegment testLine;
+
+        DebugDrawState() :  
+            exhausted(E_NotExhausted), exhaustedLastUpdate(E_NotExhausted), allowedExecutionMSecs(33),
+            preExhaustionDrawMode(0), lineCacheIndex(0),
+#if _DEBUG
+            // >100k will start to hurt memory usage
+            lineCacheMaxSize(100000)
+#else
+            lineCacheMaxSize(1000000)
+#endif
+        {
+            timeStarted = GetCurrentClockTime();
+            timeCompleted = timeStarted;
+        }
+
+        ~DebugDrawState()
+        {
+            ReserveCache(-1);
+        }
+
+        void Starting()
+        {
+            timeStarted = GetCurrentClockTime();
+
+            exhaustedLastUpdate = exhausted;
+            exhausted = E_NotExhausted;
+            
+            lineCacheIndex = 0;
+            lineCacheSkipped = 0;
+        }
+
+        void Completed()
+        {
+            timeCompleted = GetCurrentClockTime();
+
+            /* As we will be doing rendering less often, 1fps when exhausted,
+               we can take a bit more time to do it and provide more rendering results
+               around or below the same time spent. */
+            allowedExecutionMSecs = (exhausted ? 300 : 33);
+        }
+
+        bool IsExhausted() const
+        {
+            return (exhausted != E_NotExhausted);
+        }
+
+        bool IsOverAllowedExecutionTime() const
+        {
+            return (GetCurrentClockTime() - timeStarted >= GetCurrentClockFreq() * allowedExecutionMSecs / 1000);
+        }
+
+        void ReserveCache(int num)
+        {
+            for(int i=0, len=lineCache.size(); i<len; ++i)
+                delete lineCache[i];
+            lineCache.clear();
+            lineCacheIndex = 0;
+            lineCacheSkipped = 0;
+
+            for(int i=0; i<num; ++i)
+                lineCache.push_back(new DebugDrawLineCacheItem());
+        }
+
+        bool IncrementCache(int num)
+        {
+            bool newAllocated = false;
+            for(int i=0; i<num; ++i)
+            {
+                if (!CacheAtFullCapacity())
+                {
+                    lineCache.push_back(new DebugDrawLineCacheItem());
+                    newAllocated = true;
+                }
+                else
+                    break;
+            }
+            return newAllocated;
+        }
+
+        bool IsCacheFull() const
+        {
+            return (lineCacheIndex >= lineCache.size());
+        }
+
+        bool CacheAtFullCapacity() const
+        {
+            return (lineCache.size() >= lineCacheMaxSize);
+        }
+        
+        bool ShouldSkipLine()
+        {
+            // Meh this blinks, not sure if this can be done without more book keeping
+            // eg. render every other for 60 frames when E_CacheFull happens. Would still
+            // introduce blinking in the rendering every other second...
+            return false;
+
+            if (lineCacheIndex == 0)
+                return false;
+
+            if (exhaustedLastUpdate == E_CacheFull && ((lineCacheIndex + lineCacheSkipped) % 2 == 0))
+            {
+                lineCacheSkipped++;
+                return true;
+            }
+            return false;
+        }
+
+        DebugDrawLineCacheItem *Next()
+        {
+            DebugDrawLineCacheItem *item = lineCache[lineCacheIndex];
+            lineCacheIndex++;
+            return item;
+        }
+    };
+    DebugDrawState debugDrawState;
 };
 
 PhysicsWorld::PhysicsWorld(const ScenePtr &scene, bool isClient) :
@@ -345,7 +473,7 @@ void PhysicsWorld::Simulate(f64 frametime)
         // Don't choke debug rendering if it is not spending too much time and cache items per frame.
         // If debug rendering is having performance issues, drop to rendering it few times a second (debugDrawUpdatePeriod_).
         debugDrawT_ += fFrametime;
-        if (impl->debugDrawExhausted == false || debugDrawT_ >= debugDrawUpdatePeriod_)
+        if (!impl->debugDrawState.IsExhausted() || debugDrawT_ >= debugDrawUpdatePeriod_)
         {
             debugDrawT_ = 0.0f;
 
