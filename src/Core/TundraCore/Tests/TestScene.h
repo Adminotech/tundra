@@ -17,9 +17,16 @@ namespace TundraTest
         void cleanupTestCase();  // QTest
         void cleanup();          // QTest
 
+        void Create_Entity_data();
         void Create_Entity();
+
+        void Create_Attributes_Unparented_data();
         void Create_Attributes_Unparented();
+
+        void Create_Components_Unparented_data();
         void Create_Components_Unparented();
+
+        void Create_Components_Parented_data();
         void Create_Components_Parented();
 
     private:
