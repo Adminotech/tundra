@@ -79,10 +79,17 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     };
 
     explicit Impl(PhysicsWorld *owner) :
-        debugDrawMaxMSecs(16),
+        debugDrawMaxMSecs(200),
         debugDrawExhausted(false),
         debugDrawModePreExhaust(0),
         debugDrawMode(0),
+        debugDrawCacheIndex_(0),
+#if _DEBUG
+        // >100k will start to hurt memory usage
+        debugDrawCacheMaxSize_(100000),
+#else
+        debugDrawCacheMaxSize_(1000000),
+#endif
         collisionConfiguration(0),
         collisionDispatcher(0),
         broadphase(0),
@@ -125,11 +132,18 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     {
         PROFILE(PhysicsWorld_Impl_PostDebugDraw);
 
-        // Restore debug flags pre exhaustion. Don't reset
-        // debugDrawExhausted here as it can be used to evaluate
-        // if cached debug draw should be used on the next frame.
+        /* Restore pre exhaustion debug flags. Don't reset
+           debugDrawExhausted here as it can be used to evaluate
+           if cached debug draw should be used on the next frame. */
         if (debugDrawExhausted)
+        {
             debugDrawMode = debugDrawModePreExhaust;
+            /* As we will be doing rendering less often, 2fps when exhausted,
+               we can take a bit more time to do it. */
+            debugDrawMaxMSecs = 300;
+        }
+        else
+            debugDrawMaxMSecs = 33;
     }
 
     void DrawCachedDebugLines()
@@ -151,6 +165,7 @@ struct PhysicsWorld::Impl : public btIDebugDraw
         for(int i=0, len=debugDrawCache_.size(); i<len; ++i)
             delete debugDrawCache_[i];
         debugDrawCache_.clear();
+        debugDrawCacheIndex_ = 0;
 
         for(int i=0; i<num; ++i)
             debugDrawCache_.push_back(new DebugDrawLineCacheItem());
@@ -159,19 +174,25 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     /// btIDebugDraw override
     virtual void drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
     {
-        //PROFILE(PhysicsWorld_Impl_drawLine);
-
         if (debugDrawExhausted)
             return;
         if (!IsDebugGeometryEnabled() || !cachedOgreWorld)
             return;
 
+        // Incrementally make cache bigger up to debugDrawCacheMaxSize_.
         bool cacheFull = (debugDrawCacheIndex_ >= debugDrawCache_.size());
+        if (cacheFull && debugDrawCache_.size() < debugDrawCacheMaxSize_)
+        {
+            for(int i=0; i<50000; ++i)
+                debugDrawCache_.push_back(new DebugDrawLineCacheItem());
+            cacheFull = false;
+        }
+
         if (cacheFull || (GetCurrentClockTime() - debugDrawStartTime >= GetCurrentClockFreq() * debugDrawMaxMSecs / 1000))
         {
-            // This mode is queried per object. Once debugDrawMaxMSecs is exhausted, we want to tell bullet
-            // to spot calculating the lines to draw. Even if we dont render them, bullet will still spend
-            // significant amount of time to prepare the lines etc.
+            /* This mode is queried per object inside bullets debug draw, and is the only mechanism to halt the internals
+               mid rendering. Once max rendering time has been reached, we want to tell bullet to stop calculating the lines.
+               Even if we don't render them here, bullet will stil carry on via debugDrawMode if not changed here. */
             debugDrawModePreExhaust = debugDrawMode;
             debugDrawMode = btIDebugDraw::DBG_NoDebug;
             debugDrawExhausted = true;
@@ -208,8 +229,8 @@ struct PhysicsWorld::Impl : public btIDebugDraw
 
         debugDrawMode = debugMode;
 
-        // Create new cache. 75k is well more debug lines than we can render in one frame.
-        ReserveDebugDrawCache(IsDebugGeometryEnabled() ? 75000 : -1);
+        // Create new cache. Start with 50k and ramp up from there (in drawLine) towards debugDrawCacheMaxSize_.
+        ReserveDebugDrawCache(IsDebugGeometryEnabled() ? 50000 : -1);
     }
     
     /// btIDebugDraw override
@@ -240,12 +261,13 @@ struct PhysicsWorld::Impl : public btIDebugDraw
 
     QList<DebugDrawLineCacheItem*> debugDrawCache_;
     int debugDrawCacheIndex_;
+    int debugDrawCacheMaxSize_;
 };
 
 PhysicsWorld::PhysicsWorld(const ScenePtr &scene, bool isClient) :
     scene_(scene),
     physicsUpdatePeriod_(1.0f / 60.0f),
-    debugDrawUpdatePeriod_(1.0f / 2.0f),
+    debugDrawUpdatePeriod_(1.0f),
     debugDrawT_(0.0f),
     maxSubSteps_(6), // If fps is below 10, we start to slow down physics
     isClient_(isClient),
@@ -318,28 +340,31 @@ void PhysicsWorld::Simulate(f64 frametime)
             impl->world->stepSimulation(fFrametime, maxSubSteps_, physicsUpdatePeriod_);
     }
     
-    // Don't choke debug rendering if it is not spending too much time and cache items per frame.
-    // If debug rendering is having performance issues, drop to rendering it few times a second (debugDrawUpdatePeriod_).
-    debugDrawT_ += fFrametime;
-    if (impl->debugDrawExhausted == false || debugDrawT_ >= debugDrawUpdatePeriod_)
+    if (!scene_.expired() && !scene_.lock()->GetFramework()->IsHeadless())
     {
-        debugDrawT_ = 0.0f;
-
-        // Automatically enable debug geometry if at least one debug-enabled rigidbody. Automatically disable if no debug-enabled rigidbodies
-        // However, do not do this if user has used the physicsdebug console command
-        if (!drawDebugManuallySet_)
+        // Don't choke debug rendering if it is not spending too much time and cache items per frame.
+        // If debug rendering is having performance issues, drop to rendering it few times a second (debugDrawUpdatePeriod_).
+        debugDrawT_ += fFrametime;
+        if (impl->debugDrawExhausted == false || debugDrawT_ >= debugDrawUpdatePeriod_)
         {
-            if (!IsDebugGeometryEnabled() && !debugRigidBodies_.empty())
-                SetDebugGeometryEnabled(true);
-            if (IsDebugGeometryEnabled() && debugRigidBodies_.empty())
-                SetDebugGeometryEnabled(false);
-        }
+            debugDrawT_ = 0.0f;
+
+            // Automatically enable debug geometry if at least one debug-enabled rigidbody. Automatically disable if no debug-enabled rigidbodies
+            // However, do not do this if user has used the physicsdebug console command
+            if (!drawDebugManuallySet_)
+            {
+                if (!IsDebugGeometryEnabled() && !debugRigidBodies_.empty())
+                    SetDebugGeometryEnabled(true);
+                if (IsDebugGeometryEnabled() && debugRigidBodies_.empty())
+                    SetDebugGeometryEnabled(false);
+            }
     
-        if (IsDebugGeometryEnabled())
-            DrawDebugGeometry();
+            if (IsDebugGeometryEnabled())
+                DrawDebugGeometry();
+        }
+        else
+            impl->DrawCachedDebugLines();
     }
-    else
-        impl->DrawCachedDebugLines();
 }
 
 void PhysicsWorld::ProcessPostTick(float substeptime)
