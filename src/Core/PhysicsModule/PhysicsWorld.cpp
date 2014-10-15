@@ -144,7 +144,7 @@ struct PhysicsWorld::Impl : public btIDebugDraw
         if (!IsDebugGeometryEnabled() || !cachedOgreWorld)
             return;
         
-        for(int i=0, len=debugDrawState.lineCache.size(); i<debugDrawState.lineCacheIndex, i<len; ++i)
+        for(int i=0, len=debugDrawState.lineCache.size(); i<debugDrawState.lineCacheIndex && i<len; ++i)
         {
             const DebugDrawLineCacheItem *cacheLine = debugDrawState.lineCache[i];
             cachedOgreWorld->DebugDrawLine(cacheLine->from, cacheLine->to, cacheLine->color);
