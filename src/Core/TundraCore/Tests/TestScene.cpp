@@ -46,7 +46,7 @@ namespace TundraTest
         {
             foreach(const bool temporary, TrueAndFalse())
             {
-                QString name = QString("\n\tReplicated = %1 Temporary = %2").arg(TruthyString(replicated)).arg(TruthyString(temporary));
+                QString name = QString("Replicated = %1 Temporary = %2").arg(TruthyString(replicated)).arg(TruthyString(temporary));
                 QTest::newRow(qPrintable(name)) << replicated << temporary;
             }
         }
@@ -90,7 +90,7 @@ namespace TundraTest
         {
             u32 attributeTypeId = sceneApi->AttributeTypeIdForTypeName(attributeTypeName);
 
-            QString name = QString("\n\t%1 %2").arg(attributeTypeName).arg(attributeTypeId);
+            QString name = QString("%1 %2").arg(attributeTypeName).arg(attributeTypeId);
             QTest::newRow(qPrintable(name)) << attributeTypeName << attributeTypeId;
         }
     }
@@ -145,7 +145,7 @@ namespace TundraTest
         {
             u32 componentTypeId = sceneApi->ComponentTypeIdForTypeName(componentTypeName);
 
-            QString name = QString("\n\t%1 %2").arg(componentTypeName).arg(componentTypeId);
+            QString name = QString("%1 %2").arg(componentTypeName).arg(componentTypeId);
             QTest::newRow(qPrintable(name)) << componentTypeName << componentTypeId;
         }
     }
@@ -199,7 +199,7 @@ namespace TundraTest
             {
                 foreach(const bool temporary, TrueAndFalse())
                 {
-                    QString name = QString("\n\t%1 %2 Replicated = %3 Temporary = %4")
+                    QString name = QString("%1 %2 Replicated = %3 Temporary = %4")
                         .arg(componentTypeName).arg(componentTypeId).arg(TruthyString(replicated)).arg(TruthyString(temporary));
                     QTest::newRow(qPrintable(name)) << componentTypeName << componentTypeId << replicated << temporary;
                 }
