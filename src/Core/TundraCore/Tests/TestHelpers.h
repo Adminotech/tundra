@@ -54,6 +54,8 @@ namespace TundraTest
         {
             qDebug() << "TestFramework::~TestFramework()";
 
+            scene.reset();
+
             /* PostGo is the counterpart of PreGo in Initialize. It will unload
                all plugins and uninitialize APIs, preparing Framework for shutdown. */
             if (framework.get())
