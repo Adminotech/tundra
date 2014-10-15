@@ -452,13 +452,18 @@ if (NOT EXISTS CMakeBuildConfig.txt)
 endif ()
 
 # The following defines are required to compile.
-# These enable implicit conversions of common math types between different libraries and our internal math library.
-add_definitions(-DMATH_QT_INTEROP)
-add_definitions(-DMATH_ENABLE_STL_SUPPORT)
-add_definitions(-DMATH_TUNDRA_INTEROP)
-# Both MathGeoLib and kNet has same macros for logging, so disable them from the beforementioned.
-add_definitions(-DLOGGING_SUPPORT_DISABLED)
-
+add_definitions(
+    # These enable implicit conversions of common math types 
+    # between different libraries and our internal math library.
+    #-DMATH_AUTOMATIC_SSE  # TODO: Initial tests with SSE2 did not break the build
+    #-DMATH_SSE2           # but runtime exceptions occurred in float3x4.
+    -DMATH_QT_INTEROP
+    -DMATH_TUNDRA_INTEROP
+    -DMATH_ENABLE_STL_SUPPORT
+    # Both MathGeoLib and kNet has same macros for logging, 
+    # so disable them from the beforementioned.
+    -DLOGGING_SUPPORT_DISABLED
+)
 if (ANDROID)
     add_definitions(-DQT_STL)
 endif()
