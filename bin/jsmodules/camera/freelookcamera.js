@@ -63,6 +63,7 @@ if (!framework.IsHeadless())
     }
 
     // Co-operate with the AvatarApplication: if AvatarCamera already exists, do not activate the FreeLookCamera right now
+    // TODO This should be the other way around.
     var avatarCameraEntity = scene.EntityByName("AvatarCamera");
     if (!avatarCameraEntity)
         camera.SetActive(); // This will trigger ActiveCameraChanged connect frame updates for this script.
@@ -70,7 +71,7 @@ if (!framework.IsHeadless())
 
 function IsCameraActive()
 {
-    return (me.camera == null ? false : me.camera.IsActive());
+    return (me.camera && me.camera.IsActive());
 }
 
 function Update(frametime)
@@ -86,16 +87,13 @@ function Update(frametime)
     if (_g.isAndroid)
         _g.move.amount.z = input.NumTouchPoints() > 1 ? -1 : 0; 
 
-    if (_g.move.amount.x == 0 && _g.move.amount.y == 0 && _g.move.amount.z == 0)
+    if (_g.move.amount.IsZero(1e-6))
     {
         profiler.EndBlock();
         return;
     }
 
-    _g.motion.x = _g.move.amount.x * _g.move.sensitivity * frametime;
-    _g.motion.y = _g.move.amount.y * _g.move.sensitivity * frametime;
-    _g.motion.z = _g.move.amount.z * _g.move.sensitivity * frametime;
-
+    _g.motion = _g.move.amount.Mul(_g.move.sensitivity * frametime);
     _g.motion = me.placeable.Orientation().Mul(_g.motion);
     me.placeable.SetPosition(me.placeable.Position().Add(_g.motion));
 
@@ -152,24 +150,27 @@ function HandleMouse(e)
 
     if (e.IsButtonDown(MouseEvent.RightButton) && !input.IsMouseCursorVisible())
     {
-        if (e.relativeX != 0)
+        if (e.relativeX !== 0)
             HandleMouseLookX(e.relativeX);
-        if (e.relativeY != 0)
+        if (e.relativeY !== 0)
             HandleMouseLookY(e.relativeY);
     }
+
+    if (e.relativeZ !== 0)
+        Zoom(-e.relativeZ / 5);
 }
 
-function HandleMouseLookX(param)
+function HandleMouseLookX(deltaX)
 {
     var transform = me.placeable.transform;
-    transform.rot.y -= _g.rotate.sensitivity * parseInt(param);
+    transform.rot.y -= _g.rotate.sensitivity * deltaX;
     me.placeable.transform = transform;
 }
 
-function HandleMouseLookY(param)
+function HandleMouseLookY(deltaY)
 {
     var transform = me.placeable.transform;
-    transform.rot.x -= _g.rotate.sensitivity * parseInt(param);
+    transform.rot.x -= _g.rotate.sensitivity * deltaY;
     if (transform.rot.x > 90.0)
         transform.rot.x = 90.0;
     if (transform.rot.x < -90.0)
@@ -177,6 +178,16 @@ function HandleMouseLookY(param)
     me.placeable.transform = transform;
 }
 
+function Zoom(d)
+{
+    _g.move.amount.z = d;
+    _g.motion = _g.move.amount;
+    _g.motion = me.placeable.Orientation().Mul(_g.motion);
+    me.placeable.SetPosition(me.placeable.Position().Add(_g.motion));
+    _g.move.amount.z = 0;
+}
+
+// TODO This function is broken
 function GestureStarted(gestureEvent)
 {
     if (!IsCameraActive())
@@ -184,7 +195,7 @@ function GestureStarted(gestureEvent)
 
     if (gestureEvent.GestureType() == Qt.TapAndHoldGesture)
     {
-        if (motion_z == 0)
+        if (motion_z === 0)
             HandleMove("forward");
         else
             HandleStop("forward");
