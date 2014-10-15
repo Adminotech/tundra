@@ -41,6 +41,9 @@ option (ENABLE_TRANSLATIONS
 option (ENABLE_BUILD_OPTIMIZATIONS
     "Enables certain build optimizations on the release builds." OFF
 )
+option (ENABLE_TESTS
+    "Enable building tests" ON
+)
 option (ENABLE_PROFILING
     "Enables Tundras built-in profiler." ON
 )
@@ -98,6 +101,10 @@ endif()
 if (TUNDRACORE_SHARED)
     add_definitions(-DTUNDRACORE_SHARED)
 endif()
+if (ENABLE_TESTS)
+    enable_testing()
+    include (CTest)
+endif ()
 if (ENABLE_PROFILING)
     add_definitions (-DPROFILING)
 endif ()
@@ -221,7 +228,9 @@ AddProject(Application ArchivePlugin)          # Provides archived asset bundle 
 
 # Tests
 
-add_subdirectory(src/Core/TundraCore/Tests)
+if (ENABLE_TESTS)
+    add_subdirectory(src/Core/TundraCore/Tests)
+endif ()
 
 # Meshmoon
 
