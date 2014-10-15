@@ -415,10 +415,9 @@ void EC_RigidBody::UpdateSignals()
     connect(parent, SIGNAL(ComponentAdded(IComponent*, AttributeChange::Type)), this, SLOT(CheckForPlaceableAndTerrain()));
 
     impl->owner = framework->Module<PhysicsModule>();
+
     Scene* scene = parent->ParentScene();
     impl->world = scene->Subsystem<PhysicsWorld>().get();
-    if (impl->world)
-        connect(impl->world, SIGNAL(AboutToUpdate(float)), this, SLOT(OnAboutToUpdate()));
 }
 
 void EC_RigidBody::CheckForPlaceableAndTerrain()
@@ -770,21 +769,6 @@ void EC_RigidBody::PlaceableParentChainTransformsUpdated()
     impl->body->updateInertiaTensor();
 }
 
-void EC_RigidBody::OnAboutToUpdate()
-{
-    PROFILE(EC_RigidBody_OnAboutToUpdate);
-    
-    // If the placeable is parented, we forcibly update world transform from it before each simulation step
-    // However, we do not update scale, as that is expensive
-    
-    /** @todo This code can be removed as above PlaceableParentChainTransformsUpdated now handles this?
-
-    EC_Placeable* placeable = impl->placeable.lock().get();
-    if (placeable && !placeable->parentRef.Get().IsEmpty() && placeable->IsAttached())
-        UpdatePosRotFromPlaceable();
-    */
-}
-
 void EC_RigidBody::SetRotation(const float3& rotation)
 {
     // Cannot modify server-authoritative physics object
@@ -1093,7 +1077,13 @@ void EC_RigidBody::UpdatePosRotFromPlaceable()
 
 void EC_RigidBody::EmitPhysicsCollision(Entity* otherEntity, const float3& position, const float3& normal, float distance, float impulse, bool newCollision)
 {
-    PROFILE(EC_RigidBody_EmitPhysicsCollision);
-    emit PhysicsCollision(otherEntity, position, normal, distance, impulse, newCollision);
+    if (newCollision)
+    {
+        PROFILE(EC_RigidBody_emit_NewPhysicsCollision);
+        emit NewPhysicsCollision(otherEntity, position, normal, distance, impulse);
+    }
+    {
+        PROFILE(EC_RigidBody_emit_PhysicsCollision);
+        emit PhysicsCollision(otherEntity, position, normal, distance, impulse, newCollision);
+    }
 }
-

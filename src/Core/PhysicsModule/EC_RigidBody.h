@@ -223,7 +223,7 @@ public:
     /// @endcond
 
 signals:
-    /// A physics collision has happened between this rigid body and another entity
+    /// A physics collision has happened between this rigid body and another entity.
     /** If there are several contact points, the signal will be sent multiple times for each contact.
         @param otherEntity The second entity
         @param position World position of collision
@@ -233,6 +233,12 @@ signals:
         @param newCollision True if same collision did not happen on the previous frame.
         If collision has multiple contact points, newCollision can only be true for the first of them. */
     void PhysicsCollision(Entity* otherEntity, const float3& position, const float3& normal, float distance, float impulse, bool newCollision);
+
+    /// A new physics collision has happened between this rigid body and another entity.
+    /** This is exactly like the PhysicsCollision but is only triggered once.
+        If you are not interested in long running collisions like objects being inside each other or one is resting on the other, use this signal.
+        @see PhysicsCollision */
+    void NewPhysicsCollision(Entity* otherEntity, const float3& position, const float3& normal, float distance, float impulse);
 
 public slots:
     /// Set collision mesh from visible mesh. Also sets mass 0 (static) because trimeshes cannot move in Bullet
@@ -323,9 +329,6 @@ public slots:
 private slots:
     /// Called when the parent entity has been set.
     void UpdateSignals();
-    
-    /// Called when the simulation is about to be stepped
-    void OnAboutToUpdate();
     
     /// Called when attributes of the placeable have changed
     void PlaceableUpdated(IAttribute *attribute);

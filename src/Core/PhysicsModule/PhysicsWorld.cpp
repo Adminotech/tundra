@@ -17,6 +17,7 @@
 #include "Math/float3x3.h"
 #include "Math/Quat.h"
 #include "Entity.h"
+#include "HighPerfClock.h"
 
 #include <LinearMath/btIDebugDraw.h>
 // Disable unreferenced formal parameter coming from Bullet
@@ -70,13 +71,23 @@ void TickCallback(btDynamicsWorld *world, btScalar timeStep)
 
 struct PhysicsWorld::Impl : public btIDebugDraw
 {
+    struct DebugDrawLineCacheItem
+    {
+        float3 from;
+        float3 to;
+        Color color;
+    };
+
     explicit Impl(PhysicsWorld *owner) :
+        debugDrawMaxMSecs(16),
+        debugDrawExhausted(false),
+        debugDrawModePreExhaust(0),
+        debugDrawMode(0),
         collisionConfiguration(0),
         collisionDispatcher(0),
         broadphase(0),
         solver(0),
         world(0),
-        debugDrawMode(0),
         cachedOgreWorld(0)
     {
 #include "DisableMemoryLeakCheck.h"
@@ -92,6 +103,8 @@ struct PhysicsWorld::Impl : public btIDebugDraw
 
     ~Impl()
     {
+        ReserveDebugDrawCache(-1);
+
         delete world;
         delete solver;
         delete broadphase;
@@ -99,11 +112,80 @@ struct PhysicsWorld::Impl : public btIDebugDraw
         delete collisionConfiguration;
     }
 
+    void PreDebugDraw()
+    {
+        PROFILE(PhysicsWorld_Impl_PreDebugDraw);
+
+        debugDrawStartTime = GetCurrentClockTime();
+        debugDrawCacheIndex_ = 0;
+        debugDrawExhausted = false;
+    }
+
+    void PostDebugDraw()
+    {
+        PROFILE(PhysicsWorld_Impl_PostDebugDraw);
+
+        // Restore debug flags pre exhaustion. Don't reset
+        // debugDrawExhausted here as it can be used to evaluate
+        // if cached debug draw should be used on the next frame.
+        if (debugDrawExhausted)
+            debugDrawMode = debugDrawModePreExhaust;
+    }
+
+    void DrawCachedDebugLines()
+    {
+        PROFILE(PhysicsWorld_Impl_DrawCachedDebugLines);
+
+        if (!IsDebugGeometryEnabled() || !cachedOgreWorld)
+            return;
+
+        for(int i=0; i<debugDrawCacheIndex_; ++i)
+        {
+            const DebugDrawLineCacheItem *cacheLine = debugDrawCache_[i];
+            cachedOgreWorld->DebugDrawLine(cacheLine->from, cacheLine->to, cacheLine->color);
+        }
+    }
+
+    void ReserveDebugDrawCache(int num)
+    {
+        for(int i=0, len=debugDrawCache_.size(); i<len; ++i)
+            delete debugDrawCache_[i];
+        debugDrawCache_.clear();
+
+        for(int i=0; i<num; ++i)
+            debugDrawCache_.push_back(new DebugDrawLineCacheItem());
+    }
+
     /// btIDebugDraw override
     virtual void drawLine(const btVector3& from, const btVector3& to, const btVector3& color)
     {
-        if (IsDebugGeometryEnabled() && cachedOgreWorld)
-            cachedOgreWorld->DebugDrawLine(from, to, color.x(), color.y(), color.z());
+        //PROFILE(PhysicsWorld_Impl_drawLine);
+
+        if (debugDrawExhausted)
+            return;
+        if (!IsDebugGeometryEnabled() || !cachedOgreWorld)
+            return;
+
+        bool cacheFull = (debugDrawCacheIndex_ >= debugDrawCache_.size());
+        if (cacheFull || (GetCurrentClockTime() - debugDrawStartTime >= GetCurrentClockFreq() * debugDrawMaxMSecs / 1000))
+        {
+            // This mode is queried per object. Once debugDrawMaxMSecs is exhausted, we want to tell bullet
+            // to spot calculating the lines to draw. Even if we dont render them, bullet will still spend
+            // significant amount of time to prepare the lines etc.
+            debugDrawModePreExhaust = debugDrawMode;
+            debugDrawMode = btIDebugDraw::DBG_NoDebug;
+            debugDrawExhausted = true;
+            return;
+        }
+
+        DebugDrawLineCacheItem *cacheLine = debugDrawCache_[debugDrawCacheIndex_];
+        cacheLine->from.Set(from.x(), from.y(), from.z());
+        cacheLine->to.Set(to.x(), to.y(), to.z());
+        cacheLine->color.Set(color.x(), color.y(), color.z());
+
+        cachedOgreWorld->DebugDrawLine(cacheLine->from, cacheLine->to, cacheLine->color);
+
+        debugDrawCacheIndex_++;
     }
 
     /// btIDebugDraw override
@@ -120,7 +202,15 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     virtual void draw3dText(const btVector3& /*location*/, const char* /*textString*/) {}
     
     /// btIDebugDraw override
-    virtual void setDebugMode(int debugMode) { debugDrawMode = debugMode; }
+    virtual void setDebugMode(int debugMode)
+    {
+        PROFILE(PhysicsWorld_Impl_setDebugMode);
+
+        debugDrawMode = debugMode;
+
+        // Create new cache. 75k is well more debug lines than we can render in one frame.
+        ReserveDebugDrawCache(IsDebugGeometryEnabled() ? 75000 : -1);
+    }
     
     /// btIDebugDraw override
     virtual int getDebugMode() const { return debugDrawMode; }
@@ -141,11 +231,22 @@ struct PhysicsWorld::Impl : public btIDebugDraw
     int debugDrawMode;
     /// Cached OgreWorld pointer for drawing debug geometry
     OgreWorld* cachedOgreWorld;
+
+    /// Choking for debug rendering
+    tick_t debugDrawStartTime;
+    int debugDrawMaxMSecs;
+    int debugDrawModePreExhaust;
+    bool debugDrawExhausted;
+
+    QList<DebugDrawLineCacheItem*> debugDrawCache_;
+    int debugDrawCacheIndex_;
 };
 
 PhysicsWorld::PhysicsWorld(const ScenePtr &scene, bool isClient) :
     scene_(scene),
     physicsUpdatePeriod_(1.0f / 60.0f),
+    debugDrawUpdatePeriod_(1.0f / 2.0f),
+    debugDrawT_(0.0f),
     maxSubSteps_(6), // If fps is below 10, we start to slow down physics
     isClient_(isClient),
     runPhysics_(true),
@@ -197,8 +298,10 @@ void PhysicsWorld::Simulate(f64 frametime)
         return;
     
     PROFILE(PhysicsWorld_Simulate);
+
+    const float fFrametime = static_cast<float>(frametime);
     
-    emit AboutToUpdate((float)frametime);
+    emit AboutToUpdate(fFrametime);
     
     {
         PROFILE(Bullet_stepSimulation); ///\note Do not delete or rename this PROFILE() block. The DebugStats profiler uses this string as a label to know where to inject the Bullet internal profiling data.
@@ -206,27 +309,37 @@ void PhysicsWorld::Simulate(f64 frametime)
         // Use variable timestep if enabled, and if frame timestep exceeds the single physics simulation substep
         if (useVariableTimestep_ && frametime > physicsUpdatePeriod_)
         {
-            float clampedTimeStep = (float)frametime;
+            float clampedTimeStep = fFrametime;
             if (clampedTimeStep > 0.1f)
                 clampedTimeStep = 0.1f; // Advance max. 1/10 sec. during one frame
             impl->world->stepSimulation(clampedTimeStep, 0, clampedTimeStep);
         }
         else
-            impl->world->stepSimulation((float)frametime, maxSubSteps_, physicsUpdatePeriod_);
+            impl->world->stepSimulation(fFrametime, maxSubSteps_, physicsUpdatePeriod_);
     }
     
-    // Automatically enable debug geometry if at least one debug-enabled rigidbody. Automatically disable if no debug-enabled rigidbodies
-    // However, do not do this if user has used the physicsdebug console command
-    if (!drawDebugManuallySet_)
+    // Don't choke debug rendering if it is not spending too much time and cache items per frame.
+    // If debug rendering is having performance issues, drop to rendering it few times a second (debugDrawUpdatePeriod_).
+    debugDrawT_ += fFrametime;
+    if (impl->debugDrawExhausted == false || debugDrawT_ >= debugDrawUpdatePeriod_)
     {
-        if (!IsDebugGeometryEnabled() && !debugRigidBodies_.empty())
-            SetDebugGeometryEnabled(true);
-        if (IsDebugGeometryEnabled() && debugRigidBodies_.empty())
-            SetDebugGeometryEnabled(false);
-    }
+        debugDrawT_ = 0.0f;
+
+        // Automatically enable debug geometry if at least one debug-enabled rigidbody. Automatically disable if no debug-enabled rigidbodies
+        // However, do not do this if user has used the physicsdebug console command
+        if (!drawDebugManuallySet_)
+        {
+            if (!IsDebugGeometryEnabled() && !debugRigidBodies_.empty())
+                SetDebugGeometryEnabled(true);
+            if (IsDebugGeometryEnabled() && debugRigidBodies_.empty())
+                SetDebugGeometryEnabled(false);
+        }
     
-    if (IsDebugGeometryEnabled())
-        DrawDebugGeometry();
+        if (IsDebugGeometryEnabled())
+            DrawDebugGeometry();
+    }
+    else
+        impl->DrawCachedDebugLines();
 }
 
 void PhysicsWorld::ProcessPostTick(float substeptime)
@@ -314,17 +427,26 @@ void PhysicsWorld::ProcessPostTick(float substeptime)
         PROFILE(PhysicsWorld_emit_PhysicsCollisions);
         for(size_t i = 0; i < collisions.size(); ++i)
         {
-            if (collisions[i].bodyA.expired() || collisions[i].bodyB.expired())
+            const CollisionSignal &collision = collisions[i];
+            const float3 &pos = collision.position;
+            const float3 &normal = collision.normal;
+            const float distance = collision.distance;
+            const float impulse = collision.impulse;
+            const bool newCollision = collision.newCollision;
+
+            if (collision.bodyA.expired() || collision.bodyB.expired())
                 continue;
-            emit PhysicsCollision(collisions[i].bodyA.lock()->ParentEntity(), collisions[i].bodyB.lock()->ParentEntity(), collisions[i].position, collisions[i].normal, collisions[i].distance, collisions[i].impulse, collisions[i].newCollision);
+            if (newCollision)
+                emit NewPhysicsCollision(collision.bodyA.lock()->ParentEntity(), collision.bodyB.lock()->ParentEntity(), pos, normal, distance, impulse);
+            emit PhysicsCollision(collision.bodyA.lock()->ParentEntity(), collision.bodyB.lock()->ParentEntity(), pos, normal, distance, impulse, newCollision);
             
-            if (collisions[i].bodyA.expired() || collisions[i].bodyB.expired())
+            if (collision.bodyA.expired() || collision.bodyB.expired())
                 continue;
-            collisions[i].bodyA.lock()->EmitPhysicsCollision(collisions[i].bodyB.lock()->ParentEntity(), collisions[i].position, collisions[i].normal, collisions[i].distance, collisions[i].impulse, collisions[i].newCollision);
+            collision.bodyA.lock()->EmitPhysicsCollision(collision.bodyB.lock()->ParentEntity(), pos, normal, distance, impulse, newCollision);
             
-            if (collisions[i].bodyA.expired() || collisions[i].bodyB.expired())
+            if (collision.bodyA.expired() || collision.bodyB.expired())
                 continue;
-            collisions[i].bodyB.lock()->EmitPhysicsCollision(collisions[i].bodyA.lock()->ParentEntity(), collisions[i].position, collisions[i].normal, collisions[i].distance, collisions[i].impulse, collisions[i].newCollision);
+            collision.bodyB.lock()->EmitPhysicsCollision(collision.bodyA.lock()->ParentEntity(), pos, normal, distance, impulse, newCollision);
         }
     }
 
@@ -432,5 +554,7 @@ void PhysicsWorld::DrawDebugGeometry()
         return;
     
     // Get all lines of the physics world
+    impl->PreDebugDraw();
     impl->world->debugDrawWorld();
+    impl->PostDebugDraw();
 }

@@ -143,6 +143,12 @@ signals:
                 If collision has multiple contact points, newCollision can only be true for the first of them. */
     void PhysicsCollision(Entity* entityA, Entity* entityB, const float3& position, const float3& normal, float distance, float impulse, bool newCollision);
     
+    /// A new physics collision has happened between two entities.
+    /** This is exactly like the PhysicsCollision but is only triggered once.
+        If you are not interested in long running collisions like objects being inside each other or one is resting on the other, use this signal.
+        @see PhysicsCollision */
+    void NewPhysicsCollision(Entity* entityA, Entity* entityB, const float3& position, const float3& normal, float distance, float impulse);
+
     /// Emitted before the simulation steps. Note: emitted only once per frame, not before each substep.
     /** @param frametime Length of simulation steps */
     void AboutToUpdate(float frametime);
@@ -173,7 +179,11 @@ private:
     bool runPhysics_;
     /// Variable timestep flag
     bool useVariableTimestep_;
+    
     /// Debug draw-enabled rigidbodies. Note: these pointers are never dereferenced, it is just used for counting
     std::set<EC_RigidBody*> debugRigidBodies_;
+
+    float debugDrawUpdatePeriod_;
+    float debugDrawT_;
 };
 Q_DECLARE_METATYPE(PhysicsWorld*);
