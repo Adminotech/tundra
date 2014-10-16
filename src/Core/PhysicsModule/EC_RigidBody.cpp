@@ -616,8 +616,7 @@ void EC_RigidBody::OnCollisionMeshAssetLoaded(AssetPtr asset)
             impl->triangleMesh = impl->owner->GetTriangleMeshFromOgreMesh(mesh);
             CreateCollisionShape();
         }
-
-        if (shapeType.Get() == ConvexHull)
+        else if (shapeType.Get() == ConvexHull)
         {
             impl->convexHullSet = impl->owner->GetConvexHullSetFromOgreMesh(mesh);
             CreateCollisionShape();
@@ -1085,11 +1084,11 @@ void EC_RigidBody::EmitPhysicsCollision(Entity* otherEntity, const float3& posit
 {
     if (newCollision)
     {
-        PROFILE(EC_RigidBody_emit_NewPhysicsCollision);
+        //PROFILE(EC_RigidBody_emit_NewPhysicsCollision);
         emit NewPhysicsCollision(otherEntity, position, normal, distance, impulse);
     }
     {
-        PROFILE(EC_RigidBody_emit_PhysicsCollision);
+        //PROFILE(EC_RigidBody_emit_PhysicsCollision);
         emit PhysicsCollision(otherEntity, position, normal, distance, impulse, newCollision);
     }
 }
