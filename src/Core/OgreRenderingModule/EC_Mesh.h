@@ -340,6 +340,10 @@ public slots:
     /// Returns the possible asset used by this component.
     OgreSkeletonAssetPtr SkeletonAsset() const;
 
+    /// IComponent override, implemented to support old TXML with the "Mesh materials" attribute instead of "materialRefs"/"Material refs".
+    /// @todo 2014-10-17 This can be removed at some point when enough time has passed.
+    void DeserializeFrom(QDomElement& element, AttributeChange::Type change);
+
     /// @cond PRIVATE
     // DEPRECATED
     /// Sets an attachment mesh.

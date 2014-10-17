@@ -575,27 +575,31 @@ void IComponent::DeserializeFrom(QDomElement& element, AttributeChange::Type cha
     // For all other elements, use the current value in the attribute (if this is a newly allocated component, the current value
     // is the default value for that attribute specified in ctor. If this is an existing component, the DeserializeFrom can be 
     // thought of applying the given "delta modifications" from the XML element).
-    QDomElement attribute_element = element.firstChildElement("attribute");
-    while(!attribute_element.isNull())
+    QDomElement attributeElement = element.firstChildElement("attribute");
+    while(!attributeElement.isNull())
     {
-        IAttribute* attr = 0;
-        QString id = attribute_element.attribute("id");
-        // Prefer lookup by ID if it's specified, but fallback to using attribute's human-readable name if ID not defined or erroneous.
-        if (!id.isEmpty())
-            attr = AttributeById(id);
-        if (!attr)
-        {
-            id = attribute_element.attribute("name");
-            attr = AttributeByName(id);
-        }
-        
-        if (!attr)
-            LogWarning(TypeName() + "::DeserializeFrom: Could not find attribute \"" + id + "\" specified in the XML element.");
-        else
-            attr->FromString(attribute_element.attribute("value"), change);
-        
-        attribute_element = attribute_element.nextSiblingElement("attribute");
+        DeserializeAttributeFrom(attributeElement, change);
+        attributeElement = attributeElement.nextSiblingElement("attribute");
     }
+}
+
+void IComponent::DeserializeAttributeFrom(QDomElement& attributeElement, AttributeChange::Type change)
+{
+    IAttribute* attr = 0;
+    QString id = attributeElement.attribute("id");
+    // Prefer lookup by ID if it's specified, but fallback to using attribute's human-readable name if ID not defined or erroneous.
+    if (!id.isEmpty())
+        attr = AttributeById(id);
+    if (!attr)
+    {
+        id = attributeElement.attribute("name");
+        attr = AttributeByName(id);
+    }
+
+    if (!attr)
+        LogWarning(TypeName() + "::DeserializeFrom: Could not find attribute \"" + id + "\" specified in the XML element.");
+    else
+        attr->FromString(attributeElement.attribute("value"), change);
 }
 
 void IComponent::SerializeToBinary(kNet::DataSerializer& dest) const

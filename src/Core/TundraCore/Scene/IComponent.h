@@ -412,8 +412,11 @@ signals:
     /** @param attr Attribute about to be removed.
         @todo Scripts cannot access IAttribute; consider maybe using name or something else in the signature. */
     void AttributeAboutToBeRemoved(IAttribute *attr);
-    
+
 protected:
+    /// Deserializes a single attribute.
+    void DeserializeAttributeFrom(QDomElement& attributeElement, AttributeChange::Type change);
+
     /// Helper function for starting component serialization.
     /** This function creates an XML element <component> with the name of this component, adds it to the document, and returns it. 
         If serializeTemporary is true, the attribute 'temporary' is added to the XML element. Default is false. */

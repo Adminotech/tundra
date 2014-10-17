@@ -25,6 +25,8 @@
 #include <OgreTagPoint.h>
 #include <OgreInstancedEntity.h>
 
+#include <QDomElement>
+
 #include "MemoryLeakCheck.h"
 
 using namespace OgreRenderer;
@@ -39,7 +41,7 @@ EC_Mesh::EC_Mesh(Scene* scene) :
     INIT_ATTRIBUTE_VALUE(nodeTransformation, "Transform", Transform(float3(0,0,0),float3(0,0,0),float3(1,1,1))),
     INIT_ATTRIBUTE_VALUE(meshRef, "Mesh ref", AssetReference("", "OgreMesh")),
     INIT_ATTRIBUTE_VALUE(skeletonRef, "Skeleton ref", AssetReference("", "OgreSkeleton")),
-    INIT_ATTRIBUTE_VALUE(materialRefs, "Mesh materials", AssetReferenceList("OgreMaterial")), /**< @todo 24.10.2013 Rename name to "Material refs" or similar. */
+    INIT_ATTRIBUTE_VALUE(materialRefs, "Material refs", AssetReferenceList("OgreMaterial")),
     INIT_ATTRIBUTE_VALUE(drawDistance, "Draw distance", 0.0f),
     INIT_ATTRIBUTE_VALUE(castShadows, "Cast shadows", false),
     INIT_ATTRIBUTE_VALUE(useInstancing, "Use instancing", false),
@@ -1529,6 +1531,25 @@ OgreSkeletonAssetPtr EC_Mesh::SkeletonAsset() const
     if (!skeletonAsset)
         return OgreSkeletonAssetPtr();
     return dynamic_pointer_cast<OgreSkeletonAsset>(skeletonAsset->Asset());
+}
+
+void EC_Mesh::DeserializeFrom(QDomElement& element, AttributeChange::Type change)
+{
+    if (!BeginDeserialization(element))
+        return;
+
+    if (change == AttributeChange::Default)
+        change = updateMode;
+    assert(change != AttributeChange::Default);
+
+    QDomElement attributeElement = element.firstChildElement("attribute");
+    while(!attributeElement.isNull())
+    {
+        if (attributeElement.attribute("id").isEmpty() && attributeElement.attribute("name").compare("Mesh materials", Qt::CaseInsensitive) == 0)
+            attributeElement.setAttribute("name", "Material refs");
+        DeserializeAttributeFrom(attributeElement, change);
+        attributeElement = attributeElement.nextSiblingElement("attribute");
+    }
 }
 
 Ogre::Vector2 FindUVs(const Ogre::Vector3& hitPoint, const Ogre::Vector3& t1, const Ogre::Vector3& t2, const Ogre::Vector3& t3, const Ogre::Vector2& tex1, const Ogre::Vector2& tex2, const Ogre::Vector2& tex3)
