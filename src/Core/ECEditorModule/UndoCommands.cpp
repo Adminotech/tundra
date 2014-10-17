@@ -94,7 +94,7 @@ template<> bool EditAttributeCommand<Color>::mergeWith(const QUndoCommand *other
 
 // AddAttributeCommand
 
-AddAttributeCommand::AddAttributeCommand(EC_DynamicComponent *comp, const QString &typeName, const QString &name, QUndoCommand * parent) :
+AddAttributeCommand::AddAttributeCommand(EC_DynamicComponent *comp, const QString &typeName, const QString &name, QUndoCommand *parent) :
     owner(static_pointer_cast<EC_DynamicComponent>(comp->shared_from_this())),
     attributeTypeName_(typeName),
     attributeName_(name),
@@ -171,36 +171,52 @@ void RemoveAttributeCommand::redo()
 
 // AddComponentCommand
 
-AddComponentCommand::AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const EntityIdList &entities,
-    u32 compType, const QString &compName, bool sync, bool temp, QUndoCommand * parent) :
-    scene_(scene),
-    tracker_(tracker),
-    entityIds_(entities),
-    componentName_(compName),
-    componentTypeId(compType),
-    componentTypeName(scene->GetFramework()->Scene()->ComponentTypeNameForTypeId(compType)),
-    temp_(temp),
-    sync_(sync),
+AddComponentCommand::AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                                         u32 compponentTypeId, const QString &componentName, bool sync, bool temp, QUndoCommand *parent) :
     QUndoCommand(parent)
 {
-    setText("+ Added " + IComponent::EnsureTypeNameWithoutPrefix(componentTypeName) +
-        " Component" + (entities.size() == 1 ? "" : QString(" (to %1 entities)").arg(entities.size())));
+    QList<u32> componentTypeIds;
+    componentTypeIds << compponentTypeId;
+
+    Initialize(scene, tracker, entities, componentTypeIds, componentName, sync, temp);
 }
 
-AddComponentCommand::AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const EntityIdList &entities,
-    const QString &compTypeName, const QString &compName, bool sync, bool temp, QUndoCommand * parent) :
-    scene_(scene),
-    tracker_(tracker),
-    entityIds_(entities),
-    componentName_(compName),
-    componentTypeId(scene->GetFramework()->Scene()->ComponentTypeIdForTypeName(compTypeName)),
-    componentTypeName(compTypeName),
-    temp_(temp),
-    sync_(sync),
+AddComponentCommand::AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                                         QList<u32> componentTypeIds, const QString &componentName, bool sync, bool temp, QUndoCommand *parent) :
     QUndoCommand(parent)
 {
-    setText("+ Added " + IComponent::EnsureTypeNameWithoutPrefix(componentTypeName) +
-        " Component" + (entities.size() == 1 ? "" : QString(" (to %1 entities)").arg(entities.size())));
+    Initialize(scene, tracker, entities, componentTypeIds, componentName, sync, temp);
+}
+
+AddComponentCommand::AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                                         const QString &componentTypeName, const QString &componentName, bool sync, bool temp, QUndoCommand *parent) :
+    QUndoCommand(parent)
+{
+    QList<u32> componentTypeIds;
+    componentTypeIds << scene->GetFramework()->Scene()->ComponentTypeIdForTypeName(componentTypeName);
+
+    Initialize(scene, tracker, entities, componentTypeIds, componentName, sync, temp);
+}
+
+void AddComponentCommand::Initialize(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                                     QList<u32> componentTypeIds, const QString &componentName, bool sync, bool temp)
+{
+    scene_ = scene;
+    tracker_ = tracker;
+    entityIds_ = entities;
+    temp_ = temp;
+    sync_ = sync;   
+
+    componentName_ = componentName;
+    componentTypeIds_ = componentTypeIds;
+    
+    QStringList typeNames;
+    foreach(u32 typeId, componentTypeIds_)
+        typeNames << IComponent::EnsureTypeNameWithoutPrefix(scene->GetFramework()->Scene()->ComponentTypeNameForTypeId(typeId));
+
+    setText(QString("+ Added %1 %2")
+        .arg(typeNames.join(", "))
+        .arg(entities.size() == 1 ? "" : QString(" (%1 entities)").arg(entities.size())));
 }
 
 int AddComponentCommand::id() const
@@ -222,13 +238,16 @@ void AddComponentCommand::undo()
         EntityPtr ent = scene->EntityById(tracker_->RetrieveId(id));
         if (ent)
         {
-            ComponentPtr comp = ent->Component(componentTypeId, componentName_);
-            if (comp)
+            foreach(u32 compId, componentTypeIds_)
             {
-                sync_ = comp->IsReplicated();
-                temp_ = comp->IsTemporary();
+                ComponentPtr comp = ent->Component(compId, componentName_);
+                if (comp)
+                {
+                    sync_ = comp->IsReplicated();
+                    temp_ = comp->IsTemporary();
 
-                ent->RemoveComponent(comp, AttributeChange::Default);
+                    ent->RemoveComponent(comp, AttributeChange::Default);
+                }
             }
         }
     }
@@ -245,39 +264,42 @@ void AddComponentCommand::redo()
         EntityPtr ent = scene->EntityById(tracker_->RetrieveId(id));
         if (ent.get())
         {
-            ComponentPtr comp = scene->GetFramework()->Scene()->CreateComponentById(scene.get(), componentTypeId, componentName_);
-            if (comp)
+            foreach(u32 compId, componentTypeIds_)
             {
-                comp->SetReplicated(sync_);
-                comp->SetTemporary(temp_);
-                ent->AddComponent(comp, AttributeChange::Default);
-                
-                // Execute any child commands.
-                AttributeVector attributes = comp->NonEmptyAttributes();
-                for(int i=0; i<childCount(); ++i)
+                ComponentPtr comp = scene->GetFramework()->Scene()->CreateComponentById(scene.get(), compId, componentName_);
+                if (comp)
                 {
-                    QUndoCommand *command = const_cast<QUndoCommand*>(child(i));
-                    IEditAttributeCommand *attrbCommand = dynamic_cast<IEditAttributeCommand*>(command);
-                    if (!attrbCommand)
+                    comp->SetReplicated(sync_);
+                    comp->SetTemporary(temp_);
+                    ent->AddComponent(comp, AttributeChange::Default);
+                
+                    // Execute any child commands.
+                    AttributeVector attributes = comp->NonEmptyAttributes();
+                    for(int i=0; i<childCount(); ++i)
                     {
-                        if (command)
-                            command->redo();
-                        continue;
-                    }
-
-                    // Check that this commands parent is the entity being processed.
-                    EntityPtr attrCommandParent = scene->EntityById(tracker_->RetrieveId(attrbCommand->parentId));
-                    if (attrCommandParent != ent)
-                        continue;
-
-                    // Find the correct attribute with name and type and update the weak ptr.
-                    for (unsigned i = 0; i < attributes.size(); ++i)
-                    {
-                        if (attrbCommand->attributeName == attributes[i]->Name() && attrbCommand->attributeTypeName == attributes[i]->TypeName())
+                        QUndoCommand *command = const_cast<QUndoCommand*>(child(i));
+                        IEditAttributeCommand *attrbCommand = dynamic_cast<IEditAttributeCommand*>(command);
+                        if (!attrbCommand)
                         {
-                            attrbCommand->attribute = AttributeWeakPtr(comp, attributes[i]);
-                            attrbCommand->redo();
-                            break;
+                            if (command)
+                                command->redo();
+                            continue;
+                        }
+
+                        // Check that this commands parent is the entity being processed.
+                        EntityPtr attrCommandParent = scene->EntityById(tracker_->RetrieveId(attrbCommand->parentId));
+                        if (attrCommandParent != ent)
+                            continue;
+
+                        // Find the correct attribute with name and type and update the weak ptr.
+                        for (unsigned i = 0; i < attributes.size(); ++i)
+                        {
+                            if (attrbCommand->attributeName == attributes[i]->Name() && attrbCommand->attributeTypeName == attributes[i]->TypeName())
+                            {
+                                attrbCommand->attribute = AttributeWeakPtr(comp, attributes[i]);
+                                attrbCommand->redo();
+                                break;
+                            }
                         }
                     }
                 }
@@ -288,7 +310,7 @@ void AddComponentCommand::redo()
 
 // EditXMLCommand
 
-EditXMLCommand::EditXMLCommand(const ScenePtr &scene, const QDomDocument &oldDoc, const QDomDocument &newDoc, QUndoCommand * parent) : 
+EditXMLCommand::EditXMLCommand(const ScenePtr &scene, const QDomDocument &oldDoc, const QDomDocument &newDoc, QUndoCommand *parent) : 
     scene_(scene),
     oldState_(oldDoc),
     newState_(newDoc),
@@ -370,15 +392,19 @@ void EditXMLCommand::Deserialize(const QDomDocument docState)
 
 // AddEntityCommand
 
-AddEntityCommand::AddEntityCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const QString &name, bool sync, bool temp, QUndoCommand *parent) :
+AddEntityCommand::AddEntityCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const QString &name, bool sync, bool temp, const QStringList &components, QUndoCommand *parent) :
     QUndoCommand(parent),
     scene_(scene),
     tracker_(tracker),
     entityName_(name),
     entityId_(0),
     sync_(sync),
-    temp_(temp)
+    temp_(temp),
+    components_(components)
 {
+    components_.removeAll("Name");
+    components_.removeAll("EC_Name");
+
     setText("+ Added Entity " + entityName_.trimmed());
 }
 
@@ -414,14 +440,20 @@ void AddEntityCommand::redo()
     entityId_ = newId;
     AttributeChange::Type changeType = sync_ ? AttributeChange::Replicate : AttributeChange::LocalOnly;
     EntityPtr entity = scene->CreateEntity(entityId_, QStringList(), changeType, sync_);
+    entity->SetTemporary(temp_);
 
     if (!entityName_.isEmpty())
     {
         shared_ptr<EC_Name> nameComp = entity->GetOrCreateComponent<EC_Name>("", changeType, sync_);
+        nameComp->SetTemporary(temp_);
         nameComp->name.Set(entityName_, AttributeChange::Default);
     }
-
-    entity->SetTemporary(temp_);
+    foreach(const QString &componentTypeName, components_)
+    {
+        ComponentPtr comp = entity->CreateComponent(componentTypeName, "", changeType, sync_);
+        if (comp)
+            comp->SetTemporary(temp_);
+    }
 
     // Execute any AddComponentCommand children to apply component back.
     QUndoCommand::redo();

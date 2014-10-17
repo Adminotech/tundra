@@ -249,7 +249,7 @@ public:
        @param typeName The type of the attribute being added
        @param name The name of the attribute being added
        @param parent The parent command of this command (optional) */
-    AddAttributeCommand(EC_DynamicComponent *comp, const QString &typeName, const QString &name, QUndoCommand * parent = 0);
+    AddAttributeCommand(EC_DynamicComponent *comp, const QString &typeName, const QString &name, QUndoCommand *parent = 0);
 
     /// Returns this command's ID
     int id() const;
@@ -295,22 +295,26 @@ public:
     /// Internal QUndoCommand unique ID
     enum { Id = 103 };
 
-    /// Constructor taking a component type ID.
+    /// Constructor taking a component type id.
     /* @param scene Scene of which entities we're tracking.
        @param tracker Pointer to the EntityIdChangeTracker object
        @param entities A list of IDs of entities that a component is being added to
        @param componentTypeId Type ID of the component being added
-       @param compName Name of the component being added
+       @param componentName Name of the component being added
        @param sync Sync state of the component being added
        @param temp Temporary state of the component being added
        @param parent The parent command of this command (optional) */
-    AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const EntityIdList &entities,
-        u32 componentTypeId, const QString &compName, bool sync, bool temp, QUndoCommand * parent = 0);
+    AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                        u32 componentTypeId, const QString &componentName, bool sync, bool temp, QUndoCommand *parent = 0);
+
+    /// Constructor taking a multiple component type ids.
+    AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                        QList<u32> componentTypeIds, const QString &componentName, bool sync, bool temp, QUndoCommand *parent = 0);
 
     /// Constructor taking a component type name.
     /** @param componentTypeName Type name of the component being added */
-    AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const EntityIdList &entities,
-        const QString &componentTypeName, const QString &compName, bool sync, bool temp, QUndoCommand * parent = 0);
+    AddComponentCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                        const QString &componentTypeName, const QString &componentName, bool sync, bool temp, QUndoCommand *parent = 0);
 
     /// Returns this command's ID
     int id() const;
@@ -319,12 +323,17 @@ public:
     /// QUndoCommand override
     void redo();
 
+private:
+    void Initialize(const ScenePtr &scene, EntityIdChangeTracker *tracker, const EntityIdList &entities,
+                    QList<u32> compTypeIds, const QString &compName, bool sync, bool temp);
+
     SceneWeakPtr scene_; ///< A weak pointer to the main camera scene
     EntityIdChangeTracker * tracker_; ///< Pointer to the tracker object, taken from an undo manager
     EntityIdList entityIds_; ///< List of IDs of entities that this component is being added to
+    
     QString componentName_; ///< Name of the component being added
-    QString componentTypeName; ///< Type name of the component being added
-    u32 componentTypeId; ///< Type ID of the component being added
+    QList<u32> componentTypeIds_; ///< Type ID of the component being added
+    
     bool sync_; ///< Sync state of the component
     bool temp_; ///< Temporary state of the component
 };
@@ -336,7 +345,7 @@ public:
     /// Internal QUndoCommand unique ID
     enum { Id = 104 };
 
-    EditXMLCommand(const ScenePtr &scene, const QDomDocument &oldDoc, const QDomDocument &newDoc, QUndoCommand * parent = 0);
+    EditXMLCommand(const ScenePtr &scene, const QDomDocument &oldDoc, const QDomDocument &newDoc, QUndoCommand *parent = 0);
 
     /// Returns this command's ID
     int id () const;
@@ -370,7 +379,7 @@ public:
        @param sync The desired sync state of the entity being created
        @param temp The desired temporary state of the entity being created
        @param parent The parent command of this command (optional) */
-    AddEntityCommand(const ScenePtr &scene, EntityIdChangeTracker * tracker, const QString &name, bool sync, bool temp, QUndoCommand * parent = 0);
+    AddEntityCommand(const ScenePtr &scene, EntityIdChangeTracker *tracker, const QString &name, bool sync, bool temp, const QStringList &components = QStringList(), QUndoCommand *parent = 0);
 
     /// Returns this command's ID
     int id () const;
@@ -385,6 +394,7 @@ public:
     entity_id_t entityId_; ///< ID of the entity
     bool sync_; ///< sync state of the entity
     bool temp_; ///< Temporary state of the entity
+    QStringList components_; ///< Components to create to the entity
 };
 
 class ECEDITOR_MODULE_API RemoveCommand : public TundraUndoCommand

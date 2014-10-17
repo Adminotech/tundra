@@ -324,7 +324,7 @@ void ECEditorWindow::CreateComponent()
 
     if (ids.size())
     {
-        AddComponentDialog *dialog = new AddComponentDialog(framework, ids, framework->Ui()->MainWindow(), Qt::Tool);
+        AddComponentDialog *dialog = new AddComponentDialog(framework, ids, this, Qt::Tool);
         dialog->SetComponentList(framework->Scene()->ComponentTypes());
         connect(dialog, SIGNAL(finished(int)), this, SLOT(AddComponentDialogFinished(int)));
         dialog->show();
@@ -970,29 +970,40 @@ void ECEditorWindow::AddComponentDialogFinished(int result)
     }
 
     QList<entity_id_t> targetEntities;
+    QList<u32> typeIds = dialog->TypeIds();
 
-    foreach(entity_id_t id, dialog->EntityIds())
+    foreach(entity_id_t entId, dialog->EntityIds())
     {
-        EntityPtr entity = scene->EntityById(id);
+        EntityPtr entity = scene->EntityById(entId);
         if (!entity)
         {
-            LogWarning("Failed to add a new component to an entity, since couldn't find a entity with ID: " + QString::number(id));
+            LogWarning("Failed to add a new component to an entity, since couldn't find a entity with ID: " + QString::number(entId));
             continue;
         }
 
         // Check if component has been already added to a entity.
-        ComponentPtr comp = entity->Component(dialog->TypeId(), dialog->Name());
-        if (comp)
+        // If any from the list of ids are present skip the entity.
+        bool errors = false;
+        foreach(u32 compTypeId, typeIds)
         {
-            LogWarning("Failed to add a new component, because there was already a component with the same type and the same name.");
-            continue;
+            ComponentPtr comp = entity->Component(compTypeId, dialog->Name());
+            if (comp)
+            {
+                LogWarning(QString("Failed to add a new %1 component, because there was already a component with the same type and the same name.")
+                    .arg(IComponent::EnsureTypeNameWithoutPrefix(framework->Scene()->ComponentTypeNameForTypeId(compTypeId))));
+                errors = true;
+                break;
+            }
         }
-
-        targetEntities << id;
+        if (!errors)
+            targetEntities << entId;
     }
 
-    undoManager_->Push(new AddComponentCommand(scene->shared_from_this(), undoManager_->Tracker(),
-        targetEntities, dialog->TypeId(), dialog->Name(), dialog->IsReplicated(), dialog->IsTemporary()));
+    if (undoManager_ && !targetEntities.isEmpty())
+    {
+        undoManager_->Push(new AddComponentCommand(scene->shared_from_this(), undoManager_->Tracker(),
+            targetEntities, typeIds, dialog->Name(), dialog->IsReplicated(), dialog->IsTemporary()));
+    }
 }
 
 void ECEditorWindow::OnAboutToEditAttribute(IAttribute *attr)

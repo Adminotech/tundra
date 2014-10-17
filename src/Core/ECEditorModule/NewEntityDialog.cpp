@@ -2,6 +2,7 @@
 
 #include "StableHeaders.h"
 #include "NewEntityDialog.h"
+#include "AddComponentDialog.h"
 
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -16,7 +17,7 @@
 AddEntityDialog::AddEntityDialog(QWidget *parent, Qt::WindowFlags flags) :
     QDialog(parent, flags)
 {
-    setModal(true);
+    setWindowModality(Qt::WindowModal);
     setWindowTitle(tr("Create New Entity"));
 
     if (graphicsProxyWidget())
@@ -58,8 +59,16 @@ AddEntityDialog::AddEntityDialog(QWidget *parent, Qt::WindowFlags flags) :
     buttonLayout->addWidget(buttonCreate);
     buttonLayout->addWidget(buttonCancel);
 
+    componentSelection_ = new ComponentMultiSelectWidget(
+    QStringList() << "Placeable" << "Mesh" << "RigidBody" 
+                  << "Script" << "DynamicComponent" << "Light", 3, this);
+    componentSelection_->mainLayout->insertWidget(0, new QLabel("<b>Create Components</b>", componentSelection_));
+    componentSelection_->mainLayout->setContentsMargins(0, 15, 0, 15);
+    componentSelection_->mainLayout->setSpacing(7);
+
     QVBoxLayout *vertLayout = new QVBoxLayout();
     vertLayout->addLayout(grid);
+    vertLayout->addWidget(componentSelection_);
     vertLayout->addSpacerItem(new QSpacerItem(1,1, QSizePolicy::Fixed, QSizePolicy::Expanding));
     vertLayout->addLayout(buttonLayout);
 
@@ -81,6 +90,11 @@ AddEntityDialog::~AddEntityDialog()
 QString AddEntityDialog::EntityName() const
 {
     return editName_->text();
+}
+
+QStringList AddEntityDialog::ComponentTypeNames() const
+{
+    return componentSelection_->SelectedComponents();
 }
 
 bool AddEntityDialog::IsReplicated() const

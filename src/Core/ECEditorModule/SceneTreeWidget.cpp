@@ -1170,7 +1170,7 @@ void SceneTreeWidget::NewEntity()
         return;
 
     // Create and execute dialog
-    AddEntityDialog newEntDialog(framework->Ui()->MainWindow(), Qt::Tool);
+    AddEntityDialog newEntDialog(this, Qt::Tool);
     newEntDialog.resize(300, 130);
     newEntDialog.activateWindow();
     int ret = newEntDialog.exec();
@@ -1181,8 +1181,9 @@ void SceneTreeWidget::NewEntity()
     QString name = newEntDialog.EntityName().trimmed();
     bool replicated = newEntDialog.IsReplicated();
     bool temporary = newEntDialog.IsTemporary();
+    QStringList components = newEntDialog.ComponentTypeNames();
     if (undoManager_)
-        undoManager_->Push(new AddEntityCommand(scene.lock(), undoManager_->Tracker(), name, replicated, temporary));
+        undoManager_->Push(new AddEntityCommand(scene.lock(), undoManager_->Tracker(), name, replicated, temporary, components));
 }
 
 void SceneTreeWidget::NewComponent()
@@ -1191,7 +1192,7 @@ void SceneTreeWidget::NewComponent()
     if (sel.IsEmpty())
         return;
 
-    AddComponentDialog *dialog = new AddComponentDialog(framework, sel.EntityIds(), framework->Ui()->MainWindow(), Qt::Tool);
+    AddComponentDialog *dialog = new AddComponentDialog(framework, sel.EntityIds(), this, Qt::Tool);
     dialog->SetComponentList(framework->Scene()->ComponentTypes());
     connect(dialog, SIGNAL(finished(int)), SLOT(ComponentDialogFinished(int)));
     dialog->show();
@@ -1213,32 +1214,41 @@ void SceneTreeWidget::ComponentDialogFinished(int result)
         return;
     }
 
-    QList<entity_id_t> entities = dialog->EntityIds();
     QList<entity_id_t> targetEntities;
+    QList<u32> typeIds = dialog->TypeIds();
 
-    for(int i = 0; i < entities.size(); i++)
+    foreach(entity_id_t entId, dialog->EntityIds())
     {
-        EntityPtr entity = scene.lock()->EntityById(entities[i]);
+        EntityPtr entity = scene.lock()->EntityById(entId);
         if (!entity)
         {
-            LogWarning("Failed to add a new component to an entity since couldn't find an entity with ID:" + QString::number(entities[i]));
+            LogWarning("Failed to add a new component to an entity since couldn't find an entity with ID:" + QString::number(entId));
             continue;
         }
 
         // Check if component has been already added to a entity.
-        ComponentPtr comp = entity->Component(dialog->TypeId(), dialog->Name());
-        if (comp)
+        // If any from the list of ids are present skip the entity.
+        bool errors = false;
+        foreach(u32 compTypeId, typeIds)
         {
-            LogWarning("Fail to add a new component, cause there was already a component with a same name and a type");
-            continue;
+            ComponentPtr comp = entity->Component(compTypeId, dialog->Name());
+            if (comp)
+            {
+                LogWarning(QString("Failed to add a new %1 component, because there was already a component with the same type and the same name.")
+                    .arg(IComponent::EnsureTypeNameWithoutPrefix(framework->Scene()->ComponentTypeNameForTypeId(compTypeId))));
+                errors = true;
+                break;
+            }
         }
-
-        targetEntities << entities[i];
+        if (!errors)
+            targetEntities << entId;
     }
 
     if (undoManager_ && !targetEntities.isEmpty())
+    {
         undoManager_->Push(new AddComponentCommand(scene.lock(), undoManager_->Tracker(), targetEntities,
-            dialog->TypeId(), dialog->Name(), dialog->IsReplicated(), dialog->IsTemporary()));
+            typeIds, dialog->Name(), dialog->IsReplicated(), dialog->IsTemporary()));
+    }
 }
 
 void SceneTreeWidget::Delete()

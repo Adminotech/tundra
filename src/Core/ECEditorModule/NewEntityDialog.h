@@ -10,6 +10,8 @@
 class QLineEdit;
 class QCheckBox;
 
+class ComponentMultiSelectWidget;
+
 /// Dialog for adding new Entity into a Scene.
 class ECEDITOR_MODULE_API AddEntityDialog : public QDialog
 {
@@ -21,6 +23,9 @@ public:
 
 public slots:
     QString EntityName() const;
+
+    QStringList ComponentTypeNames() const;
+
     bool IsReplicated() const;
     bool IsLocal() const;
     bool IsTemporary() const;
@@ -35,4 +40,6 @@ private:
     QLineEdit *editName_;
     QCheckBox *checkBoxSync_;
     QCheckBox *checkBoxTemp_;
+
+    ComponentMultiSelectWidget *componentSelection_;
 };
