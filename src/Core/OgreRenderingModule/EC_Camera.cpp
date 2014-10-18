@@ -504,8 +504,8 @@ Frustum EC_Camera::ToFrustum() const
     f.up = upVector.Get().Normalized();
     f.nearPlaneDistance = nearPlane.Get();
     f.farPlaneDistance = farPlane.Get();
-    f.horizontalFov = DegToRad(verticalFov.Get());
-    f.verticalFov = AspectRatio() * f.horizontalFov;
+    f.verticalFov = DegToRad(verticalFov.Get());
+    f.horizontalFov = 2.f * Atan(Tan(f.verticalFov * 0.5f) * AspectRatio());
     return f;
 }
 
