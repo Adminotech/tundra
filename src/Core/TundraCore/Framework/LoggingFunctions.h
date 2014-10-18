@@ -29,10 +29,12 @@ enum LogChannel
     LogLevelErrorWarnInfoDebug = LogChannelError | LogChannelWarning | LogChannelInfo | LogChannelDebug
 };
 
-/// Outputs a message to the log to the given channel.
+/// Outputs a message to the log to the given channel to both stdout and ConsoleAPI.
 void TUNDRACORE_API PrintLogMessage(u32 logChannel, const QString &str);
 /// Returns true if the given log channel is enabled.
 bool TUNDRACORE_API IsLogChannelEnabled(u32 logChannel);
+/// Outputs a string to the stdout.
+void TUNDRACORE_API PrintRaw(const QString &str);
 
 static inline void LogError(const std::string &msg)     { if (IsLogChannelEnabled(LogChannelError)) PrintLogMessage(LogChannelError, QString::fromStdString("Error: " + msg + "\n")); }
 static inline void LogWarning(const std::string &msg)   { if (IsLogChannelEnabled(LogChannelWarning)) PrintLogMessage(LogChannelWarning, QString::fromStdString("Warning: " + msg + "\n")); }

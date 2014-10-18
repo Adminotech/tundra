@@ -188,16 +188,8 @@ void ConsoleAPI::Print(const QString &message)
     }
     else
     {
-        /// @todo Duplicate code with LoggingFunctions.cpp
-#if defined(WIN32)
-        const std::wstring wstr = QStringToWString(message);
-        DWORD charsWritten;
-        WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wstr.c_str(), static_cast<DWORD>(wstr.length()), &charsWritten, 0);
-#elif defined(ANDROID)
-        __android_log_print(ANDROID_LOG_INFO, Application::ApplicationName(), "%s", message.toStdString().c_str());
-#else
-        printf("%s", message.toStdString().c_str());
-#endif
+        PrintRaw(message);
+
         if (logFileText)
         {
             (*logFileText) << message;
