@@ -242,38 +242,6 @@ macro(UiFolder)
     source_group("Generated UI" FILES ${GENERATED_UI_H})
 endmacro()
 
-# Enables the use of Precompiled Headers in the project this macro is invoked in. Also adds the DEBUG_CPP_NAME to each .cpp file that specifies the name of that compilation unit. MSVC only.
-macro(SetupCompileFlagsWithPCH)
-    if (MSVC)
-        # Label StableHeaders.cpp to create the PCH file and mark all other .cpp files to use that PCH file.
-        # Add a #define DEBUG_CPP_NAME "this compilation unit name" to each compilation unit to aid in memory leak checking.
-        foreach(src_file ${CPP_FILES})
-            if (${src_file} MATCHES "StableHeaders.cpp$")
-                set_source_files_properties(${src_file} PROPERTIES COMPILE_FLAGS "/YcStableHeaders.h")        
-            else()
-                get_filename_component(basename ${src_file} NAME)
-                set_source_files_properties(${src_file} PROPERTIES COMPILE_FLAGS "/YuStableHeaders.h -DDEBUG_CPP_NAME=\"\\\"${basename}\"\\\"")
-            endif()
-        endforeach()
-    endif()
-endmacro()
-
-# Sets up the compilation flags without PCH. For now just set the DEBUG_CPP_NAME to each compilation unit.
-# TODO: The SetupCompileFlags and SetupCompileFlagsWithPCH macros should be merged, and the option to use PCH be passed in as a param. However,
-# CMake string ops in PROPERTIES COMPILE_FLAGS gave some problems with this, so these are separate for now.
-macro(SetupCompileFlags)
-    if (MSVC)
-        # Add a #define DEBUG_CPP_NAME "this compilation unit name" to each compilation unit to aid in memory leak checking.
-        foreach(src_file ${CPP_FILES})
-            if (${src_file} MATCHES "StableHeaders.cpp$")
-            else()
-                get_filename_component(basename ${src_file} NAME)
-                set_source_files_properties(${src_file} PROPERTIES COMPILE_FLAGS "-DDEBUG_CPP_NAME=\"\\\"${basename}\"\\\"")
-            endif()
-        endforeach()
-    endif()
-endmacro()
-
 # Set CMake library search policy
 if (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
@@ -430,19 +398,6 @@ if (APPLE)
 endif()
 
 message("")
-
-# Convenience macro for including all TundraCore subfolders.
-macro(UseTundraCore)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Asset)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Audio)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Console)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Framework)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Input)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Scene)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Script)
-    include_directories(${PROJECT_BINARY_DIR}/src/Core/TundraCore/Ui)
-endmacro()
 
 # If the custom optional modules configuration file does not yet
 # exist, create it from the template file.
