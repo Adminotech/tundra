@@ -8,10 +8,12 @@
 # 4. call build_library/executable() on the source files
 # 5. call link_package (${PACKAGE}) once per build target
 # 6. call link_modules() with a list of local module names libraries
-# 7. call SetupCompileFlags/SetupCompileFlagsWithPCH
+# 7. call SetupCompileFlags()/SetupCompileFlagsWithPCH()
 # 8. call final_target () at the end of build target's cmakelists.txt
 #    (not needed for lib targets, only exe's & modules)
-
+#
+# - call GetEntityComponents() if using optional ECs
+# - call AddSourceFolder(), MocFolder(), UiFolder() if wanted
 
 # =============================================================================
 # reusable macros
@@ -336,32 +338,71 @@ endmacro ()
 
 # Update current translation files. 
 macro (update_translation_files TRANSLATION_FILES)
-	
-	foreach(file ${FILES_TO_TRANSLATE})
-		if(CREATED_PRO_FILE)
-			FILE(APPEND ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/tundra_translations.pro "SOURCES += ${file} \n")
-		else()
-			FILE(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/tundra_translations.pro "SOURCES = ${file} \n")
-			SET(CREATED_PRO_FILE "true")
-		endif()
-	endforeach()
-	
-	file (GLOB PRO_FILE bin/data/translations/*.pro)
-	
-	foreach(ts_file ${${TRANSLATION_FILES}})
-		execute_process(COMMAND ${QT_LUPDATE_EXECUTABLE} -silent ${PRO_FILE} -ts ${ts_file} )
-	endforeach()
-	
-	FILE(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/tundra_translations.pro)
-	
+    
+    foreach(file ${FILES_TO_TRANSLATE})
+        if(CREATED_PRO_FILE)
+            FILE(APPEND ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/tundra_translations.pro "SOURCES += ${file} \n")
+        else()
+            FILE(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/tundra_translations.pro "SOURCES = ${file} \n")
+            SET(CREATED_PRO_FILE "true")
+        endif()
+    endforeach()
+    
+    file (GLOB PRO_FILE bin/data/translations/*.pro)
+    
+    foreach(ts_file ${${TRANSLATION_FILES}})
+        execute_process(COMMAND ${QT_LUPDATE_EXECUTABLE} -silent ${PRO_FILE} -ts ${ts_file} )
+    endforeach()
+    
+    FILE(REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/tundra_translations.pro)
+    
 endmacro()
 
 # Update current qm files.
 macro (update_qm_files TRANSLATION_FILES)
-	foreach(file ${${TRANSLATION_FILES}})
-		get_filename_component(name ${file} NAME_WE)
-		execute_process(COMMAND ${QT_LRELEASE_EXECUTABLE} -silent ${file} -qm ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/${name}.qm)
-	endforeach()
+    foreach(file ${${TRANSLATION_FILES}})
+        get_filename_component(name ${file} NAME_WE)
+        execute_process(COMMAND ${QT_LRELEASE_EXECUTABLE} -silent ${file} -qm ${CMAKE_CURRENT_SOURCE_DIR}/bin/data/translations/${name}.qm)
+    endforeach()
+endmacro()
+
+# Generates in the current project a #define for each EC that has been added to the build. Use this macro in your
+# module's CMakeLists.txt to receive information in C++ about which ECs have been added to the project. This allows
+# supporting conditional compilation of the ECs in your module.
+macro(GetEntityComponents)
+   foreach(componentName ${USED_ENTITYCOMPONENTS})
+      add_definitions(-D${componentName}_ENABLED)
+   endforeach()
+endmacro()
+
+# Adds the given folder_name into the source files of the current project. Use this macro when your module 
+# contains .cpp and .h files in several subdirectories.
+macro(AddSourceFolder folder_name)
+    file(GLOB H_FILES_IN_FOLDER_${folder_name} ${folder_name}/*.h ${folder_name}/*.inl)
+    file(GLOB CPP_FILES_IN_FOLDER_${folder_name} ${folder_name}/*.cpp)
+    source_group("Header Files\\${folder_name}" FILES ${H_FILES_IN_FOLDER_${folder_name}})
+    source_group("Source Files\\${folder_name}" FILES ${CPP_FILES_IN_FOLDER_${folder_name}})
+    set(H_FILES ${H_FILES} ${H_FILES_IN_FOLDER_${folder_name}})
+    set(CPP_FILES ${CPP_FILES} ${CPP_FILES_IN_FOLDER_${folder_name}})
+endmacro()
+
+# Moves all Qt's MOC-generated files into their own folder in the Visual Studio project. Call this once after having
+# added all source files in the build in your module, but before the call to 'set (SOURCE_FILES ...)' directive.
+# This macro is optional and for "convenience" only. If you omit this call, you will have all the generated moc files
+# in the Visual Studio project root.
+# TODO: Add support for more deep folder structures. Current
+#       implementation only support folders directly under project folder
+macro(MocFolder)
+    file(GLOB MOCS_TO_SOURCE_GROUP *.cxx */*.cxx)
+    source_group("CMake Moc" FILES ${MOCS_TO_SOURCE_GROUP})
+endmacro()
+
+# Moves all Qt's UI compiler -generated .h files into their own folder in the Visual Studio project. Call this once 
+# after having added all source files in the build in your module. This macro is optional and for "convenience" only.
+# If you omit this call, you will have all the generated moc files in the Visual Studio project root.
+macro(UiFolder)
+    file(GLOB GENERATED_UI_H ui_*.h)
+    source_group("Generated UI" FILES ${GENERATED_UI_H})
 endmacro()
 
 # Enables the use of Precompiled Headers in the project this macro is invoked in. Also adds the DEBUG_CPP_NAME to each .cpp file that specifies the name of that compilation unit. MSVC only.

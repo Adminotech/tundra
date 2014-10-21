@@ -207,41 +207,6 @@ function(AddProject)
     set (PROJECT_TYPE "")
 endfunction()
 
-# Generates in the current project a #define for each EC that has been added to the build. Use this macro in your module CMakeLists.txt
-# to receive information in C++ about which ECs have been added to the project. This allows supporting conditional compilation of the ECs in your module.
-macro(GetEntityComponents)
-   foreach(componentName ${USED_ENTITYCOMPONENTS})
-      add_definitions(-D${componentName}_ENABLED)
-   endforeach()
-endmacro()
-
-# Adds the given folder_name into the source files of the current project. Use this macro when your module contains .cpp and .h files in several subdirectories.
-macro(AddSourceFolder folder_name)
-    file(GLOB H_FILES_IN_FOLDER_${folder_name} ${folder_name}/*.h ${folder_name}/*.inl)
-    file(GLOB CPP_FILES_IN_FOLDER_${folder_name} ${folder_name}/*.cpp)
-    source_group("Header Files\\${folder_name}" FILES ${H_FILES_IN_FOLDER_${folder_name}})
-    source_group("Source Files\\${folder_name}" FILES ${CPP_FILES_IN_FOLDER_${folder_name}})
-    set(H_FILES ${H_FILES} ${H_FILES_IN_FOLDER_${folder_name}})
-    set(CPP_FILES ${CPP_FILES} ${CPP_FILES_IN_FOLDER_${folder_name}})
-endmacro()
-
-# Moves all Qt's MOC-generated files into their own folder in the Visual Studio project. Call this once after having added all source files in the build in your module,
-# but before the call to 'set (SOURCE_FILES ...)' directive.
-# This macro is optional and for "convenience" only. If you omit this call, you will have all the generated moc files in the Visual Studio project root.
-# TODO: Add support for more deep folder structures. Current
-#       implementation only support folders directly under project folder
-macro(MocFolder)
-    file(GLOB MOCS_TO_SOURCE_GROUP *.cxx */*.cxx)
-    source_group("CMake Moc" FILES ${MOCS_TO_SOURCE_GROUP})
-endmacro()
-
-# Moves all Qt's UI compiler -generated .h files into their own folder in the Visual Studio project. Call this once after having added all source files in the build in your module.
-# This macro is optional and for "convenience" only. If you omit this call, you will have all the generated moc files in the Visual Studio project root.
-macro(UiFolder)
-    file(GLOB GENERATED_UI_H ui_*.h)
-    source_group("Generated UI" FILES ${GENERATED_UI_H})
-endmacro()
-
 # Set CMake library search policy
 if (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
@@ -311,7 +276,9 @@ if (MSVC)
     add_definitions(-DUNICODE -D_UNICODE)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
-    add_definitions(-DUNIX) # Currently, kNet uses this flag for Unix OSes. (required also for client-side headers). TODO: Clean this up so it's not required.
+    # Currently, kNet uses this flag for Unix OSes. (required also for client-side headers). 
+    # TODO This can be removed when kNet's master is merged to stable (has not been done yet as of 2014-10-21).
+    add_definitions(-DUNIX)
 endif()
 
 # On all platforms, we enable PCH files by default.
