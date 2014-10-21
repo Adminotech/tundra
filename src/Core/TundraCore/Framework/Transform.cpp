@@ -39,31 +39,45 @@ Transform Transform::FromString(const char *str)
         ++str;
     Transform t;
     t.pos.x = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.pos.y = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.pos.z = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.rot.x = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.rot.y = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.rot.z = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.scale.x = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.scale.y = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     t.scale.z = (float)strtod(str, const_cast<char**>(&str));
-    if (*str == ',' || *str == ';')
-        ++str;
     return t;
 }

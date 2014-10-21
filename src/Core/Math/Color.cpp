@@ -56,12 +56,18 @@ Color Color::FromString(const char *str)
         ++str;
     Color c;
     c.r = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     c.g = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     c.b = (float)strtod(str, const_cast<char**>(&str));
+    while(*str == ' ' || *str == '\t')
+        ++str;
     if (*str == ',' || *str == ';')
         ++str;
     if (str && *str != '\0') // alpha optional

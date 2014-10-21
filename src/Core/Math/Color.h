@@ -101,7 +101,7 @@ public:
     static const Color Gray; ///< (0.5, 0.5, 0.5, 1)
 
 #ifdef MATH_QT_INTEROP
-    /// Constucts Color from QColor
+    /// Constructs Color from QColor
     Color(const QColor &other) { r = other.redF(); g = other.greenF(); b = other.blueF(); a = other.alphaF(); }
 
     /// Implicit conversion to Color.
@@ -130,7 +130,7 @@ public:
 
 #ifdef MATH_OGRE_INTEROP
     /// Constructs Color from Ogre::ColourValue.
-    Color(const Ogre::ColourValue &other) { r = other.r; g = other.g; b = other.b; a = other.a; }
+    Color(const Ogre::ColourValue &other) : r(other.r), g(other.g), b(other.b), a(other.a) {}
 
     /// Implicit conversion to Ogre::ColourValue.
     operator Ogre::ColourValue() const { return Ogre::ColourValue(r, g, b, a); }
