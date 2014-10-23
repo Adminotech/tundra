@@ -282,10 +282,10 @@ static const QString cAttributeQuatTypeName = "Quat";
 static const QString cAttributeAssetReferenceTypeName = "AssetReference";
 static const QString cAttributeAssetReferenceListTypeName = "AssetReferenceList";
 static const QString cAttributeEntityReferenceTypeName = "EntityReference";
-static const QString cAttributeQVariantTypeName = "QVariant";
-static const QString cAttributeQVariantListTypeName = "QVariantList";
+static const QString cAttributeQVariantTypeName = "Variant"; /**< @note "Variant", not "QVariant", both forms are support by SceneAPI. @todo Rename the variable. */
+static const QString cAttributeQVariantListTypeName = "VariantList"; /**< @note "VariantList", not "QVariantList", both forms are support by SceneAPI.  @todo Rename the variable. */
 static const QString cAttributeTransformTypeName = "Transform";
-static const QString cAttributeQPointTypeName = "QPoint";
+static const QString cAttributeQPointTypeName = "Point"; /**< @note "Point", not "QPoint", both forms are support by SceneAPI. @todo Rename the variable. */
 
 /// Represents weak pointer to Transform attribute.
 struct AttributeWeakPtr

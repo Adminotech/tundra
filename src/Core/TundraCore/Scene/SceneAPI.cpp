@@ -35,6 +35,8 @@ SceneAPI::SceneAPI(Framework *owner) :
     QObject(owner),
     framework(owner)
 {
+    assert(attributeTypeNames.Size() == cNumAttributeTypes - 1 && "Attribute type registration mismatch!"); // -1 as cAttributeNoneTypeName is not in the list.
+
     qRegisterMetaType<EntityAction::ExecTypeField>("EntityAction::ExecTypeField");
     qRegisterMetaType<entity_id_t>("entity_id_t");
     qRegisterMetaType<component_id_t>("component_id_t");
@@ -244,8 +246,11 @@ u32 SceneAPI::AttributeTypeIdForTypeName(const QString &attributeTypename)
 {
     for (int i = 0; i < attributeTypeNames.size(); ++i)
     {
-        if (attributeTypeNames[i].compare(attributeTypename, Qt::CaseInsensitive) == 0)
+        if ((attributeTypeNames[i].compare(attributeTypename, Qt::CaseInsensitive) == 0) ||
+            (attributeTypeNames[i].compare(attributeTypename.mid(1), Qt::CaseInsensitive) == 0)) // Handle Q-prefixed deprecated forms
+        {
             return i + 1; // 0 is illegal, actual types start from 1
+        }
     }
     return 0;
 }
