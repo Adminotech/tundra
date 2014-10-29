@@ -293,44 +293,44 @@ private:
 
 // DEPRECATED
 /// @cond PRIVATE
-static const u32 cAttributeNone = 0;
-static const u32 cAttributeString = 1;
-static const u32 cAttributeInt = 2;
-static const u32 cAttributeReal = 3;
-static const u32 cAttributeColor = 4;
-static const u32 cAttributeFloat2 = 5;
-static const u32 cAttributeFloat3 = 6;
-static const u32 cAttributeFloat4 = 7;
-static const u32 cAttributeBool = 8;
-static const u32 cAttributeUInt = 9;
-static const u32 cAttributeQuat = 10;
-static const u32 cAttributeAssetReference = 11;
-static const u32 cAttributeAssetReferenceList = 12;
-static const u32 cAttributeEntityReference = 13;
-static const u32 cAttributeQVariant = 14;
-static const u32 cAttributeQVariantList = 15;
-static const u32 cAttributeTransform = 16;
-static const u32 cAttributeQPoint = 17;
-static const u32 cNumAttributeTypes = 18;
+static const u32 cAttributeNone = IAttribute::NoneId;
+static const u32 cAttributeString = IAttribute::StringId;
+static const u32 cAttributeInt = IAttribute::IntId;
+static const u32 cAttributeReal = IAttribute::RealId;
+static const u32 cAttributeColor = IAttribute::ColorId;
+static const u32 cAttributeFloat2 = IAttribute::Float2Id;
+static const u32 cAttributeFloat3 = IAttribute::Float3Id;
+static const u32 cAttributeFloat4 = IAttribute::Float4Id;
+static const u32 cAttributeBool = IAttribute::BoolId;
+static const u32 cAttributeUInt = IAttribute::UIntId;
+static const u32 cAttributeQuat = IAttribute::QuatId;
+static const u32 cAttributeAssetReference = IAttribute::AssetReferenceId;
+static const u32 cAttributeAssetReferenceList = IAttribute::AssetReferenceListId;
+static const u32 cAttributeEntityReference = IAttribute::EntityReferenceId;
+static const u32 cAttributeQVariant = IAttribute::VariantId;
+static const u32 cAttributeQVariantList = IAttribute::VariantListId;
+static const u32 cAttributeTransform = IAttribute::TransformId;
+static const u32 cAttributeQPoint = IAttribute::PointId;
+static const u32 cNumAttributeTypes = IAttribute::NumTypes;
 
-static const QString cAttributeNoneTypeName = "";
-static const QString cAttributeStringTypeName = "string";
-static const QString cAttributeIntTypeName = "int";
-static const QString cAttributeRealTypeName = "real";
-static const QString cAttributeColorTypeName = "Color";
-static const QString cAttributeFloat2TypeName = "float2";
-static const QString cAttributeFloat3TypeName = "float3";
-static const QString cAttributeFloat4TypeName = "float4";
-static const QString cAttributeBoolTypeName = "bool";
-static const QString cAttributeUIntTypeName = "uint";
-static const QString cAttributeQuatTypeName = "Quat"; 
-static const QString cAttributeAssetReferenceTypeName = "AssetReference";
-static const QString cAttributeAssetReferenceListTypeName = "AssetReferenceList";
-static const QString cAttributeEntityReferenceTypeName = "EntityReference";
-static const QString cAttributeQVariantTypeName = "Variant"; /**< @note "Variant", not "QVariant", both forms are support by SceneAPI. @todo Rename the variable. */
-static const QString cAttributeQVariantListTypeName = "VariantList"; /**< @note "VariantList", not "QVariantList", both forms are support by SceneAPI.  @todo Rename the variable. */
-static const QString cAttributeTransformTypeName = "Transform";
-static const QString cAttributeQPointTypeName = "Point"; /**< @note "Point", not "QPoint", both forms are support by SceneAPI. @todo Rename the variable. */
+static const QString cAttributeNoneTypeName = IAttribute::NoneTypeName;
+static const QString cAttributeStringTypeName = IAttribute::StringTypeName;
+static const QString cAttributeIntTypeName = IAttribute::IntTypeName;
+static const QString cAttributeRealTypeName = IAttribute::RealTypeName;
+static const QString cAttributeColorTypeName = IAttribute::ColorTypeName;
+static const QString cAttributeFloat2TypeName = IAttribute::Float2TypeName;
+static const QString cAttributeFloat3TypeName = IAttribute::Float3TypeName;
+static const QString cAttributeFloat4TypeName = IAttribute::Float4TypeName;
+static const QString cAttributeBoolTypeName = IAttribute::BoolTypeName;
+static const QString cAttributeUIntTypeName = IAttribute::UIntTypeName;
+static const QString cAttributeQuatTypeName = IAttribute::QuatTypeName;
+static const QString cAttributeAssetReferenceTypeName = IAttribute::AssetReferenceTypeName;
+static const QString cAttributeAssetReferenceListTypeName = IAttribute::AssetReferenceListTypeName;
+static const QString cAttributeEntityReferenceTypeName = IAttribute::EntityReferenceTypeName;
+static const QString cAttributeQVariantTypeName = IAttribute::VariantTypeName; /**< @note "Variant", not "QVariant", both forms are support by SceneAPI. */
+static const QString cAttributeQVariantListTypeName = IAttribute::VariantListTypeName; /**< @note "VariantList", not "QVariantList", both forms are support by SceneAPI. */
+static const QString cAttributeTransformTypeName = IAttribute::TransformTypeName ;
+static const QString cAttributeQPointTypeName = IAttribute::PointTypeName; /**< @note "Point", not "QPoint", both forms are support by SceneAPI. */
 /// @endcond
 
 /// Represents weak pointer to Transform attribute.
