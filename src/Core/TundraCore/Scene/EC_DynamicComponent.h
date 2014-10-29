@@ -16,8 +16,6 @@ namespace kNet
 
 class QScriptValue;
 
-struct DeserializeData;
-
 /// A component that allows adding of dynamically structured attributes at runtime.
 /** <table class="header">
     <tr>
@@ -141,7 +139,7 @@ public slots:
     /// @endcond
 
 private:
-    void DeserializeCommon(std::vector<DeserializeData>& deserializedAttributes, AttributeChange::Type change);
+    void DeserializeCommon(std::vector<AttributeDesc>& deserializedAttributes, AttributeChange::Type change);
     /// Convert attribute index without holes (used by client) into actual attribute index. Returns below zero if not found. Requires a linear search.
     int GetInternalAttributeIndex(int index) const;
 };
