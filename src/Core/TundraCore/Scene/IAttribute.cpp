@@ -103,25 +103,62 @@ AttributeMetadata *IAttribute::Metadata() const
 
 // Hide all template implementations from being included to public documentation
 /// @cond PRIVATE
+const QString IAttribute::NoneTypeName = "";
+const QString IAttribute::StringTypeName = "string";
+const QString IAttribute::IntTypeName = "int";
+const QString IAttribute::RealTypeName = "real";
+const QString IAttribute::ColorTypeName = "Color";
+const QString IAttribute::Float2TypeName = "float2";
+const QString IAttribute::Float3TypeName = "float3";
+const QString IAttribute::Float4TypeName = "float4";
+const QString IAttribute::BoolTypeName = "bool";
+const QString IAttribute::UIntTypeName = "uint";
+const QString IAttribute::QuatTypeName = "Quat"; 
+const QString IAttribute::AssetReferenceTypeName = "AssetReference";
+const QString IAttribute::AssetReferenceListTypeName = "AssetReferenceList";
+const QString IAttribute::EntityReferenceTypeName = "EntityReference";
+const QString IAttribute::VariantTypeName = "Variant";
+const QString IAttribute::VariantListTypeName = "VariantList";
+const QString IAttribute::TransformTypeName = "Transform";
+const QString IAttribute::PointTypeName = "Point";
 
-// TYPEID TEMPLATE IMPLEMENTATIONS
-template<> u32 TUNDRACORE_API Attribute<QString>::TypeId() const { return cAttributeString; }
-template<> u32 TUNDRACORE_API Attribute<int>::TypeId() const { return cAttributeInt; }
-template<> u32 TUNDRACORE_API Attribute<float>::TypeId() const { return cAttributeReal; }
-template<> u32 TUNDRACORE_API Attribute<Color>::TypeId() const { return cAttributeColor; }
-template<> u32 TUNDRACORE_API Attribute<float2>::TypeId() const { return cAttributeFloat2; }
-template<> u32 TUNDRACORE_API Attribute<float3>::TypeId() const { return cAttributeFloat3; }
-template<> u32 TUNDRACORE_API Attribute<float4>::TypeId() const { return cAttributeFloat4; }
-template<> u32 TUNDRACORE_API Attribute<bool>::TypeId() const { return cAttributeBool; }
-template<> u32 TUNDRACORE_API Attribute<uint>::TypeId() const { return cAttributeUInt; }
-template<> u32 TUNDRACORE_API Attribute<Quat>::TypeId() const { return cAttributeQuat; }
-template<> u32 TUNDRACORE_API Attribute<AssetReference>::TypeId() const { return cAttributeAssetReference; }
-template<> u32 TUNDRACORE_API Attribute<AssetReferenceList>::TypeId() const { return cAttributeAssetReferenceList; }
-template<> u32 TUNDRACORE_API Attribute<EntityReference>::TypeId() const { return cAttributeEntityReference; }
-template<> u32 TUNDRACORE_API Attribute<QVariant>::TypeId() const { return cAttributeQVariant; }
-template<> u32 TUNDRACORE_API Attribute<QVariantList>::TypeId() const { return cAttributeQVariantList; }
-template<> u32 TUNDRACORE_API Attribute<Transform>::TypeId() const { return cAttributeTransform; }
-template<> u32 TUNDRACORE_API Attribute<QPoint>::TypeId() const { return cAttributeQPoint; }
+// TypeId implementations
+template<> u32 TUNDRACORE_API Attribute<QString>::TypeId() const { return StringId; }
+template<> u32 TUNDRACORE_API Attribute<int>::TypeId() const { return IntId; }
+template<> u32 TUNDRACORE_API Attribute<float>::TypeId() const { return RealId; }
+template<> u32 TUNDRACORE_API Attribute<Color>::TypeId() const { return ColorId; }
+template<> u32 TUNDRACORE_API Attribute<float2>::TypeId() const { return Float2Id; }
+template<> u32 TUNDRACORE_API Attribute<float3>::TypeId() const { return Float3Id; }
+template<> u32 TUNDRACORE_API Attribute<float4>::TypeId() const { return Float4Id; }
+template<> u32 TUNDRACORE_API Attribute<bool>::TypeId() const { return BoolId; }
+template<> u32 TUNDRACORE_API Attribute<uint>::TypeId() const { return UIntId; }
+template<> u32 TUNDRACORE_API Attribute<Quat>::TypeId() const { return QuatId; }
+template<> u32 TUNDRACORE_API Attribute<AssetReference>::TypeId() const { return AssetReferenceId; }
+template<> u32 TUNDRACORE_API Attribute<AssetReferenceList>::TypeId() const { return AssetReferenceListId; }
+template<> u32 TUNDRACORE_API Attribute<EntityReference>::TypeId() const { return EntityReferenceId; }
+template<> u32 TUNDRACORE_API Attribute<QVariant>::TypeId() const { return VariantId; }
+template<> u32 TUNDRACORE_API Attribute<QVariantList>::TypeId() const { return VariantListId; }
+template<> u32 TUNDRACORE_API Attribute<Transform>::TypeId() const { return TransformId; }
+template<> u32 TUNDRACORE_API Attribute<QPoint>::TypeId() const { return PointId; }
+
+// TypeName implementations
+template<> const QString TUNDRACORE_API & Attribute<int>::TypeName() const { return IntTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<uint>::TypeName() const { return IntTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<float>::TypeName() const { return RealTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<QString>::TypeName() const { return StringTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<bool>::TypeName() const { return BoolTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<Quat>::TypeName() const { return QuatTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<float2>::TypeName() const { return Float2TypeName; }
+template<> const QString TUNDRACORE_API & Attribute<float3>::TypeName() const { return Float3TypeName; }
+template<> const QString TUNDRACORE_API & Attribute<float4>::TypeName() const { return Float4TypeName; }
+template<> const QString TUNDRACORE_API & Attribute<Color>::TypeName() const { return ColorTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<AssetReference>::TypeName() const { return AssetReferenceTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<AssetReferenceList>::TypeName() const { return AssetReferenceListTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<EntityReference>::TypeName() const { return EntityReferenceTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<QVariant>::TypeName() const { return VariantTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<QVariantList >::TypeName() const { return VariantListTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<Transform>::TypeName() const { return TransformTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<QPoint>::TypeName() const { return PointTypeName; }
 
 // DefaultValue implementations
 template<> QString TUNDRACORE_API Attribute<QString>::DefaultValue() const { return QString(); }
@@ -252,93 +289,6 @@ template<> QString TUNDRACORE_API Attribute<Transform>::ToString() const
 template<> QString TUNDRACORE_API Attribute<QPoint>::ToString() const
 {
     return QString("%1 %2").arg(Get().x()).arg(Get().y()); /**< @todo Maybe should use ';' instead of ' ' here as a delimeter as it's used for all other attributes. */
-}
-
-// TYPENAMETOSTRING TEMPLATE IMPLEMENTATIONS.
-
-template<> const QString TUNDRACORE_API & Attribute<int>::TypeName() const
-{
-    return cAttributeIntTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<uint>::TypeName() const
-{
-    return cAttributeUIntTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<float>::TypeName() const
-{
-    return cAttributeRealTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<QString>::TypeName() const
-{
-    return cAttributeStringTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<bool>::TypeName() const
-{
-    return cAttributeBoolTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<Quat>::TypeName() const
-{
-    return cAttributeQuatTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<float2>::TypeName() const
-{
-    return cAttributeFloat2TypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<float3>::TypeName() const
-{
-    return cAttributeFloat3TypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<float4>::TypeName() const
-{
-    return cAttributeFloat4TypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<Color>::TypeName() const
-{
-    return cAttributeColorTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<AssetReference>::TypeName() const
-{
-    return cAttributeAssetReferenceTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<AssetReferenceList>::TypeName() const
-{
-    return cAttributeAssetReferenceListTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<EntityReference>::TypeName() const
-{
-    return cAttributeEntityReferenceTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<QVariant>::TypeName() const
-{
-    return cAttributeQVariantTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<QVariantList >::TypeName() const
-{
-    return cAttributeQVariantListTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<Transform>::TypeName() const
-{
-    return cAttributeTransformTypeName;
-}
-
-template<> const QString TUNDRACORE_API & Attribute<QPoint>::TypeName() const
-{
-    return cAttributeQPointTypeName;
 }
 
 // FROMSTRING TEMPLATE IMPLEMENTATIONS.

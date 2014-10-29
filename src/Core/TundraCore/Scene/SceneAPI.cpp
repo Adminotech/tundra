@@ -35,7 +35,7 @@ SceneAPI::SceneAPI(Framework *owner) :
     QObject(owner),
     framework(owner)
 {
-    assert(attributeTypeNames.Size() == cNumAttributeTypes - 1 && "Attribute type registration mismatch!"); // -1 as cAttributeNoneTypeName is not in the list.
+    assert(attributeTypeNames.size() == IAttribute::NumTypes - 1 && "Attribute type registration mismatch!"); // -1 as cAttributeNoneTypeName is not in the list.
 
     qRegisterMetaType<EntityAction::ExecTypeField>("EntityAction::ExecTypeField");
     qRegisterMetaType<entity_id_t>("entity_id_t");

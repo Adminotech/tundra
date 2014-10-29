@@ -133,6 +133,49 @@ public:
     /// Acknowledges that the component owning this attribute has updated the component state to reflect the current value of this attribute.
     void ClearChangedFlag() { valueChanged = false; }
 
+    /// Attribute types supported by the system.
+    enum TypeId
+    {
+        NoneId = 0,
+        StringId = 1,
+        IntId = 2,
+        RealId = 3,
+        ColorId = 4,
+        Float2Id = 5,
+        Float3Id = 6,
+        Float4Id = 7,
+        BoolId = 8,
+        UIntId = 9,
+        QuatId = 10,
+        AssetReferenceId = 11,
+        AssetReferenceListId = 12,
+        EntityReferenceId = 13,
+        VariantId = 14,
+        VariantListId = 15,
+        TransformId = 16,
+        PointId = 17,
+        NumTypes = 18
+    };
+
+    static const QString NoneTypeName;
+    static const QString StringTypeName;
+    static const QString IntTypeName;
+    static const QString RealTypeName;
+    static const QString ColorTypeName;
+    static const QString Float2TypeName;
+    static const QString Float3TypeName;
+    static const QString Float4TypeName;
+    static const QString BoolTypeName;
+    static const QString UIntTypeName;
+    static const QString QuatTypeName;
+    static const QString AssetReferenceTypeName;
+    static const QString AssetReferenceListTypeName;
+    static const QString EntityReferenceTypeName;
+    static const QString VariantTypeName;
+    static const QString VariantListTypeName;
+    static const QString TransformTypeName;
+    static const QString PointTypeName;
+
 protected:
     friend class SceneAPI;
     friend class IComponent;
@@ -248,6 +291,8 @@ private:
     T value; ///< The value of this Attribute.
 };
 
+// DEPRECATED
+/// @cond PRIVATE
 static const u32 cAttributeNone = 0;
 static const u32 cAttributeString = 1;
 static const u32 cAttributeInt = 2;
@@ -286,6 +331,7 @@ static const QString cAttributeQVariantTypeName = "Variant"; /**< @note "Variant
 static const QString cAttributeQVariantListTypeName = "VariantList"; /**< @note "VariantList", not "QVariantList", both forms are support by SceneAPI.  @todo Rename the variable. */
 static const QString cAttributeTransformTypeName = "Transform";
 static const QString cAttributeQPointTypeName = "Point"; /**< @note "Point", not "QPoint", both forms are support by SceneAPI. @todo Rename the variable. */
+/// @endcond
 
 /// Represents weak pointer to Transform attribute.
 struct AttributeWeakPtr
