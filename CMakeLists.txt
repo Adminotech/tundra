@@ -277,7 +277,8 @@ if (MSVC)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
     # Currently, kNet uses this flag for Unix OSes. (required also for client-side headers). 
-    # TODO This can be removed when kNet's master is merged to stable (has not been done yet as of 2014-10-21).
+    # TODO This can be removed when kNet's master is merged to stable (has not been done yet as of 2014-11-05),
+    # https://github.com/juj/kNet/commit/0f35b17c71952bc362c241212caf31209b1051a7
     add_definitions(-DUNIX)
 endif()
 
@@ -382,8 +383,9 @@ add_definitions(
     -DMATH_QT_INTEROP
     -DMATH_TUNDRA_INTEROP
     -DMATH_ENABLE_STL_SUPPORT
-    # Both MathGeoLib and kNet has same macros for logging, 
-    # so disable them from the beforementioned.
+    # Both MathGeoLib and kNet has same macros for logging, so disable them from the beforementioned.
+    # TODO This can be removed when kNet's master is merged to stable (has not been done yet as of 2014-11-05),
+    # https://github.com/juj/kNet/commit/82c52da4f4508c71c4319851f76d23374e255eed
     -DLOGGING_SUPPORT_DISABLED
 )
 if (ANDROID)
