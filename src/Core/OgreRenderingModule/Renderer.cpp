@@ -244,6 +244,7 @@ namespace OgreRenderer
 
     Renderer::Renderer(Framework* fw) :
         initialized(false),
+        autoSwapBuffers(true),
         framework(fw),
         defaultScene(0),
         dummyDefaultCamera(0),
@@ -485,8 +486,9 @@ namespace OgreRenderer
                 bool fullscreen = framework->HasCommandLineParameter("--fullscreen");
                 int width = framework->Ui()->GraphicsView()->viewport()->size().width();
                 int height = framework->Ui()->GraphicsView()->viewport()->size().height();
-                int window_left = 0;
-                int window_top = 0;
+                
+                int window_left = framework->Config()->Get(configData, "window left", -1).toInt();
+                int window_top = framework->Config()->Get(configData, "window top", -1).toInt();
 
 #ifdef Q_WS_MAC
                 // Fullscreen causes crash on Mac OS X. See https://github.com/realXtend/naali/issues/522
@@ -1394,9 +1396,44 @@ namespace OgreRenderer
                 // Control the frame time manually
                 Ogre::FrameEvent evt;
                 evt.timeSinceLastFrame = frameTime;
+                emit PreRenderFrame();
                 ogreRoot->_fireFrameStarted(evt);
-                ogreRoot->_updateAllRenderTargets();
+                
+                //ogreRoot->_updateAllRenderTargets();
+                Ogre::RenderSystem* renderSystem = ogreRoot->getRenderSystem();
+                renderSystem->_updateAllRenderTargets(false);
+                ogreRoot->_fireFrameRenderingQueued();
+
+                if (autoSwapBuffers)
+                {
+                    emit SwapBuffers();
+                    renderSystem->_swapAllRenderTargetBuffers(renderSystem->getWaitForVerticalBlank());
+                }
+                else
+                {
+                    // Swap all rendertextures
+                    Ogre::RenderSystem::RenderTargetIterator renderTargetIterator = renderSystem->getRenderTargetIterator();
+                    Ogre::RenderTargetMap::iterator it = renderTargetIterator.begin();
+                    for (; it != renderTargetIterator.end(); ++it)
+                    {
+                        Ogre::RenderTarget* renderTarget = it->second;
+                        if (!renderTarget || !renderTarget->isAutoUpdated())
+                            continue;
+
+                        if (!dynamic_cast<Ogre::RenderTexture*>(renderTarget))
+                            continue;
+
+                        renderTarget->swapBuffers(renderSystem->getWaitForVerticalBlank());
+                    }
+
+                    emit SwapBuffers();
+                }
+
+                for (Ogre::SceneManagerEnumerator::SceneManagerIterator it = ogreRoot->getSceneManagerIterator(); it.hasMoreElements(); it.moveNext())
+                    it.peekNextValue()->_handleLodEvents();
+
                 ogreRoot->_fireFrameEnded();
+                emit PostRenderFrame();
             }
         } catch(const std::exception &e)
         {

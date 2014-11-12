@@ -71,6 +71,8 @@ namespace OgreRenderer
             Defaults to "AssetLoadError.png". */
         static std::string ErrorTextureName;
 
+        void SetAutoSwapBuffersEnabled(bool enabled) { autoSwapBuffers = enabled; }
+
         /// Returns framework
         Framework* GetFramework() const { return framework; }
 
@@ -272,6 +274,15 @@ namespace OgreRenderer
         /// Rendering device was restored.
         void DeviceRestored();
 
+        /// Pre render frame.
+        void PreRenderFrame();
+
+        /// Post render frame.
+        void PostRenderFrame();
+
+        /// Swap buffers
+        void SwapBuffers();
+
     private slots:
         /// Embeds the Renderer types to the given script engine.
         void OnScriptEngineCreated(QScriptEngine* engine);
@@ -319,6 +330,9 @@ namespace OgreRenderer
 
         /// Successfully initialized flag
         bool initialized;
+
+
+        bool autoSwapBuffers;
 
         /// Ogre root object
         OgreRootPtr ogreRoot;
