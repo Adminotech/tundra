@@ -113,6 +113,12 @@ void RenderWindow::CreateRenderWindow(QWidget *targetWindow, const QString &name
         (eg. FSAA) you may crash when the render window is created. Additionally if the map keys are case sensitive we might have bugs below (eg. vsync vs. VSync)! */
     if (fw->CommandLineParameters("--vsyncFrequency").length() > 0) // "Display frequency rate; only applies if fullScreen is set."
         params["displayFrequency"] = fw->CommandLineParameters("--vsyncFrequency").first().toStdString();
+    else if (fw->Config()->HasKey(ConfigAPI::FILE_FRAMEWORK, ConfigAPI::SECTION_RENDERING, "vsyncFrequency"))
+    {
+        QString value = fw->Config()->Get(ConfigAPI::FILE_FRAMEWORK, ConfigAPI::SECTION_RENDERING, "vsyncFrequency", "").toString();
+        if (!value.isEmpty())
+            params["displayFrequency"] = value.toStdString();
+    }
     if (fw->CommandLineParameters("--vsync").length() > 0) // "Synchronize buffer swaps to monitor vsync, eliminating tearing at the expense of a fixed frame rate"
         params["vsync"] = fw->CommandLineParameters("--vsync").first().toStdString();
     else if (fw->Config()->HasKey(ConfigAPI::FILE_FRAMEWORK, ConfigAPI::SECTION_RENDERING, "vsync"))
@@ -130,7 +136,7 @@ void RenderWindow::CreateRenderWindow(QWidget *targetWindow, const QString &name
         if (!value.isEmpty())
             params["FSAA"] = value.toStdString();
     }
-        
+
 #ifdef WIN32
     if (targetWindow)
         params["externalWindowHandle"] = Ogre::StringConverter::toString((unsigned int)targetWindow->winId());
