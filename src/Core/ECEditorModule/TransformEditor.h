@@ -105,6 +105,7 @@ public:
 #endif
 
     /// Returns the transform gizmo editor settings widget.
+    /** The widget doesn't exist if SetUserInterfaceEnabled(false) was called or running in headless mode. */
     QPointer<EditorSettings> EditorSettingsWidget() const { return editorSettings; }
 
     /// Translates a transform attribute.

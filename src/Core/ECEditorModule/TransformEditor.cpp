@@ -42,10 +42,12 @@ TransformEditor::TransformEditor(const ScenePtr &editedScene, UndoManager *manag
 {
     if (!scene.expired())
     {
-        QString uniqueName("TransformEditor" + scene.lock()->GetFramework()->Asset()->GenerateUniqueAssetName("",""));
-        input = scene.lock()->GetFramework()->Input()->RegisterInputContext(uniqueName, 100);
+        Framework *fw = scene.lock()->GetFramework();
+        input = fw->Input()->RegisterInputContext("TransformEditor" + fw->Asset()->GenerateUniqueAssetName("",""), 100);
         connect(input.get(), SIGNAL(KeyEventReceived(KeyEvent *)), SLOT(HandleKeyEvent(KeyEvent *)));
-        connect(scene.lock()->GetFramework()->Frame(), SIGNAL(Updated(float)), SLOT(OnUpdated(float)));
+        connect(fw->Frame(), SIGNAL(Updated(float)), SLOT(OnUpdated(float)));
+        if (fw->IsHeadless())
+            uiAllowed = false;
     }
 }
 
