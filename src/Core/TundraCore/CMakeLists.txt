@@ -54,9 +54,9 @@ add_definitions(-DTUNDRA_VERSION_MAJOR_PATCH=4)
 add_definitions(-DTUNDRA_VERSION_MINOR_PATCH=1)
 # TUNDRA_VERSION_POSTFIX can be used to append information to the version string f.ex.
 # when doing automated nightly builds or release candidates.
-#if (DEFINED TUNDRA_VERSION_POSTFIX)
+if (DEFINED TUNDRA_VERSION_POSTFIX)
     add_definitions(-DTUNDRA_VERSION_POSTFIX="${TUNDRA_VERSION_POSTFIX}")
-#endif()
+endif()
 
 if (TUNDRACORE_SHARED)
     build_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${MOC_SRCS})
