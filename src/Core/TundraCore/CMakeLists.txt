@@ -44,6 +44,19 @@ use_core_modules(Math)
 use_package(QJSON)
 
 add_definitions(-DTUNDRACORE_EXPORTS)
+# If the following are undefined, the default values in TundraVersionInfo.h are used.
+add_definitions(-DTUNDRA_ORGANIZATION_NAME="Meshmoon")
+add_definitions(-DTUNDRA_APPLICATION_NAME="Rocket")
+add_definitions(-DTUNDRA_VERSION_STRING="2.5.4.1")
+add_definitions(-DTUNDRA_VERSION_MAJOR=2)
+add_definitions(-DTUNDRA_VERSION_MINOR=5)
+add_definitions(-DTUNDRA_VERSION_MAJOR_PATCH=4)
+add_definitions(-DTUNDRA_VERSION_MINOR_PATCH=1)
+# TUNDRA_VERSION_POSTFIX can be used to append information to the version string f.ex.
+# when doing automated nightly builds or release candidates.
+#if (DEFINED TUNDRA_VERSION_POSTFIX)
+    add_definitions(-DTUNDRA_VERSION_POSTFIX="${TUNDRA_VERSION_POSTFIX}")
+#endif()
 
 if (TUNDRACORE_SHARED)
     build_library(${TARGET_NAME} SHARED ${SOURCE_FILES} ${MOC_SRCS})
