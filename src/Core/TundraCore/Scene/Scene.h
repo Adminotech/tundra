@@ -114,19 +114,31 @@ public:
     Framework *GetFramework() const { return framework_; }
 
     /// Inspects file and returns a scene description structure from the contents of XML file.
-    /** @param filename File name. */
-    SceneDesc CreateSceneDescFromXml(const QString &filename) const;
+    /** @param filename File name.
+        @param resolveAssets If SceneDesc::assets map should be populated.
+        Resolving assets under certain storage setups can perform poorly.
+        You should only set true if really interested in all the assets and their disk paths. */
+    SceneDesc CreateSceneDescFromXml(const QString &filename, bool resolveAssets = true) const;
     /// @overload
     /** @param data XML data to be processed.
-        @param sceneDesc Initialized SceneDesc with filename prepared. */
-    SceneDesc CreateSceneDescFromXml(QByteArray &data, SceneDesc &sceneDesc) const;
+        @param sceneDesc Initialized SceneDesc with filename prepared.
+        @param resolveAssets If SceneDesc::assets map should be populated.
+        Resolving assets under certain storage setups can perform poorly.
+        You should only set true if really interested in all the assets and their disk paths. */
+    SceneDesc CreateSceneDescFromXml(QByteArray &data, SceneDesc &sceneDesc, bool resolveAssets = true) const;
 
     /// Inspects file and returns a scene description structure from the contents of binary file.
-    /** @param filename File name. */
-    SceneDesc CreateSceneDescFromBinary(const QString &filename) const;
+    /** @param filename File name.
+        @param resolveAssets If SceneDesc::assets map should be populated.
+        Resolving assets under certain storage setups can perform poorly.
+        You should only set true if really interested in all the assets and their disk paths. */
+    SceneDesc CreateSceneDescFromBinary(const QString &filename, bool resolveAssets = true) const;
     /// @overload
-    /** @param data Binary data to be processed. */
-    SceneDesc CreateSceneDescFromBinary(QByteArray &data, SceneDesc &sceneDesc) const;
+    /** @param data Binary data to be processed.
+        @param resolveAssets If SceneDesc::assets map should be populated.
+        Resolving assets under certain storage setups can perform poorly.
+        You should only set true if really interested in all the assets and their disk paths. */
+    SceneDesc CreateSceneDescFromBinary(QByteArray &data, SceneDesc &sceneDesc, bool resolveAssets = true) const;
 
     /// Inspects .js file content for dependencies and adds them to sceneDesc.assets
     ///@todo This function is a duplicate copy of void ScriptAsset::ParseReferences(). Delete this code. -jj.
@@ -560,7 +572,7 @@ private:
     void CreateEntityFromDesc(EntityPtr parent, const EntityDesc& source, bool useEntityIDsFromFile,
         AttributeChange::Type change, QList<Entity *>& entities, EntityIdMap& oldToNewIds);
     /// Create entity desc from an XML element and recurse into child entities. Called internally.
-    void CreateEntityDescFromXml(SceneDesc& sceneDesc, QList<EntityDesc>& dest, const QDomElement& ent_elem) const;
+    void CreateEntityDescFromXml(SceneDesc& sceneDesc, QList<EntityDesc>& dest, const QDomElement& ent_elem, bool resolveAssets) const;
 
     /// Container for an ongoing attribute interpolation
     struct AttributeInterpolation
