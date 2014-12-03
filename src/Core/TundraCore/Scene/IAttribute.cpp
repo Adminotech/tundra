@@ -118,9 +118,9 @@ const QString IAttribute::AssetReferenceTypeName = "AssetReference";
 const QString IAttribute::AssetReferenceListTypeName = "AssetReferenceList";
 const QString IAttribute::EntityReferenceTypeName = "EntityReference";
 const QString IAttribute::VariantTypeName = "Variant";
-const QString IAttribute::VariantListTypeName = "VariantList";
-const QString IAttribute::TransformTypeName = "Transform";
-const QString IAttribute::PointTypeName = "Point";
+const QString IAttribute::VariantListTypeName = "QVariantList"; /**< @todo This is used when serializing attribute to XML and is Q-prefixed for transitional period; the prefix will be removed soon. */
+const QString IAttribute::TransformTypeName = "QTransform";/**< @todo This is used when serializing attribute to XML and is Q-prefixed for transitional period; the prefix will be removed soon. */
+const QString IAttribute::PointTypeName = "QPoint"; /**< @todo This is used when serializing attribute to XML and is Q-prefixed for transitional period; the prefix will be removed soon. */
 
 // TypeId implementations
 template<> u32 TUNDRACORE_API Attribute<QString>::TypeId() const { return StringId; }
