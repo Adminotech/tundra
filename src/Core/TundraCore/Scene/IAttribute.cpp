@@ -143,7 +143,7 @@ template<> u32 TUNDRACORE_API Attribute<QPoint>::TypeId() const { return PointId
 
 // TypeName implementations
 template<> const QString TUNDRACORE_API & Attribute<int>::TypeName() const { return IntTypeName; }
-template<> const QString TUNDRACORE_API & Attribute<uint>::TypeName() const { return IntTypeName; }
+template<> const QString TUNDRACORE_API & Attribute<uint>::TypeName() const { return UIntTypeName; }
 template<> const QString TUNDRACORE_API & Attribute<float>::TypeName() const { return RealTypeName; }
 template<> const QString TUNDRACORE_API & Attribute<QString>::TypeName() const { return StringTypeName; }
 template<> const QString TUNDRACORE_API & Attribute<bool>::TypeName() const { return BoolTypeName; }
