@@ -41,7 +41,7 @@ EC_Billboard::EC_Billboard(Scene* scene) :
     INIT_ATTRIBUTE_VALUE(width, "Size X", 1.0f),
     INIT_ATTRIBUTE_VALUE(height, "Size Y", 1.0f),
     INIT_ATTRIBUTE_VALUE(rotation, "Rotation", 0.0f),
-    INIT_ATTRIBUTE_VALUE(show, "Show billboard", true)
+    INIT_ATTRIBUTE_VALUE(show, "Show billboard", true) /**< @todo Visible/Enabled would be maybe better name and consistent with other ECs. */
 {   
     connect(this, SIGNAL(ParentEntitySet()), SLOT(OnParentEntitySet()));
 }
