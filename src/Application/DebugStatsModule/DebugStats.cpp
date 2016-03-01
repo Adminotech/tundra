@@ -58,6 +58,10 @@ void DebugStatsModule::Initialize()
 
     enableProfilerLogDump = framework_->HasCommandLineParameter("--dumpProfiler");
 
+    // If not needed by anything but profiler window, disable spinning blocks when not visible.
+    if (!enableProfilerLogDump)
+        framework_->GetProfiler()->SetEnabled(false);
+
     framework_->Console()->RegisterCommand("prof", "Shows the profiling window.",
         this, SLOT(ShowProfilerWindow()));
     framework_->Console()->RegisterCommand("exec", "Invokes an Entity Action on an entity (debugging).",
@@ -81,12 +85,17 @@ void DebugStatsModule::StartProfiling(bool visible)
 {
     profilerWindow_->SetVisibility(visible);
 
+    // If not needed by anything but profiler window, disable spinning blocks when not visible.
+    framework_->GetProfiler()->SetEnabled(visible || enableProfilerLogDump);
+
     if (visible)
         profilerWindow_->Refresh(); 
 }
 
 void DebugStatsModule::ShowProfilerWindow()
 {
+    framework_->GetProfiler()->SetEnabled(true);
+
     // If the window is already created toggle its visibility. If visible, bring it to front.
     if (profilerWindow_)
     {
@@ -117,7 +126,7 @@ void DebugStatsModule::Update(f64 frametime)
 #ifdef PROFILING
     if (enableProfilerLogDump)
     {
-	++profilerLogDumpElapsedFrames;        
+	    ++profilerLogDumpElapsedFrames;        
         if (ProfilerBlock::ElapsedTimeSeconds(lastProfilerDumpTime, now) > 5.0)
         { 
             LogInfo("Dumping profiling data...");
@@ -126,17 +135,17 @@ void DebugStatsModule::Update(f64 frametime)
             profiler.Lock();
             DumpProfilerToLog(profiler.GetRoot(), 0, profilerLogDumpElapsedFrames);
             profiler.Release();
-	    profilerLogDumpElapsedFrames = 0;
+	        profilerLogDumpElapsedFrames = 0;
         }        
     }
 #endif
 
-    frameTimes.push_back(make_pair(*(u64*)&now, timeSpent));
-    if (frameTimes.size() > 2048) // Maintain an upper bound in the frame history.
-        frameTimes.erase(frameTimes.begin());
-
     if (profilerWindow_ && profilerWindow_->isVisible())
     {
+        frameTimes.push_back(make_pair(*(u64*)&now, timeSpent));
+        if (frameTimes.size() > 2048) // Maintain an upper bound in the frame history.
+            frameTimes.erase(frameTimes.begin());
+
         profilerWindow_->RedrawFrameTimeHistoryGraph(frameTimes);
         /// @todo Should this be enabled back?
         //profilerWindow_->DoThresholdLogging();

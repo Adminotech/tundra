@@ -300,7 +300,6 @@ class TUNDRACORE_API Profiler
 {
 public:
     Profiler();
-
     ~Profiler();
     
     /// Start a profiling block.
@@ -319,9 +318,14 @@ public:
         Re-entrant. */
     void EndBlock(const std::string &name);
 
+    /// Set profiling enabled during runtime.
+    /** This can be used to disable profiling when its not needed */
+    void SetEnabled(bool enabled);
+
+    bool IsEnabled() const { return enabled_; }
+
     /// Reset profiling data for the current frame. Don't call directly, use RESETPROFILER macro instead.
     void ResetValues();
-
 
     /// Returns root profiling node. \todo Deprecated, the actual locking is a no-op
     ProfilerNodeTree *Lock()
@@ -349,6 +353,11 @@ private:
     /// Points to the current topmost profile block in the stack.
     ProfilerNodeTree *current_node_;
 
+    /// If profiling is enabled.
+    /** This can be false even if PROFILING is not defined.
+        It can be set during runtime. */
+    bool enabled_;
+
     friend class ProfilerQObj;
 };
 
@@ -356,18 +365,22 @@ private:
 class TUNDRACORE_API ProfilerSection
 {
 public:
-    explicit ProfilerSection(const std::string &name) : name_(name), destroyed_(false)
+    explicit ProfilerSection(const std::string &name) :
+        name_(name),
+        destroyed_(false)
     {
         assert(Framework::Instance() && "Cannot get Framework instance! Did you forget to call Framework::SetInstance(fw); in your TundraPluginMain?");
-        GetProfiler()->StartBlock(name);
+        Profiler *p = GetProfiler();
+        if (p && p->IsEnabled())
+            GetProfiler()->StartBlock(name);
+        else
+            destroyed_ = true;
     }
 
     ~ProfilerSection()
     {
         if (!destroyed_)
-        {
             Destruct();
-        }
     }
 
     /// Explicitly destroy this section before it runs out of scope
@@ -375,13 +388,18 @@ public:
     {
         assert (Framework::Instance() && "Trying to profile before profiler initialized.");
 
-        GetProfiler()->EndBlock(name_);
-        destroyed_ = true;
+        Profiler *p = GetProfiler();
+        if (p && p->IsEnabled())
+        {
+            GetProfiler()->EndBlock(name_);
+            destroyed_ = true;
+        }
     }
+
     static Profiler *GetProfiler()
     {
-        assert(Framework::Instance());
 #ifdef PROFILING
+        assert(Framework::Instance());
         return Framework::Instance()->GetProfiler();
 #else
         return 0;

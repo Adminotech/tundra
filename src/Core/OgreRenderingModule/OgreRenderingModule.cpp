@@ -67,7 +67,7 @@ void Profiler_BeginBlock(const char *name)
         return;
     Framework *fw = Framework::Instance();
     Profiler *p = fw ? fw->GetProfiler() : 0;
-    if (p)
+    if (p && p->IsEnabled())
         p->StartBlock((std::string("OGRE_") + name).c_str());
 #endif
 }
@@ -79,7 +79,7 @@ void Profiler_EndBlock()
         return;
     Framework *fw = Framework::Instance();
     Profiler *p = fw ? fw->GetProfiler() : 0;
-    if (p)
+    if (p && p->IsEnabled())
     {
         ProfilerNodeTree *treeNode = p->CurrentNode();
         if (treeNode)
