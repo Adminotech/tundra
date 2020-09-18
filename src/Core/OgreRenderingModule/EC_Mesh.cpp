@@ -270,7 +270,6 @@ bool EC_Mesh::SetMesh(const QString &meshResourceName, bool clone)
         entity_->setRenderingDistance(drawDistance.Get());
         entity_->setCastShadows(castShadows.Get());
         entity_->setUserAny(Ogre::Any(static_cast<IComponent *>(this)));
-        entity_->setVisibilityFlags(0xFFFFFFF0);
         // Set UserAny also on subentities
         for(uint i = 0; i < entity_->getNumSubEntities(); ++i)
             entity_->getSubEntity(i)->setUserAny(entity_->getUserAny());

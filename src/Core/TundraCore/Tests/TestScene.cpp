@@ -62,7 +62,7 @@ namespace TundraTest
             EntityPtr ent = test_.scene->CreateEntity(0, QStringList(), AttributeChange::Default,
                 replicated, replicated, temporary);
                     
-            QVERIFY(ent);
+            QVERIFY(ent != NULL);
             QVERIFY(ent->ParentScene());
             QVERIFY(!ent->Parent());
 
@@ -164,7 +164,7 @@ namespace TundraTest
         {
             ComponentPtr byName = sceneApi->CreateComponentByName(0, componentTypeName);
 
-            QVERIFY(byName);
+            QVERIFY(byName != NULL);
             QVERIFY(!byName->ParentScene());
             QVERIFY(!byName->ParentEntity());
 
@@ -173,7 +173,7 @@ namespace TundraTest
 
             ComponentPtr byId = sceneApi->CreateComponentById(0, componentTypeId);
 
-            QVERIFY(byId);
+            QVERIFY(byId != NULL);
             QVERIFY(!byId->ParentScene());
             QVERIFY(!byId->ParentEntity());
 
@@ -229,7 +229,7 @@ namespace TundraTest
 
             ComponentPtr byName = parent->CreateComponent(componentTypeName, "ByName_" + iteration, AttributeChange::Default, replicated);
 
-            QVERIFY(byName);
+            QVERIFY(byName != NULL);
             QVERIFY(byName->ParentScene());
             QVERIFY(byName->ParentEntity());
 
@@ -249,7 +249,7 @@ namespace TundraTest
 
             ComponentPtr byId = parent->CreateComponent(componentTypeId, "ById_" + iteration, AttributeChange::Default, replicated);
 
-            QVERIFY(byId);
+            QVERIFY(byId != NULL);
             QVERIFY(byId->ParentScene());
             QVERIFY(byId->ParentEntity());
 

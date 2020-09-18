@@ -6,7 +6,7 @@
 call RunCMake.cmd
 
 cd ..\..
-set CALL_CECHO=tools\Windows\Utils\cecho
+set CALL_CECHO=..\tools\Windows\Utils\cecho
 %CALL_CECHO% {0D}Building %2 Tundra.{# #}{\n}
 MSBuild tundra.sln %*
 IF NOT %ERRORLEVEL%==0 GOTO :Error

@@ -710,7 +710,7 @@ IF %USE_BOOST%==FALSE (
     cd "%DEPS%\ogre-safe-nocrashes"
     IF NOT EXIST %TBB_VERSION%_win.zip. (
         cecho {0D}Downloading Intel Thread Building Blocks prebuilt package.{# #}{\n}
-        wget "https://www.threadingbuildingblocks.org/sites/default/files/software_releases/windows/%TBB_VERSION%_win.zip" --no-check-certificate
+        wget "http://threadingbuildingblocks.org/sites/default/files/software_releases/windows/%TBB_VERSION%_win.zip"
         IF NOT EXIST %TBB_VERSION%_win.zip. (
             cecho {0C}Error downloading Intel Thread Building Blocks! Aborting!{# #}{\n}
             GOTO :ERROR

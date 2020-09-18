@@ -86,7 +86,6 @@ public:
     DEFINE_QPROPERTY_ATTRIBUTE(float, rotation);
     
     /// Show flag
-    /** @todo visible/enabled would be maybe better name/ID and consistent with other ECs. */
     Q_PROPERTY(bool show READ getshow WRITE setshow);
     DEFINE_QPROPERTY_ATTRIBUTE(bool, show);
 

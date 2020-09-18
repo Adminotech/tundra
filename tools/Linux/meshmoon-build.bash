@@ -141,7 +141,7 @@ if [ $skip_pkg = false ] ; then
     print_title "Fetching packages: Network and protocols"
     sudo apt-get -y install \
         openssl libssl-dev \
-        libprotobuf-dev libprotobuf-c0 libprotobuf-c0-dev \
+        libprotobuf-dev libprotobuf-c1 libprotobuf-c-dev \
         protobuf-c-compiler protobuf-compiler
 
     print_title "Fetching packages: Audio and video"

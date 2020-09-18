@@ -14,32 +14,14 @@
 #include <iostream>
 #include <utility>
 
-Profiler::Profiler() : 
-    root_("Root"),
-    current_node_(0)
+Profiler::Profiler() : root_("Root"), current_node_(0)
 {
-    SetEnabled(true);
-
     // Check timer availability
     ProfilerBlock::QueryCapability();
 }
-
+    
 Profiler::~Profiler()
 {
-}
-
-void Profiler::SetEnabled(bool enabled)
-{
-#ifdef PROFILING
-    if (enabled_ == enabled)
-        return;
-    enabled_ = enabled;
-
-    ResetValues();
-    current_node_ = 0;
-#else
-    enabled_ = false;
-#endif
 }
 
 bool ProfilerBlock::QueryCapability()
@@ -59,9 +41,6 @@ bool ProfilerBlock::QueryCapability()
 void Profiler::StartBlock(const std::string &name)
 {
 #ifdef PROFILING
-    if (!IsEnabled())
-        return;
-
     // Get the current topmost profiling node in the stack.
     // This will be the parent node of the new block we're starting.
     ProfilerNodeTree *parent = current_node_ ? current_node_ : &root_;
@@ -100,9 +79,6 @@ void Profiler::EndBlock(const std::string &name)
 #ifdef PROFILING
     using namespace std;
 
-    if (!IsEnabled())
-        return;
-
     ProfilerNodeTree *treeNode = current_node_;
     if (!treeNode)
         return;
@@ -140,7 +116,7 @@ void ProfilerQObj::BeginBlock(const QString &name)
 #ifdef PROFILING
     Framework *fw = Framework::Instance();
     Profiler *p = fw ? fw->GetProfiler() : 0;
-    if (p && p->IsEnabled())
+    if (p)
         p->StartBlock(name.toStdString());
 #endif
 }
@@ -150,7 +126,7 @@ void ProfilerQObj::EndBlock()
 #ifdef PROFILING
     Framework *fw = Framework::Instance();
     Profiler *p = fw ? fw->GetProfiler() : 0;
-    if (p && p->IsEnabled())
+    if (p)
     {
         ProfilerNodeTree *treeNode = p->current_node_;
         if (!treeNode)

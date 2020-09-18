@@ -37,7 +37,7 @@
         },
         {
             "Name"      : "bullet",
-            "Repo"      : "bullet.googlecode.com/files/bullet-2.81-rev2613.tgz",
+            "Repo"      : "storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/bullet/bullet-2.81-rev2613.tgz",
             "Settings"  : [ { 
                     "Tool" : "cmake", 
                     "Parameters" : [
@@ -132,18 +132,18 @@
             "SkipBuild" : true
         },
         {
-            "Repo"      : "git.gitorious.org/qt-labs/qtscriptgenerator",
+            "Repo"      : "github.com/qt-labs/qtscriptgenerator",
             "SkipBuild" : true,
             "Patches"   : [
                 "Patches/qtscriptgenerator-0001-force-webkit-and-phonon-plugins.patch"
             ]
         },
         {
-            "Repo"      : "git.gitorious.org/qt-solutions/qt-solutions",
+            "Repo"      : "github.com/qtproject/qt-solutions",
             "SkipBuild" : true
         },
         {
-            "Repo"      : "code.google.com/p/realxtend-tundra-deps",
+            "Repo"      : "github.com/realXtend/realxtend-tundra-deps",
             "Tool"      : "git",
             "Branch"    : "sources",
             "SkipBuild" : true,

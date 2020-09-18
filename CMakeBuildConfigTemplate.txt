@@ -240,8 +240,8 @@ endif ()
 
 # Meshmoon
 
-if (EXISTS src/meshmoon-plugins)
-    add_subdirectory(src/meshmoon-plugins)
+if (EXISTS src/admino-plugins)
+    add_subdirectory(src/admino-plugins)
 endif ()
 if (MESHMOON_SERVER_BUILD AND EXISTS src/admino-server)
     add_subdirectory(src/admino-server)
